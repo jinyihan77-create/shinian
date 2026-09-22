@@ -612,3 +612,107 @@ input:focus, textarea:focus, select:focus {
   .true-focus-line__character { transition: none; }
   .true-focus-line { cursor: default; }
 }
+
+/* Capture studio: the whole writing surface responds as one quiet instrument. */
+.capture-space .capture-composer {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(145deg, #2b21375c, #14111d80 58%, #18202d66);
+  border-color: #efd9ff35;
+  box-shadow: 0 22px 65px #05030852, inset 0 1px 0 #ffffff1f, inset 0 -1px 0 #b7dfff0b;
+  backdrop-filter: blur(20px) saturate(1.15);
+  transition: border-color .35s ease, box-shadow .35s ease, background .35s ease;
+}
+.capture-space .capture-composer::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: auto 7% -56px;
+  height: 110px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #d69ac82b, #829fe313 46%, transparent 72%);
+  filter: blur(22px);
+  opacity: .35;
+  transform: scaleX(.84);
+  transition: opacity .4s ease, transform .5s ease;
+}
+.capture-space .capture-composer:focus-within {
+  border-color: #ecc7e979;
+  background: linear-gradient(145deg, #35264070, #16121f8c 58%, #19253570);
+  box-shadow: 0 24px 75px #0503085c, 0 0 0 1px #f0cfe917, 0 0 34px #d492c31c, inset 0 1px 0 #ffffff29;
+}
+.capture-space .capture-composer:focus-within::before,
+.capture-space .capture-composer:has(.voice-pill.is-recording)::before { opacity: .82; transform: scaleX(1); }
+.capture-space .writing-surface { position: relative; overflow: hidden; }
+.capture-space .writing-surface::after {
+  content: "";
+  position: absolute;
+  inset: auto 22px 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, #e6bedb59 28%, #d6e9ff3f 70%, transparent);
+  transform: scaleX(.4);
+  opacity: .2;
+  transition: transform .45s ease, opacity .35s ease;
+}
+.capture-space .capture-composer:focus-within .writing-surface::after { transform: scaleX(1); opacity: .9; }
+.capture-space .source-form {
+  padding: 17px 20px 20px;
+  background: linear-gradient(155deg, #f5dcff08, #b7dbff06 58%, transparent);
+}
+.source-type-field { display: grid; gap: 10px; margin-bottom: 14px; }
+.source-type-field > span { color: #bbaec4; font-size: 11px; letter-spacing: .08em; }
+.source-type-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+.source-type-grid button {
+  display: flex;
+  min-width: 0;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 6px;
+  border: 1px solid #ffffff1c;
+  border-radius: 13px;
+  background: linear-gradient(145deg, #ffffff0d, #d8c0e508 56%, #9dcae908);
+  color: #aa9bb4;
+  font-size: 11px;
+  box-shadow: inset 0 1px 0 #ffffff10;
+  transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+.source-type-grid button:hover:not(:disabled) { color: #f7edf9; border-color: #e5c7df47; transform: translateY(-1px); }
+.source-type-grid button[aria-checked="true"] {
+  color: #fff7fb;
+  border-color: #e9c3dd7a;
+  background: linear-gradient(135deg, #e0abc627, #a995d528 52%, #9dccdc1f);
+  box-shadow: 0 8px 24px #08050c32, inset 0 1px 0 #ffffff2b, 0 0 18px #e4aeca13;
+}
+.source-type-grid button[aria-checked="true"] svg { color: #ffdceb; filter: drop-shadow(0 0 6px #efafce70); }
+.capture-space .capture-source-row {
+  min-height: 52px;
+  margin: 0;
+  padding: 0 13px;
+  border: 1px solid #ffffff1b;
+  border-radius: 13px;
+  background: #09070d26;
+}
+.capture-space .capture-source-row .link-input { min-height: 50px; }
+.source-current { flex: 0 0 auto; padding-left: 12px; border-left: 1px solid #ffffff16; color: #d6bfd0; font-size: 11px; }
+.capture-space .source-more { margin-top: 12px; }
+.capture-space .source-more summary { min-height: 42px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.capture-space .source-more summary::marker { display: none; }
+
+@media (max-width: 760px) {
+  .capture-space .capture-composer { backdrop-filter: blur(15px) saturate(1.1); }
+  .source-type-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .source-type-grid button { min-height: 48px; }
+  .capture-space .source-form { padding-inline: 14px; }
+  .capture-space .capture-source-row { padding-inline: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capture-space .capture-composer,
+  .capture-space .capture-composer::before,
+  .capture-space .writing-surface::after,
+  .source-type-grid button { transition: none; }
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowUpRight, BookOpen, Check, ChevronDown, FileText, Headphones, Leaf, Link2, LoaderCircle, MoreHorizontal, Plus, Settings2, Video } from "lucide-react";
-import { SOURCE_TYPES, type CaptureInput } from "@/lib/types";
+import type { CaptureInput } from "@/lib/types";
 import { composeSpeechInput, type SpeechResultLike } from "@/lib/speech-input";
 import { AeroScene } from "./aero-scene";
 import { EchoHeading } from "./echo-heading";
