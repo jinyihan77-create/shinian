@@ -14,7 +14,8 @@
     "setup:tencent": "node scripts/setup-tencent.mjs",
     "prepare:tencent": "node scripts/prepare-tencent-deploy.mjs",
     "deploy:tencent": "node scripts/deploy-tencent.mjs",
-    "verify:live": "node scripts/verify-live-deployment.mjs"
+    "verify:live": "node scripts/verify-live-deployment.mjs",
+    "ship": "node scripts/ship.mjs"
   },
   "dependencies": {
     "@cloudbase/node-sdk": "^3.18.3",

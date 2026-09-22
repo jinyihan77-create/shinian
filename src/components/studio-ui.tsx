@@ -1,15 +1,16 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, Check, ChevronDown, Link2, LoaderCircle, Plus, Settings2 } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowUpRight, BookOpen, Check, ChevronDown, FileText, Headphones, Leaf, Link2, LoaderCircle, MoreHorizontal, Plus, Settings2, Video } from "lucide-react";
 import { SOURCE_TYPES, type CaptureInput } from "@/lib/types";
+import { composeSpeechInput, type SpeechResultLike } from "@/lib/speech-input";
 import { AeroScene } from "./aero-scene";
 import { EchoHeading } from "./echo-heading";
 import { TrueFocusLine } from "./true-focus-line";
 import LineSidebar from "./line-sidebar";
 import sidebarStyles from "./line-sidebar.module.css";
 
-type SpeechResultEvent = { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> };
+type SpeechResultEvent = { resultIndex: number; results: ArrayLike<SpeechResultLike> };
 type SpeechRecognitionLike = {
   lang: string;
   continuous: boolean;
@@ -93,13 +94,18 @@ type ComposerProps = {
 function VoiceInput({ value, onChange, disabled, preview }: { value: string; onChange: (value: string) => void; disabled: boolean; preview: boolean }) {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const baseTextRef = useRef("");
-  const finalTextRef = useRef("");
   const [recording, setRecording] = useState(false);
   const [message, setMessage] = useState("");
 
+  useEffect(() => () => {
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    recognition?.stop();
+  }, []);
+
   function toggle() {
     if (preview) { setMessage("预览不会启用麦克风"); return; }
-    if (recording) { recognitionRef.current?.stop(); return; }
+    if (recognitionRef.current) { recognitionRef.current.stop(); return; }
     const Constructor = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Constructor) { setMessage("当前浏览器不支持语音输入，请直接输入"); return; }
     const recognition = new Constructor();
@@ -107,24 +113,15 @@ function VoiceInput({ value, onChange, disabled, preview }: { value: string; onC
     recognition.continuous = false;
     recognition.interimResults = true;
     baseTextRef.current = value.trim();
-    finalTextRef.current = value.trim();
     recognition.onresult = event => {
-      let transcript = "";
-      for (let index = event.resultIndex; index < event.results.length; index += 1) {
-        const result = event.results[index];
-        transcript += result?.[0]?.transcript || "";
-        if (result?.isFinal) finalTextRef.current = `${finalTextRef.current}${finalTextRef.current && result[0]?.transcript.trim() ? " " : ""}${result[0]?.transcript || ""}`.trimStart();
-      }
-      const interim = transcript.trim();
-      const committed = finalTextRef.current;
-      const next = `${committed}${committed && interim && !committed.endsWith(interim) ? " " : ""}${interim}`.trimStart();
+      const next = composeSpeechInput(baseTextRef.current, event.results);
       if (next) onChange(next);
     };
     recognition.onerror = event => { setRecording(false); setMessage(event.error === "not-allowed" ? "麦克风权限未开启，请允许后重试" : "没有识别到清晰语音，请重试"); };
     recognition.onend = () => { setRecording(false); recognitionRef.current = null; };
     recognitionRef.current = recognition;
-    setMessage(""); setRecording(true);
-    try { recognition.start(); } catch { setRecording(false); setMessage("语音输入启动失败，请直接输入"); }
+    setMessage("");
+    try { recognition.start(); setRecording(true); } catch { recognitionRef.current = null; setRecording(false); setMessage("语音输入启动失败，请直接输入"); }
   }
 
   return <div className="voice-input-wrap">
@@ -138,6 +135,15 @@ function VoiceInput({ value, onChange, disabled, preview }: { value: string; onC
 
 export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle, saving, draftState, onSave, preview = false }: ComposerProps) {
   const hasContent = [capture.userText, capture.sourceName, capture.sourceUrl, capture.sourceTimestamp, capture.sourceExcerpt].some(value => value.trim());
+  const sourceOptions = [
+    { value: "播客", icon: Headphones },
+    { value: "文章", icon: FileText },
+    { value: "书籍", icon: BookOpen },
+    { value: "视频", icon: Video },
+    { value: "生活", icon: Leaf },
+    { value: "其他", icon: MoreHorizontal },
+  ] as const;
+  const linkPlaceholder = capture.sourceType === "播客" ? "粘贴节目链接" : capture.sourceType === "文章" ? "粘贴文章链接" : capture.sourceType === "书籍" ? "豆瓣、微信读书或书籍链接（选填）" : capture.sourceType === "视频" ? "粘贴视频链接" : "添加相关链接（选填）";
   return <section className="capture-composer" aria-label="快速记录" onKeyDown={event => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !event.nativeEvent.isComposing && !saving && hasContent) { event.preventDefault(); onSave(false); }
   }}>
@@ -149,7 +155,8 @@ export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle,
         <span className="character-count">{capture.userText.length > 0 && capture.userText.length.toLocaleString() + " 字"}</span>
       </div>
       <div id="capture-source-details" className="source-form" hidden={!sourceOpen}>
-        <div className="capture-source-row"><div className="link-input"><Link2 size={16} /><label className="sr-only" htmlFor="capture-link">播客或文章链接</label><input id="capture-link" placeholder="播客或文章链接" value={capture.sourceUrl} onChange={event => onChange({ sourceUrl: event.target.value })} disabled={saving} maxLength={2048} type="url" /></div><select className="source-select" aria-label="来源类型" value={capture.sourceType} onChange={event => onChange({ sourceType: event.target.value as CaptureInput["sourceType"] })} disabled={saving}>{SOURCE_TYPES.map(type => <option key={type}>{type}</option>)}</select></div>
+        <div className="source-type-field"><span>这条灵感来自</span><div className="source-type-grid" role="radiogroup" aria-label="来源类型">{sourceOptions.map(({ value, icon: Icon }) => <button key={value} type="button" role="radio" aria-checked={capture.sourceType === value} onClick={() => onChange({ sourceType: value })} disabled={saving}><Icon size={15} strokeWidth={1.6} /><span>{value}</span></button>)}</div></div>
+        <div className="capture-source-row"><div className="link-input"><Link2 size={16} /><label className="sr-only" htmlFor="capture-link">来源链接</label><input id="capture-link" placeholder={linkPlaceholder} value={capture.sourceUrl} onChange={event => onChange({ sourceUrl: event.target.value })} disabled={saving} maxLength={2048} type="url" /></div><span className="source-current">{capture.sourceType}</span></div>
         <details className="source-more"><summary>补充名称、时间点或原文<ChevronDown size={13} /></summary>
           <div className="form-grid"><label className="field"><span className="field-label">来源名称</span><input className="input" placeholder="节目名或文章标题" maxLength={200} value={capture.sourceName} onChange={event => onChange({ sourceName: event.target.value })} disabled={saving} /></label><label className="field"><span className="field-label">时间点</span><input className="input" placeholder="例如 18:20" maxLength={80} value={capture.sourceTimestamp} onChange={event => onChange({ sourceTimestamp: event.target.value })} disabled={saving} /></label></div>
           <label className="field"><span className="field-label">原文或转写片段</span><textarea className="textarea" rows={4} placeholder="粘贴想保留的原文片段" maxLength={40000} value={capture.sourceExcerpt} onChange={event => onChange({ sourceExcerpt: event.target.value })} disabled={saving} /></label>
