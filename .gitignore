@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env*
+!.env.example
+!.env.deploy.example
+.vercel/
+*.tsbuildinfo
+coverage/
+test-results/
+*.log
+
+private-data/

@@ -1,0 +1,26 @@
+# Only application source and build inputs may be uploaded.
+# Local credentials, database setup, backups, test outputs and notes stay local.
+*
+!src
+!src/**
+!public
+!public/**
+!package.json
+!package-lock.json
+!next.config.ts
+!next-env.d.ts
+!tsconfig.json
+!postcss.config.mjs
+!vercel.json
+!.vercelignore
+
+# Defense in depth even if a secret/backup is placed inside src or public.
+**/.env*
+**/*.pem
+**/*.key
+**/secrets/**
+**/backups/**
+**/test-results/**
+**/*-backup-*.json
+**/*备份*.json
+**/*.log

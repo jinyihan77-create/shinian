@@ -1,0 +1,119 @@
+.surface {
+  --drag-x: 0px;
+  --drag-y: 0px;
+  --decay-opacity: 0;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  contain: paint;
+  background: transparent;
+}
+
+.surface * {
+  pointer-events: none;
+}
+
+.response {
+  position: absolute;
+  inset: -12px;
+  display: block;
+  transform: translate(var(--drag-x), var(--drag-y));
+}
+
+.artwork {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+  opacity: 0.78;
+}
+
+.cloudA,
+.cloudB,
+.cloudC {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-delay: var(--flow-delay);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-play-state: paused;
+}
+
+.cloudA {
+  animation-name: mist-a;
+  animation-duration: 21s;
+}
+
+.cloudB {
+  animation-name: mist-b;
+  animation-duration: 27s;
+}
+
+.cloudC {
+  animation-name: mist-c;
+  animation-duration: 24s;
+}
+
+.surface[data-motion="running"] .cloudA,
+.surface[data-motion="running"] .cloudB,
+.surface[data-motion="running"] .cloudC {
+  animation-play-state: running;
+}
+
+.distortion {
+  opacity: var(--decay-opacity);
+}
+
+.readingShade {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background:
+    radial-gradient(ellipse at 42% 35%, rgb(18 15 23 / 27%), transparent 75%),
+    linear-gradient(180deg, rgb(18 15 23 / 14%), transparent 36%, rgb(18 15 23 / 20%));
+}
+
+@keyframes mist-a {
+  0% { transform: translate(-18px, 15px) rotate(-5deg) scale(1.02); opacity: 0.7; }
+  55% { opacity: 1; }
+  100% { transform: translate(70px, -24px) rotate(8deg) scale(1.1); opacity: 0.82; }
+}
+
+@keyframes mist-b {
+  0% { transform: translate(15px, -25px) rotate(4deg) scale(1.08); opacity: 1; }
+  60% { opacity: 0.65; }
+  100% { transform: translate(-65px, 40px) rotate(-8deg) scale(1); opacity: 0.9; }
+}
+
+@keyframes mist-c {
+  0% { transform: translate(-40px, 25px) scale(0.94); opacity: 0.6; }
+  100% { transform: translate(55px, -80px) scale(1.2); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface .cloudA,
+  .surface .cloudB,
+  .surface .cloudC {
+    animation: none !important;
+  }
+
+  .response {
+    transform: none;
+  }
+
+  .distortion {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .surface {
+    display: none;
+  }
+}

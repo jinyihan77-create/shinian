@@ -1,0 +1,174 @@
+.echo-shards-scene { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.echo-shards-stage { position: absolute; inset: 0; opacity: .95; transition: opacity .8s; mask-image: linear-gradient(#000 0%, #000 48%, transparent 88%); }
+.echo-shards-stage > .aero-shards { position: absolute; inset: 0; pointer-events: none; }
+.echo-shards-still { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity .6s; }
+.echo-shards-stage:has(.aero-shards[data-ready='true']) > .echo-shards-still { opacity: 0; }
+.echo-shards-scene[data-quiet='true'] .echo-shards-stage { opacity: .25; }
+.scene-pause { position: absolute; right: 28px; bottom: 24px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid #ffffff18; border-radius: 50%; background: #120f17; color: #b8adbf; pointer-events: auto; }
+.entry-art { position: absolute; inset: 0; pointer-events: none; }
+@media(max-width:600px) { .echo-shards-stage { inset: 0 -180px 0 -260px; opacity: .7; } .scene-pause { right: 16px; bottom: 10px; } }
+@media(prefers-reduced-motion:reduce) { .echo-shards-stage, .echo-shards-still { transition: none; } }
+
+/* The capture surface is the one immersive moment in the product. Keep the
+   shards behind a calm, readable composition instead of letting the absolute
+   canvas escape into the document. */
+.capture-space {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: min(620px, calc(100svh - 138px));
+  padding: clamp(46px, 7vw, 86px) clamp(20px, 7vw, 86px) 34px;
+  border: 1px solid #ffffff18;
+  border-radius: 28px;
+  background: #120f17;
+  color: #f8f2fa;
+  box-shadow: 0 24px 70px #120f1745, inset 0 1px 0 #ffffff12;
+}
+.capture-space::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 18%, #8b5cf61f, transparent 43%), radial-gradient(ellipse at 14% 86%, #38bdf817, transparent 42%), linear-gradient(180deg, #120f1700 52%, #120f17d0);
+  z-index: 0;
+}
+.capture-space::after {
+  content: "";
+  position: absolute;
+  inset: -30% -20%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .18;
+  background: linear-gradient(112deg, transparent 26%, #f7e7ff12 42%, #8aabff14 50%, transparent 65%);
+  transform: translateX(-18%) rotate(-7deg);
+  animation: capture-light-sweep 15s ease-in-out infinite;
+}
+.capture-space .echo-shards-scene { z-index: 0; }
+.capture-space .echo-shards-stage { opacity: .92; mask-image: none; }
+.capture-space .capture-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+}
+.capture-space .capture-heading { width: 100%; text-align: center; }
+.capture-space .capture-heading h1 {
+  color: #f8f2fa;
+  font-size: clamp(38px, 5.1vw, 70px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -.055em;
+}
+.capture-space .capture-heading [data-depth-text] { color: #f8f2fa; }
+.capture-space .capture-composer {
+  width: min(680px, 100%);
+  overflow: hidden;
+  border: 1px solid #ffffff20;
+  border-radius: 18px;
+  background: var(--capture-surface, #1a162180);
+  box-shadow: 0 16px 44px #09070d33;
+}
+.capture-space .writing-surface { min-width: 0; }
+.capture-space .capture-textarea {
+  display: block;
+  width: 100%;
+  min-height: 164px;
+  resize: vertical;
+  padding: 24px 24px 12px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #faf6fb;
+  font-size: 17px;
+  line-height: 1.85;
+}
+.capture-space .capture-textarea::placeholder { color: #b5aabe; font-size: 17px; }
+.capture-space .composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 18px 13px;
+  color: #9f92a8;
+}
+.capture-space .source-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #d1c7d6;
+  font-size: 12px;
+}
+.capture-space .source-toggle:hover { background: #ffffff0d; }
+.capture-space .character-count { font-size: 11px; color: #897e92; }
+.capture-space .source-form { border-top: 1px solid #ffffff12; padding: 14px 20px 20px; }
+.capture-space .capture-source-row { margin: 0; border-color: #ffffff12; }
+.capture-space .link-input input, .capture-space .source-select, .capture-space .source-select select { color: #d9cfdd; }
+.capture-space .link-input input::placeholder { color: #978b9f; }
+.capture-space .small-note { color: #91859a; }
+.capture-space .capture-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border-top: 1px solid #ffffff14;
+  background: var(--capture-toolbar, #110e1633);
+}
+.capture-space .draft-state { color: #a89caf; font-size: 11px; }
+.capture-space .capture-submit { min-height: 42px; border-radius: 10px; }
+.capture-space .capture-submit,
+.capture-space .capture-submit:hover:not(:disabled) {
+  border-color: #f8f2fa;
+  background: #f8f2fa;
+  color: #17131b;
+  box-shadow: none;
+}
+.capture-space .preview-recent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(680px, 100%);
+  min-height: 58px;
+  padding: 12px 16px 12px 18px;
+  border: 1px solid #c084fc2e;
+  border-radius: 15px;
+  background: linear-gradient(105deg, #c084fc12, #f472b60a 56%, #38bdf80d);
+  color: #e9d8ef;
+  text-align: left;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+.capture-space .preview-recent:hover { border-color: #d9b4e07a; background: linear-gradient(105deg, #c084fc1d, #f472b610 56%, #38bdf814); transform: translateY(-2px); }
+.preview-recent-copy { display: grid; gap: 4px; min-width: 0; }
+.preview-recent-copy small { color: #a996b1; font-size: 10px; letter-spacing: .08em; }
+.preview-recent-copy strong { overflow: hidden; color: #f5ecf8; font-size: 13px; font-weight: 520; text-overflow: ellipsis; white-space: nowrap; }
+.preview-recent > svg { flex: 0 0 auto; color: #cda9dc; }
+
+@media (max-width: 760px) {
+  .capture-space { min-height: calc(100svh - 148px); padding: 48px 16px 22px; border-radius: 22px; }
+  .capture-space .capture-content { gap: 20px; }
+  .capture-space .capture-heading h1 { font-size: clamp(30px, 9vw, 43px); letter-spacing: -.045em; }
+  .capture-space .capture-composer { border-radius: 16px; }
+  .capture-space .capture-textarea { min-height: 150px; padding: 20px 18px 10px; font-size: 16px; }
+  .capture-space .capture-textarea::placeholder { font-size: 16px; }
+  .capture-space .capture-footer { padding: 12px 14px; }
+  .capture-space .draft-state { max-width: 52%; line-height: 1.5; }
+  .capture-space .echo-shards-stage { inset: 0 -90px 0 -120px; opacity: .72; }
+  .capture-space .preview-recent { min-height: 54px; padding-inline: 14px; }
+}
+
+@keyframes capture-light-sweep {
+  0%, 30% { transform: translateX(-28%) rotate(-7deg); opacity: .06; }
+  55% { transform: translateX(10%) rotate(-7deg); opacity: .2; }
+  78%, 100% { transform: translateX(34%) rotate(-7deg); opacity: .04; }
+}
+
+@media(prefers-reduced-motion:reduce) { .capture-space::after { animation: none; opacity: .08; } }

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <defs>
+    <linearGradient id="sky" x2=".3" y2="1"><stop stop-color="#8b77ad"/><stop offset=".46" stop-color="#e8b2c5"/><stop offset="1" stop-color="#f6d9b9"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="#fff7d8" stop-opacity=".9"/><stop offset="1" stop-color="#ffddc9" stop-opacity="0"/></radialGradient>
+    <linearGradient id="hill1" x2=".1" y2="1"><stop stop-color="#ac8faf"/><stop offset="1" stop-color="#d3aec3"/></linearGradient>
+    <linearGradient id="hill2" x2=".4" y2="1"><stop stop-color="#846b9b"/><stop offset="1" stop-color="#b597bc"/></linearGradient>
+    <linearGradient id="hill3" x2=".5" y2="1"><stop stop-color="#69517e"/><stop offset="1" stop-color="#9b7695"/></linearGradient>
+    <linearGradient id="lake" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f5ccd3"/><stop offset=".5" stop-color="#b7a0cc"/><stop offset="1" stop-color="#715d94"/></linearGradient>
+    <linearGradient id="petal" x2=".8" y2="1"><stop stop-color="#ffe3dc"/><stop offset=".6" stop-color="#d898b8"/><stop offset="1" stop-color="#946595"/></linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="22"/></filter>
+    <filter id="haze"><feGaussianBlur stdDeviation="8"/></filter>
+    <g id="flower"><ellipse ry="34" rx="14" cy="-24" fill="url(#petal)"/><ellipse ry="34" rx="14" cy="-24" fill="url(#petal)" transform="rotate(72)"/><ellipse ry="34" rx="14" cy="-24" fill="url(#petal)" transform="rotate(144)"/><ellipse ry="34" rx="14" cy="-24" fill="url(#petal)" transform="rotate(216)"/><ellipse ry="34" rx="14" cy="-24" fill="url(#petal)" transform="rotate(288)"/><circle r="9" fill="#f5d9ae"/><circle r="4" fill="#b79081"/></g>
+    <g id="star" fill="#fff4da"><path d="M0-8 2-2 8 0 2 2 0 8-2 2-8 0-2-2Z"/></g>
+  </defs>
+  <path fill="url(#sky)" d="M0 0h1200v900H0z"/>
+  <ellipse cx="690" cy="315" rx="470" ry="380" fill="url(#glow)"/>
+  <circle cx="730" cy="268" r="97" fill="#ffead2" opacity=".2" filter="url(#haze)"/>
+  <circle cx="730" cy="268" r="74" fill="#ffe9ce"/>
+  <g fill="#f5d7df" opacity=".5" filter="url(#soft)"><ellipse cx="160" cy="216" rx="235" ry="34"/><ellipse cx="1030" cy="158" rx="192" ry="30"/><ellipse cx="413" cy="388" rx="296" ry="28"/></g>
+  <path d="M0 502 111 429 165 451 296 349 379 414 460 379 576 449 690 420 825 484 945 440 1070 466 1200 414v486H0Z" fill="url(#hill1)"/>
+  <path d="m0 618 120-103 141 29 181-112 189 139 189-59 177 82 203-126v432H0Z" fill="url(#hill2)"/>
+  <path d="M0 682c230-67 297-119 478-85s269-39 459 9 203 6 263-33v327H0Z" fill="url(#lake)"/>
+  <path d="M0 644c178-100 275-91 455-7 82 39 148 53 216 48-97 36-185 53-190 83-2 22 116 50 151 57H0Z" fill="url(#hill3)"/>
+  <path d="M1200 663c-115-49-265-31-367 5 111 16 123 52 54 66-113 23-193 64-230 100h543Z" fill="#927496"/>
+  <g fill="none" stroke="#fce1d9" stroke-linecap="round" opacity=".5"><path d="M710 630h124m-152 17h77m-97 22h122m-46 20h88m-136 33h83m-113 23h49m-52 29h158m-69 29h150" stroke-width="3"/></g>
+  <path d="M0 780c209-57 352-36 529 52s384-60 671-44v112H0Z" fill="#665075"/>
+  <g fill="none" stroke="#a689a6" stroke-width="4" opacity=".9"><path d="M76 906q79-135 111-206m-8 199q-7-106 39-151m788 153q-36-121-28-190m131 190q-46-176-8-239m-190 239q12-57-24-115"/></g>
+  <g fill="#c7a6bd"><ellipse cx="128" cy="805" rx="10" ry="34" transform="rotate(-49 128 805)"/><ellipse cx="173" cy="772" rx="10" ry="30" transform="rotate(28 173 772)"/><ellipse cx="1041" cy="813" rx="12" ry="36" transform="rotate(-32 1041 813)"/><ellipse cx="1086" cy="762" rx="11" ry="31" transform="rotate(33 1086 762)"/></g>
+  <use href="#flower" transform="translate(187 699) rotate(-15) scale(.9)"/><use href="#flower" transform="translate(219 749) rotate(12) scale(.55)"/><use href="#flower" transform="translate(980 711) rotate(25) scale(.85)"/><use href="#flower" transform="translate(1110 663) rotate(-24) scale(1.15)"/><use href="#flower" transform="translate(886 786) rotate(38) scale(.5)"/>
+  <g opacity=".76"><use href="#star" transform="translate(309 182)"/><use href="#star" transform="translate(487 101) scale(.65)"/><use href="#star" transform="translate(942 299) scale(.7)"/><use href="#star" transform="translate(1067 80) scale(.5)"/></g>
+</svg>

@@ -1,0 +1,29 @@
+.root {
+  position: relative;
+  display: inline-block;
+  vertical-align: bottom;
+  max-width: 100%;
+  white-space: nowrap;
+  isolation: isolate;
+  touch-action: pan-y;
+}
+
+.text { transition: opacity 180ms ease; }
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.root[data-ready="true"][data-forming="true"] .canvas { opacity: 1; }
+.root[data-ready="true"][data-forming="true"] .text { opacity: .18; }
+
+@media (max-width: 760px), (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .root .canvas { display: none; }
+  .root[data-ready="true"] .text, .root[data-forming="true"] .text { opacity: 1; transition: none; }
+}

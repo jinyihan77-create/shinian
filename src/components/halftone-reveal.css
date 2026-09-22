@@ -1,0 +1,33 @@
+.halftone-reveal { position: relative; width: 100%; height: 100%; overflow: hidden; touch-action: pan-y; cursor: crosshair; isolation: isolate; }
+.halftone-fallback, .halftone-reveal canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
+.halftone-fallback { object-fit: cover; }
+.halftone-reveal canvas { opacity: 0; }
+.halftone-reveal[data-render-state="ready"]:not([data-original="true"]) canvas { opacity: 1; }
+.halftone-fallback-note { position: absolute; bottom: 12px; inset-inline: 12px; color: #643b59; background: #fbeff5e6; padding: 7px 10px; border-radius: 8px; font-size: 11px; text-align: center; }
+
+/* Keep component sizing with the component so theme revisions cannot collapse it. */
+.echo-aura.echo-halftone { isolation: isolate; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 230px; }
+.echo-halftone-frame { position: relative; flex: 1; min-height: 180px; overflow: hidden; border: 1px solid #fff9; border-radius: 18px; background: #f3dfeb; }
+.echo-halftone-caption { display: flex; align-items: center; justify-content: space-between; gap: 9px; padding: 12px 2px 0; color: #794969; }
+.echo-halftone-caption > span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.echo-halftone-caption strong { font-size: 11px; font-weight: 550; letter-spacing: .2px; }
+.echo-halftone-caption small { font-size: 10px; color: #825d78; line-height: 1.6; }
+.halftone-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 40px; flex-shrink: 0; border: 1px solid #d7b6cd; border-radius: 10px; background: #f7e5f0b8; color: #774467; font-size: 10px; padding: 7px 9px; }
+.halftone-toggle:hover { background: #fcebf4; border-color: #c491b1; }
+.guide-art:has(.echo-halftone) { display: flex; flex-direction: column; min-height: 420px; padding: 23px; }
+.guide-art:has(.echo-halftone) > h2 { font-size: 23px; line-height: 1.5; margin-bottom: 18px; }
+.guide-art > .echo-aura.echo-halftone { position: relative; inset: auto; flex: 1; min-height: 270px; overflow: visible; }
+.guide-art .echo-halftone-caption { flex-wrap: wrap; }
+.auth-story .echo-aura.echo-halftone { position: relative; width: auto; height: 300px; min-height: 0; inset: auto; margin: 24px 0 0; opacity: 1; }
+.auth-story .echo-halftone-frame { min-height: 230px; }
+@media (max-width: 760px) {
+  .guide-art:has(.echo-halftone) { display: flex; min-height: 360px; padding: 20px; }
+  .guide-art:has(.echo-halftone) > h2 { font-size: 20px; margin-bottom: 13px; }
+  .guide-art > .echo-aura.echo-halftone { min-height: 235px; }
+  .echo-halftone-frame { min-height: 180px; }
+  .echo-halftone-caption { padding-top: 12px; }
+  .halftone-toggle { min-height: 44px; padding: 8px 10px; }
+  .auth-story:has(.echo-halftone) { padding-right: 0; }
+  .auth-story .echo-aura.echo-halftone { position: relative; width: 100%; height: 230px; inset: auto; margin: 18px 0 0; }
+  .auth-story .echo-halftone-frame { min-height: 175px; }
+}

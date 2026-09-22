@@ -1,0 +1,52 @@
+.root {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: baseline;
+  perspective: var(--depth-perspective);
+  perspective-origin: 50% 48%;
+  isolation: isolate;
+}
+
+.stage {
+  position: relative;
+  display: inline-grid;
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+}
+
+.root .layer,
+.root .face {
+  grid-area: 1 / 1;
+  display: inline-block;
+  font-size: var(--depth-size);
+  font-weight: var(--depth-weight);
+  line-height: inherit;
+  letter-spacing: inherit;
+  white-space: nowrap;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  font-kerning: normal;
+}
+
+.root .layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.root .face {
+  position: relative;
+  color: var(--depth-face);
+  text-shadow: var(--depth-shadow);
+  transform: translateZ(0.6px);
+}
+
+@media (min-width: 761px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .root:hover .stage { will-change: transform; }
+}
+
+@media (max-width: 760px), (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .stage { transform: rotateX(-3deg) rotateY(4deg) !important; }
+  .root .face { text-shadow: 0 2px 6px #becaea55; }
+}

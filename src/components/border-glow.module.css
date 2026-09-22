@@ -1,0 +1,214 @@
+/* React Bits BorderGlow adaptation; copyright and license in border-glow.tsx. */
+.card {
+  --edge-proximity: 0;
+  --cursor-angle: 45deg;
+  --color-sensitivity: calc(var(--edge-sensitivity) + 20);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  min-width: 0;
+  border-radius: var(--border-radius);
+  background: transparent;
+  overflow: visible;
+}
+
+.surface,
+.rim,
+.mesh,
+.fill,
+.edgeLight {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: opacity 250ms ease-out;
+}
+
+.surface {
+  background: var(--card-bg);
+  opacity: var(--surface-opacity);
+}
+
+/* Mask the middle out instead of painting over it, keeping the scene visible. */
+.rim,
+.mesh::before {
+  padding: 1px;
+  background: var(--mesh-gradient);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
+.rim {
+  opacity: 0.38;
+}
+
+.mesh {
+  opacity: clamp(0, calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity))), 1);
+  --edge-mask: conic-gradient(
+    from var(--cursor-angle) at center,
+    #000 calc(var(--cone-spread) * 1%),
+    transparent calc((var(--cone-spread) + 15) * 1%),
+    transparent calc((100 - var(--cone-spread) - 15) * 1%),
+    #000 calc((100 - var(--cone-spread)) * 1%)
+  );
+  -webkit-mask-image: var(--edge-mask);
+  mask-image: var(--edge-mask);
+}
+
+.mesh::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.fill {
+  background: var(--mesh-gradient);
+  --fill-mask:
+    linear-gradient(#000 0 0),
+    radial-gradient(ellipse at 50% 50%, #000 40%, transparent 70%);
+  -webkit-mask-image: var(--fill-mask);
+  -webkit-mask-composite: source-out;
+  mask-image: var(--fill-mask);
+  mask-composite: subtract;
+  opacity: calc(var(--fill-opacity) * clamp(0, calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity))), 1));
+}
+
+.edgeLight {
+  inset: calc(var(--glow-padding) * -1);
+  --glow-mask: conic-gradient(
+    from var(--cursor-angle) at center,
+    #000 2.5%, transparent 10%, transparent 90%, #000 97.5%
+  );
+  -webkit-mask-image: var(--glow-mask);
+  mask-image: var(--glow-mask);
+  opacity: clamp(0, calc((var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity))), 1);
+}
+
+.edgeLight::before {
+  content: "";
+  position: absolute;
+  inset: var(--glow-padding);
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px var(--glow-color),
+    inset 0 0 1px var(--glow-color-60),
+    inset 0 0 3px var(--glow-color-50),
+    inset 0 0 6px var(--glow-color-40),
+    inset 0 0 15px var(--glow-color-30),
+    inset 0 0 25px 2px var(--glow-color-20),
+    inset 0 0 50px 2px var(--glow-color-10),
+    0 0 1px var(--glow-color-60),
+    0 0 3px var(--glow-color-50),
+    0 0 6px var(--glow-color-40),
+    0 0 15px var(--glow-color-30),
+    0 0 25px 2px var(--glow-color-20),
+    0 0 50px 2px var(--glow-color-10);
+}
+
+.inner {
+  position: relative;
+  display: grid;
+  z-index: 1;
+  min-width: 0;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.card:not(:hover):not(:focus-within):not([data-sweeping]) > .mesh,
+.card:not(:hover):not(:focus-within):not([data-sweeping]) > .fill,
+.card:not(:hover):not(:focus-within):not([data-sweeping]) > .edgeLight {
+  opacity: 0;
+  transition-duration: 650ms;
+}
+
+/* Keep a quiet halo visible on every card; pointer proximity still adds the
+   stronger directional glow above it. */
+.card:not(:hover):not(:focus-within):not([data-sweeping]) > .edgeLight {
+  opacity: .2;
+  animation: border-glow-breathe 4.8s ease-in-out infinite;
+}
+
+.card:focus-within > .rim {
+  opacity: 0.72;
+}
+
+.card:focus-within > .mesh {
+  opacity: 0.8;
+}
+
+.card:focus-within > .edgeLight {
+  opacity: 0.32;
+}
+
+/* Touch users receive a quiet permanent border; no hover or motion is required. */
+@media (hover: none), (pointer: coarse) {
+  .card > .rim {
+    opacity: 0.58;
+  }
+
+  .card > .fill,
+  .card:not(:hover):not(:focus-within):not([data-sweeping]) > .fill {
+    opacity: calc(var(--fill-opacity) * 0.35);
+  }
+}
+
+@keyframes border-glow-breathe {
+  0%, 100% { filter: brightness(.85); }
+  48% { filter: brightness(1.25); }
+  58% { filter: brightness(1.65); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card:not(:hover):not(:focus-within):not([data-sweeping]) > .edgeLight { animation: none; filter: brightness(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface,
+  .rim,
+  .mesh,
+  .fill,
+  .edgeLight {
+    transition: none;
+  }
+
+  .card > .rim {
+    opacity: 0.4;
+  }
+
+  .card:hover > .rim,
+  .card:focus-within > .rim {
+    opacity: 0.72;
+  }
+}
+
+@media (forced-colors: active) {
+  .card {
+    border: 1px solid CanvasText;
+  }
+
+  .surface,
+  .rim,
+  .mesh,
+  .fill,
+  .edgeLight {
+    display: none;
+  }
+}
+
+/* Avoid opaque gradients when a browser cannot cut the center from a mask. */
+@supports not ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+  .rim {
+    background: none;
+    border: 1px solid rgb(192 132 252 / 65%);
+  }
+
+  .mesh,
+  .fill,
+  .edgeLight {
+    display: none;
+  }
+}

@@ -1,0 +1,70 @@
+.page {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100svh;
+  overflow: hidden;
+  padding: 28px clamp(22px, 6vw, 100px) 30px;
+  color: #f5eaf1;
+  background: radial-gradient(ellipse at 72% 38%, #70455d2e, transparent 45%), radial-gradient(ellipse at 22% 78%, #453d5b20, transparent 44%), #141118;
+}
+.page::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -35%;
+  pointer-events: none;
+  background: linear-gradient(116deg, transparent 35%, #f8e3ee09 46%, #e5bdd414 51%, transparent 64%);
+  transform: translateX(-18%) rotate(-8deg);
+  animation: entry-sheen 15s ease-in-out infinite;
+}
+.header, .footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; width: min(1120px, 100%); margin: 0 auto; }
+.brand { display: inline-flex; align-items: center; gap: 11px; color: #f5eaf1; text-decoration: none; font-family: "Noto Serif SC", "Songti SC", SimSun, serif; font-size: 22px; letter-spacing: .14em; }
+.brand small { margin-left: 4px; color: #aa91a4; font-family: var(--ui-font, sans-serif); font-size: 9px; letter-spacing: .25em; }
+.mark { display: grid; place-items: center; width: 33px; height: 33px; border: 1px solid #e9c8dc3d; border-radius: 11px; color: #f4c4d9; background: #e5b5cf10; box-shadow: 0 0 22px #e3a6c916; }
+.headerNote { color: #aa98ab; font-size: 11px; letter-spacing: .14em; }
+.stage { width: min(100%, 720px); margin: clamp(42px, 8vh, 88px) auto 0; text-align: center; }
+.eyebrow { margin: 0; color: #d4a9c2; font-size: 11px; letter-spacing: .42em; }
+.stage h1 { margin: 17px 0 12px; color: #f7edf3; font-family: "Noto Serif SC", "Songti SC", SimSun, serif; font-size: clamp(35px, 5vw, 58px); font-weight: 500; letter-spacing: -.055em; line-height: 1.3; text-wrap: balance; }
+.stage h1 span { color: #e4b7ce; }
+.intro { margin: 0 auto 31px; max-width: 470px; color: #b9a7b5; font-size: 14px; line-height: 1.9; }
+.cardLink { position: relative; display: block; width: min(100%, 555px); margin: 0 auto; color: inherit; text-align: left; text-decoration: none; filter: drop-shadow(0 24px 50px #08060d66); transition: transform .35s cubic-bezier(.2,.8,.2,1), filter .35s ease; }
+.cardLink::before { content: ""; position: absolute; z-index: -1; inset: 9% 12%; border-radius: 50%; background: #f0b6d71a; filter: blur(40px); opacity: .65; transition: opacity .35s ease, transform .35s ease; }
+.cardLink:hover, .cardLink:focus-visible { transform: translateY(-5px); filter: drop-shadow(0 30px 60px #08060d78); }
+.cardLink:hover::before, .cardLink:focus-visible::before { opacity: .9; transform: scale(1.08); }
+.cardLink:focus-visible { outline: 2px solid #f2c8dc; outline-offset: 7px; border-radius: 32px; }
+.card { min-height: min(62svh, 490px) !important; border-radius: 32px !important; }
+.cardBody { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 31px 36px; }
+.cardTop, .cardBottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #e2b9cf; }
+.cardKicker { color: #d0afc3; font-family: var(--ui-font, sans-serif); font-size: 10px; letter-spacing: .25em; }
+.thought { margin: auto 0; padding: 28px 0; }
+.thought > p:first-child { margin: 0 0 8px; color: #e3c8d7; font-size: 17px; letter-spacing: .08em; }
+.thought h2 { margin: 0; color: #fff4f8; font-family: "Noto Serif SC", "Songti SC", SimSun, serif; font-size: clamp(27px, 4vw, 39px); font-weight: 500; letter-spacing: .02em; line-height: 1.45; }
+.description { margin: 20px 0 0; color: #ceb4c5; font-size: 13px; line-height: 1.95; }
+.cardBottom { padding-top: 13px; color: #cbb0c1; font-size: 11px; }
+.hint { margin: 18px 0 0; color: #a996aa; font-size: 11px; letter-spacing: .08em; }
+.footer { align-self: end; color: #817483; font-size: 10px; letter-spacing: .1em; }
+.footer a { display: inline-flex; align-items: center; gap: 5px; color: #bda9b9; text-decoration: none; }
+.footer a:hover { color: #f1d9e6; }
+@keyframes entry-sheen { 0%, 28% { transform: translateX(-30%) rotate(-8deg); opacity: .2; } 55% { transform: translateX(7%) rotate(-8deg); opacity: .72; } 78%, 100% { transform: translateX(34%) rotate(-8deg); opacity: .12; } }
+@media (max-width: 560px) {
+  .page { padding: 22px 18px 24px; }
+  .brand { font-size: 20px; }
+  .brand small, .headerNote { display: none; }
+  .stage { margin-top: 48px; }
+  .eyebrow { font-size: 10px; letter-spacing: .28em; }
+  .stage h1 { margin-top: 14px; font-size: clamp(32px, 10vw, 46px); line-height: 1.35; }
+  .intro { margin-bottom: 25px; font-size: 12px; }
+  .cardLink { width: 100%; }
+  .card { min-height: 405px !important; border-radius: 26px !important; }
+  .cardBody { padding: 25px 24px; }
+  .thought { padding: 20px 0; }
+  .thought > p:first-child { font-size: 15px; }
+  .thought h2 { font-size: 26px; letter-spacing: 0; }
+  .description { margin-top: 16px; font-size: 12px; }
+  .cardBottom { font-size: 10px; }
+  .hint { margin-top: 14px; font-size: 10px; }
+  .footer { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .page::before { animation: none; opacity: .2; } .cardLink { transition: none; } }

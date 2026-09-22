@@ -1,0 +1,170 @@
+[
+  {
+    "objectID": 436535,
+    "title": "Wheat Field with Cypresses",
+    "artistDisplayName": "Vincent van Gogh",
+    "objectDate": "1889",
+    "medium": "Oil on canvas",
+    "objectURL": "https://www.metmuseum.org/art/collection/search/436535",
+    "primaryImageSmall": "https://images.metmuseum.org/CRDImages/ep/web-large/DP-42549-001.jpg",
+    "isPublicDomain": true,
+    "file": "vangogh-cypresses-4k.jpg",
+    "primaryImage": "https://images.metmuseum.org/CRDImages/ep/original/DP-42549-001.jpg",
+    "sourceDimensions": {
+      "width": 4000,
+      "height": 3184
+    },
+    "width": 3840,
+    "height": 3057,
+    "bytes": 10570055,
+    "sha256": "2ca7e9e2daf6e66893779c4741e8c4220bd6f0478733d2a56857ce6c48d56086",
+    "processing": {
+      "colorSpace": "sRGB",
+      "resampling": "Lanczos downsampling only; no upscaling",
+      "sharpening": "Unsharp mask radius 0.55, amount 45%, threshold 3",
+      "jpegQuality": 96,
+      "chromaSubsampling": "4:4:4",
+      "preservedAspectRatio": true
+    },
+    "displayVariants": [
+      {
+        "file": "vangogh-cypresses-1600.webp",
+        "width": 1600,
+        "height": 1274,
+        "bytes": 983340
+      },
+      {
+        "file": "vangogh-cypresses-2400.webp",
+        "width": 2400,
+        "height": 1911,
+        "bytes": 2411230
+      }
+    ]
+  },
+  {
+    "objectID": 437852,
+    "title": "Saltash with the Water Ferry, Cornwall",
+    "artistDisplayName": "Joseph Mallord William Turner",
+    "objectDate": "1811",
+    "medium": "Oil on canvas",
+    "objectURL": "https://www.metmuseum.org/art/collection/search/437852",
+    "primaryImageSmall": "https://images.metmuseum.org/CRDImages/ep/web-large/DP169566.jpg",
+    "isPublicDomain": true,
+    "file": "turner-saltash-4k.jpg",
+    "primaryImage": "https://images.metmuseum.org/CRDImages/ep/original/DP169566.jpg",
+    "sourceDimensions": {
+      "width": 3915,
+      "height": 2961
+    },
+    "width": 3840,
+    "height": 2904,
+    "bytes": 4752716,
+    "sha256": "aa56fbbaab1eb991a15379a3b48d2be5fd0d11258ac08191383e4f2850a4bdda",
+    "processing": {
+      "colorSpace": "sRGB",
+      "resampling": "Lanczos downsampling only; no upscaling",
+      "sharpening": "Unsharp mask radius 0.55, amount 45%, threshold 3",
+      "jpegQuality": 96,
+      "chromaSubsampling": "4:4:4",
+      "preservedAspectRatio": true
+    },
+    "displayVariants": [
+      {
+        "file": "turner-saltash-1600.webp",
+        "width": 1600,
+        "height": 1210,
+        "bytes": 455596
+      },
+      {
+        "file": "turner-saltash-2400.webp",
+        "width": 2400,
+        "height": 1815,
+        "bytes": 1119712
+      }
+    ]
+  },
+  {
+    "objectID": 437680,
+    "title": "The Bridge at Villeneuve-la-Garenne",
+    "artistDisplayName": "Alfred Sisley",
+    "objectDate": "1872",
+    "medium": "Oil on canvas",
+    "objectURL": "https://www.metmuseum.org/art/collection/search/437680",
+    "primaryImageSmall": "https://images.metmuseum.org/CRDImages/ep/web-large/DP-14936-041.jpg",
+    "isPublicDomain": true,
+    "file": "sisley-bridge-4k.jpg",
+    "primaryImage": "https://images.metmuseum.org/CRDImages/ep/original/DP-14936-041.jpg",
+    "sourceDimensions": {
+      "width": 4000,
+      "height": 3000
+    },
+    "width": 3840,
+    "height": 2880,
+    "bytes": 7861004,
+    "sha256": "541c06731ff9c2347b59ceee0923302db706b9cbec4e03fb58d2f3b3907d7014",
+    "processing": {
+      "colorSpace": "sRGB",
+      "resampling": "Lanczos downsampling only; no upscaling",
+      "sharpening": "Unsharp mask radius 0.55, amount 45%, threshold 3",
+      "jpegQuality": 96,
+      "chromaSubsampling": "4:4:4",
+      "preservedAspectRatio": true
+    },
+    "displayVariants": [
+      {
+        "file": "sisley-bridge-1600.webp",
+        "width": 1600,
+        "height": 1200,
+        "bytes": 692706
+      },
+      {
+        "file": "sisley-bridge-2400.webp",
+        "width": 2400,
+        "height": 1800,
+        "bytes": 1838290
+      }
+    ]
+  },
+  {
+    "objectID": 438738,
+    "title": "Haystacks, Morning, Eragny",
+    "artistDisplayName": "Camille Pissarro",
+    "objectDate": "1899",
+    "medium": "Oil on canvas",
+    "objectURL": "https://www.metmuseum.org/art/collection/search/438738",
+    "primaryImageSmall": "https://images.metmuseum.org/CRDImages/ep/web-large/DP-20613-001.jpg",
+    "isPublicDomain": true,
+    "file": "pissarro-morning-4k.jpg",
+    "primaryImage": "https://images.metmuseum.org/CRDImages/ep/original/DP-20613-001.jpg",
+    "sourceDimensions": {
+      "width": 4000,
+      "height": 3196
+    },
+    "width": 3840,
+    "height": 3068,
+    "bytes": 10441589,
+    "sha256": "8c9711bf673aca65dec43a1f1b60d0436dcb88e265fe1c52d9a2b92f72136ecf",
+    "processing": {
+      "colorSpace": "sRGB",
+      "resampling": "Lanczos downsampling only; no upscaling",
+      "sharpening": "Unsharp mask radius 0.55, amount 45%, threshold 3",
+      "jpegQuality": 96,
+      "chromaSubsampling": "4:4:4",
+      "preservedAspectRatio": true
+    },
+    "displayVariants": [
+      {
+        "file": "pissarro-morning-1600.webp",
+        "width": 1600,
+        "height": 1278,
+        "bytes": 982284
+      },
+      {
+        "file": "pissarro-morning-2400.webp",
+        "width": 2400,
+        "height": 1918,
+        "bytes": 2425484
+      }
+    ]
+  }
+]

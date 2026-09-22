@@ -1,0 +1,78 @@
+{
+  "data": {
+    "BaseInfo": {
+      "ServerName": "inspiration-echo",
+      "DefaultDomainName": "https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com",
+      "CustomDomainName": "",
+      "Status": "normal",
+      "UpdateTime": "2026-09-22 19:12:20",
+      "AccessTypes": [
+        "PUBLIC"
+      ],
+      "CustomDomainNames": [],
+      "ServerType": "container",
+      "TrafficType": "FLOW",
+      "CreateTime": ""
+    },
+    "OnlineVersionInfos": [
+      {
+        "VersionName": "inspiration-echo-002",
+        "ImageUrl": "ccr.ccs.tencentyun.com/tcb-100053073191-nubl/ca-lxljnnsm_inspiration-echo:inspiration-echo-002-20260922191228",
+        "FlowRatio": "100"
+      }
+    ],
+    "RequestId": "d4435389-d693-428f-8460-8d61eedd53ab",
+    "ServerConfig": {
+      "EnvId": "echo-77-d3gm5g3t081337d79",
+      "ServerName": "inspiration-echo",
+      "Cpu": 1,
+      "Mem": 2,
+      "MinNum": 0,
+      "MaxNum": 1,
+      "PolicyDetails": [
+        {
+          "PolicyType": "cpu",
+          "PolicyThreshold": 60
+        },
+        {
+          "PolicyType": "mem",
+          "PolicyThreshold": 60
+        }
+      ],
+      "CustomLogs": "stdout",
+      "EnvParams": "{}",
+      "InitialDelaySeconds": 2,
+      "Port": 3000,
+      "HasDockerfile": true,
+      "Dockerfile": "Dockerfile",
+      "BuildDir": ".",
+      "LogType": "",
+      "LogSetId": "",
+      "LogTopicId": "",
+      "LogParseType": "",
+      "TimerScale": [],
+      "CreateTime": "2026-09-22 19:09:44",
+      "InternalAccess": "close",
+      "InternalDomain": "",
+      "Tag": "",
+      "OpenAccessTypes": [
+        "PUBLIC"
+      ],
+      "OperationMode": "alwaysScale",
+      "EntryPoint": [],
+      "Cmd": [],
+      "SessionAffinity": "",
+      "VpcConf": {
+        "VpcId": "",
+        "VpcCIDR": "",
+        "SubnetId": "",
+        "SubnetCIDR": ""
+      },
+      "VolumesConf": [],
+      "LinkImageRegistry": "",
+      "PublicNetConf": {
+        "PublicNetStatus": "ENABLE"
+      }
+    }
+  }
+}

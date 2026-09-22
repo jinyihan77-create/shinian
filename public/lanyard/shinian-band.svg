@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="96" viewBox="0 0 768 96">
+  <defs>
+    <linearGradient id="fabric" x2="0" y2="1"><stop stop-color="#4a425d"/><stop offset=".2" stop-color="#241e32"/><stop offset=".8" stop-color="#30263e"/><stop offset="1" stop-color="#514560"/></linearGradient>
+    <pattern id="weave" width="5" height="4" patternUnits="userSpaceOnUse"><path d="M0 0H5M0 2H5" stroke="#b7a9ce" stroke-opacity=".13" stroke-width=".5"/></pattern>
+  </defs>
+  <path fill="url(#fabric)" d="M0 0h768v96H0z"/><path fill="url(#weave)" d="M0 0h768v96H0z"/>
+  <path d="M0 8h768M0 88h768" stroke="#a59abb" stroke-opacity=".35" stroke-width="1"/>
+  <g fill="#b7adc9" font-family="Arial,sans-serif" font-size="27" letter-spacing="7">
+    <text x="35" y="58">SHINIAN</text><text x="420" y="58">SHINIAN</text>
+  </g>
+  <g fill="#ccc0df"><path d="m316 38 3 8 8 3-8 3-3 8-3-8-8-3 8-3z"/><path d="m701 38 3 8 8 3-8 3-3 8-3-8-8-3 8-3z"/></g>
+</svg>

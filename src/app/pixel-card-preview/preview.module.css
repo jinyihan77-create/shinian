@@ -1,0 +1,43 @@
+.page {
+  min-height: 100svh;
+  padding: 32px clamp(22px, 6vw, 100px) 48px;
+  color: #eee3eb;
+  background: radial-gradient(ellipse at 77% 41%, #72496222, transparent 47%),
+    radial-gradient(ellipse at 18% 73%, #6153771a, transparent 44%), #15121b;
+}
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 16px; color: #eadce8; font-size: 22px; text-decoration: none; letter-spacing: 4px; }
+.brand span { color: #9a869f; font-size: 10px; letter-spacing: 3px; }
+.previewLabel { color: #ad9ab2; font-size: 12px; }
+.stage { width: min(100%, 700px); margin: clamp(44px, 7vh, 80px) auto 0; text-align: center; }
+.eyebrow { color: #b991aa; font-size: 12px; letter-spacing: 5px; }
+.stage h1 { margin: 18px 0 14px; font-size: clamp(30px, 4.3vw, 48px); font-weight: 500; letter-spacing: -1.5px; line-height: 1.35; }
+.stage h1 span { color: #d4acc3; }
+.intro { margin: 0 0 34px; color: #b1a1b8; font-size: 14px; line-height: 1.9; }
+.previewCard { min-height: 360px; text-align: left; }
+.cardBody { position: absolute; inset: 0; padding: 30px 36px; display: flex; flex-direction: column; }
+.cardTop, .cardBottom { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #cba6bf; }
+.cardTop span { font-size: 11px; letter-spacing: 2px; color: #b9a2b7; }
+.thought { margin: auto 0; padding: 26px 0; }
+.thought > p:first-child { margin: 0 0 9px; font-size: 18px; color: #d4bdcf; letter-spacing: 1px; }
+.thought h2 { margin: 0; font-size: clamp(23px, 3.2vw, 32px); font-weight: 500; letter-spacing: 1px; line-height: 1.5; color: #f0e3ec; }
+.thought .description { margin: 18px 0 0; font-size: 13px; color: #bfaabd; line-height: 1.9; }
+.cardBottom { padding-top: 10px; font-size: 11px; color: #bca4b7; }
+.hint { margin: 19px 0 26px; color: #ab97b0; font-size: 12px; line-height: 1.8; }
+.palette { display: flex; justify-content: center; flex-wrap: wrap; gap: 24px; font-size: 11px; color: #bfaac4; }
+.palette span { display: inline-flex; align-items: center; gap: 8px; }
+.palette i { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 12px #c996b018; }
+@media (max-width: 480px) {
+  .page { padding: 24px 20px 38px; }
+  .brand { font-size: 20px; }
+  .brand span { display: none; }
+  .previewLabel { font-size: 10px; }
+  .stage { margin-top: 48px; }
+  .stage h1 span { display: block; }
+  .intro { font-size: 12px; margin-bottom: 26px; }
+  .previewCard { min-height: 345px; border-radius: 24px; }
+  .cardBody { padding: 24px; }
+  .thought > p:first-child { font-size: 16px; }
+  .thought h2 { font-size: 22px; letter-spacing: 0; }
+  .palette { gap: 16px; }
+}
