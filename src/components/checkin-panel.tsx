@@ -191,6 +191,7 @@ interface DialogProps {
 
 function StarJourney({ day, reduced, onArrive }: { day: string; reduced: boolean; onArrive: () => void }) {
   const [depth, setDepth] = useState(0);
+  const [gestureSettled, setGestureSettled] = useState(0);
   const depthRef = useRef(0);
   const gesture = useRef<{ pointerId: number; y: number; at: number; velocity: number } | null>(null);
   const step = depth < .34 ? 0 : depth < .7 ? 1 : 2;
@@ -204,10 +205,10 @@ function StarJourney({ day, reduced, onArrive }: { day: string; reduced: boolean
   }, [updateDepth]);
   useEffect(() => {
     if (reduced) { onArrive(); return; }
-    if (depth < .995) return;
+    if (depth < .995 || gesture.current) return;
     const timer = window.setTimeout(onArrive, 520);
     return () => window.clearTimeout(timer);
-  }, [depth, onArrive, reduced]);
+  }, [depth, gestureSettled, onArrive, reduced]);
   const journeyStyle = {
     "--journey-depth": depth,
     "--journey-far-scale": 1 + depth * .82,
@@ -227,6 +228,7 @@ function StarJourney({ day, reduced, onArrive }: { day: string; reduced: boolean
     gesture.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     updateDepth(value => value + Math.max(-.08, Math.min(.14, current.velocity * 130)));
+    setGestureSettled(value => value + 1);
   }, [updateDepth]);
   return <section className={styles.journey} data-step={step} tabIndex={0} style={journeyStyle}
     aria-label="进入星海的手势旅程"

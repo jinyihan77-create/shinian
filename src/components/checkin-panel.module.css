@@ -44,7 +44,7 @@
 .journeyStreaks { position:absolute; inset:0; display:block; }
 .journeyStreaks i { position:absolute; left:50%; top:48%; width:var(--streak-length); height:1px; transform-origin:0 50%; transform:rotate(var(--streak-angle)) translateX(var(--streak-radius)) scaleX(var(--journey-streak-scale)); border-radius:999px; background:linear-gradient(90deg,rgba(255,247,252,.68),rgba(var(--star-glow),.2) 44%,transparent); opacity:var(--journey-streak-opacity); filter:drop-shadow(0 0 4px rgba(var(--star-glow),.34)); transition:transform .3s cubic-bezier(.18,.72,.2,1),opacity .28s; }
 .thoughtLight { position:absolute; left:50%; top:48%; width:10px; height:10px; border-radius:50%; background:#fffaff; box-shadow:0 0 10px #fff,0 0 34px rgba(var(--star-glow),.72),0 0 78px rgba(var(--star-secondary),.38); transform:translate(-50%,-50%) scale(var(--journey-light-scale)); transition:transform .34s cubic-bezier(.18,.72,.2,1); animation:thought-light 7.5s ease-in-out infinite; }
-.journeyCopy { position:relative; z-index:1; display:grid; justify-items:center; gap:12px; max-width:700px; animation:journey-copy .72s both; }
+.journeyCopy { position:relative; z-index:1; display:grid; justify-items:center; gap:12px; max-width:700px; animation:journey-copy .62s both; }
 .journeyCopy > span { color:#eabed3; font-size:10px; letter-spacing:.2em; }
 .journeyCopy h2 { max-width:19ch; margin:0; color:#fff8fc; font-family:var(--display-font); font-size:clamp(29px,5vw,51px); line-height:1.35; font-weight:430; text-wrap:balance; text-shadow:0 2px 28px #08050d; }
 .journeyCopy p { margin:0; color:#cbb9cb; font-size:11px; letter-spacing:.04em; }
@@ -56,7 +56,7 @@
 .journeyActions button + button { border-color:transparent; background:transparent; color:#af9eaf; }
 .journey > small { position:absolute; z-index:1; bottom:24px; color:#8e7d8f; font-size:8px; letter-spacing:.14em; }
 @keyframes thought-light { 0%,100% { opacity:.78; box-shadow:0 0 9px #fff,0 0 30px rgba(var(--star-glow),.64),0 0 70px rgba(var(--star-secondary),.31); } 50% { opacity:1; box-shadow:0 0 13px #fff,0 0 42px rgba(var(--star-glow),.78),0 0 96px rgba(var(--star-secondary),.43); } }
-@keyframes journey-copy { from { opacity:0; transform:translateY(12px); filter:blur(5px); } to { opacity:1; transform:translateY(0); filter:blur(0); } }
+@keyframes journey-copy { from { opacity:.46; transform:translateY(8px); filter:blur(1.5px); } to { opacity:1; transform:translateY(0); filter:blur(0); } }
 .layout { animation:arrive .75s both; }
 .form h2:focus { outline:none; }
 @keyframes arrive { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:translateY(0); } }

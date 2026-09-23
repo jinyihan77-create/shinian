@@ -103,6 +103,31 @@ describe("check-in panel confirmed-save behavior", () => {
     expect(screen.getByRole("heading", { name: "越靠近，散落的念头越清晰。" })).toBeTruthy();
   });
 
+  it("waits for the finger to lift before arriving so the swipe cannot pick a star underneath", () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+      render(<CheckinPanel preview />);
+      fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
+      const journey = screen.getByRole("region", { name: "进入星海的手势旅程" });
+      Object.defineProperties(journey, {
+        clientHeight: { configurable: true, value: 600 },
+        setPointerCapture: { configurable: true, value: vi.fn() },
+        hasPointerCapture: { configurable: true, value: vi.fn(() => true) },
+        releasePointerCapture: { configurable: true, value: vi.fn() },
+      });
+      fireEvent.pointerDown(journey, { pointerId: 9, pointerType: "touch", clientY: 650 });
+      fireEvent.pointerMove(journey, { pointerId: 9, pointerType: "touch", clientY: 100 });
+      act(() => vi.advanceTimersByTime(900));
+      expect(screen.getByRole("region", { name: "进入星海的手势旅程" })).toBeTruthy();
+      fireEvent.pointerUp(journey, { pointerId: 9, pointerType: "touch", clientY: 100 });
+      act(() => vi.advanceTimersByTime(530));
+      expect(screen.getByRole("button", { name: "摘下第 1 颗星星" })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("reveals the generated card before the automatic save changes any counts", async () => {
     fetchMock.mockResolvedValueOnce(json(base));
     render(<CheckinPanel userId="owner-1" />);
