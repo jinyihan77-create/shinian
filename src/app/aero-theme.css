@@ -981,6 +981,141 @@ input:focus, textarea:focus, select:focus {
   .source-voice-intake.is-organizing .source-voice-orb { animation: none; }
 }
 
+/* Siri-like voice dock: the microphone stays inside the writing surface so
+   the recording state feels like part of the thought, rather than a floating
+   control competing with the page. The fine moving lines borrow the quiet,
+   layered motion of Strands without adding another canvas to the capture view. */
+.capture-space .writing-surface > .voice-input-wrap {
+  display: block;
+  margin: 0 18px 15px;
+}
+.voice-siri-dock {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  width: 100%;
+  min-height: 62px;
+  grid-template-columns: 42px minmax(0, 1fr) minmax(96px, 23%);
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px 9px 10px;
+  overflow: hidden;
+  border: 1px solid #ffffff21;
+  border-radius: 17px;
+  background: linear-gradient(105deg, #ffffff09, #e6c9ef0b 48%, #b9d9e713);
+  color: #eee4f0;
+  text-align: left;
+  box-shadow: inset 0 1px 0 #ffffff15, 0 8px 24px #0503081c;
+  backdrop-filter: blur(18px) saturate(1.12);
+  transition: border-color .28s ease, background .28s ease, box-shadow .28s ease, transform .28s ease;
+}
+.voice-siri-dock::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 10% 10%, #ffccdf22, transparent 32%), radial-gradient(circle at 90% 90%, #a9d6ec18, transparent 36%);
+  opacity: .68;
+}
+.voice-siri-dock:hover:not(:disabled) {
+  border-color: #f1cfe36a;
+  background: linear-gradient(105deg, #ffffff11, #edcfe813 48%, #b9d9e71b);
+  box-shadow: inset 0 1px 0 #ffffff22, 0 11px 30px #0503082a, 0 0 22px #eeafd218;
+  transform: translateY(-1px);
+}
+.voice-siri-dock:focus-visible { outline: 1px solid #ffd8e9b8; outline-offset: 2px; }
+.voice-siri-dock:disabled { cursor: wait; opacity: .75; }
+.voice-siri-dock.is-recording {
+  border-color: #ffd2e18b;
+  background: linear-gradient(105deg, #f2bad821, #d8c3ed1e 47%, #b8dfed20);
+  box-shadow: inset 0 1px 0 #ffffff2b, 0 12px 32px #05030832, 0 0 26px #f2b9d62e;
+}
+.voice-siri-orb {
+  position: relative;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid #ffffff66;
+  border-radius: 50%;
+  background: conic-gradient(from 205deg, #ffd9e6, #e6d8f4, #cdeaf0, #ffd9e6);
+  color: #654b66;
+  box-shadow: inset 0 0 0 5px #ffffff45, inset 0 1px 0 #ffffffb0, 0 0 18px #f3bfd141;
+  transition: transform .35s ease, box-shadow .35s ease, filter .35s ease;
+}
+.voice-siri-orb i {
+  position: absolute;
+  inset: -5px;
+  border: 1px solid #ffe3ef48;
+  border-radius: inherit;
+  opacity: 0;
+}
+.voice-siri-copy { display: grid; min-width: 0; gap: 3px; }
+.voice-siri-copy strong { overflow: hidden; color: #fff7fb; font-size: 13px; font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
+.voice-siri-copy small { overflow: hidden; color: #c8baca; font-size: 10px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.voice-strands {
+  position: relative;
+  display: block;
+  height: 34px;
+  overflow: hidden;
+  opacity: .56;
+  mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+}
+.voice-strands i {
+  position: absolute;
+  left: -9%;
+  width: 118%;
+  height: 10px;
+  border-top: 1px solid #f8d6e77a;
+  border-radius: 50%;
+  transform: rotate(var(--strand-angle, 0deg)) translateX(0);
+  transform-origin: center;
+  opacity: var(--strand-opacity, .5);
+}
+.voice-strands i:nth-child(1) { top: 0; --strand-angle: -8deg; --strand-opacity: .34; }
+.voice-strands i:nth-child(2) { top: 5px; --strand-angle: -4deg; --strand-opacity: .58; }
+.voice-strands i:nth-child(3) { top: 10px; --strand-angle: 2deg; --strand-opacity: .8; border-color: #cfe8f0a1; }
+.voice-strands i:nth-child(4) { top: 16px; --strand-angle: 6deg; --strand-opacity: .56; }
+.voice-strands i:nth-child(5) { top: 22px; --strand-angle: 10deg; --strand-opacity: .36; border-color: #dcbbe681; }
+.voice-strands i:nth-child(6) { top: 27px; --strand-angle: 13deg; --strand-opacity: .24; }
+.voice-siri-dock:hover .voice-strands i { animation: voice-strand-drift 2.9s ease-in-out infinite alternate; }
+.voice-siri-dock:hover .voice-strands i:nth-child(2) { animation-delay: -.8s; }
+.voice-siri-dock:hover .voice-strands i:nth-child(3) { animation-delay: -.35s; }
+.voice-siri-dock:hover .voice-strands i:nth-child(4) { animation-delay: -.62s; }
+.voice-siri-dock.is-recording .voice-siri-orb { filter: saturate(1.08); transform: scale(1.04); box-shadow: inset 0 0 0 5px #ffffff5c, inset 0 1px 0 #ffffffc8, 0 0 24px #f3bfd170; }
+.voice-siri-dock.is-recording .voice-siri-orb i { animation: voice-siri-ring 1.8s ease-out infinite; }
+.voice-siri-dock.is-recording .voice-siri-orb i:nth-of-type(2) { animation-delay: -.6s; }
+.voice-siri-dock.is-recording .voice-siri-orb i:nth-of-type(3) { animation-delay: -1.2s; }
+.voice-siri-dock.is-recording .voice-strands { opacity: .92; }
+.voice-siri-dock.is-recording .voice-strands i { animation: voice-strand-drift 1.45s ease-in-out infinite alternate; }
+.voice-siri-dock.is-recording .voice-strands i:nth-child(2) { animation-delay: -.5s; }
+.voice-siri-dock.is-recording .voice-strands i:nth-child(3) { animation-delay: -.25s; }
+.voice-siri-dock.is-recording .voice-strands i:nth-child(4) { animation-delay: -.75s; }
+.voice-message { display: block; max-width: none; margin: 7px 3px 0; color: #ffced3; font-size: 10px; line-height: 1.4; }
+@keyframes voice-strand-drift { from { transform: rotate(var(--strand-angle, 0deg)) translateX(-5%); } to { transform: rotate(var(--strand-angle, 0deg)) translateX(5%); } }
+@keyframes voice-siri-ring { 0% { opacity: .58; transform: scale(.86); } 100% { opacity: 0; transform: scale(1.52); } }
+
+@media (max-width: 760px) {
+  .capture-space .writing-surface > .voice-input-wrap { margin-inline: 14px; }
+  .voice-siri-dock { min-height: 58px; grid-template-columns: 38px minmax(0, 1fr) minmax(75px, 27%); gap: 10px; padding: 8px 11px 8px 8px; }
+  .voice-siri-orb { width: 38px; height: 38px; }
+  .voice-siri-copy strong { font-size: 12px; }
+  .voice-siri-copy small { font-size: 9px; }
+}
+
+@media (max-width: 390px) {
+  .voice-strands { opacity: .42; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-siri-dock,
+  .voice-siri-orb { transition: none; }
+  .voice-siri-dock:hover .voice-strands i,
+  .voice-siri-dock.is-recording .voice-siri-orb i,
+  .voice-siri-dock.is-recording .voice-strands i { animation: none; }
+}
+
 .save-stroke-moment {
   display: grid;
   width: min(760px, 100%);

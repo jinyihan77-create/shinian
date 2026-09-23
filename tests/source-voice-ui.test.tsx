@@ -34,6 +34,15 @@ afterEach(() => {
 });
 
 describe("来源语音入口", () => {
+  it("主记录使用卡片内的Siri式语音底座，不再渲染悬浮录音气泡", () => {
+    window.SpeechRecognition = MockSpeechRecognition as never;
+    composer(true);
+    expect(document.querySelector(".voice-siri-dock")).toBeTruthy();
+    expect(document.querySelector(".voice-strands")).toBeTruthy();
+    expect(document.querySelector(".voice-live")).toBeNull();
+    expect(screen.getByRole("button", { name: "开始口述记录" })).toBeTruthy();
+  });
+
   it("说完后只调用一次AI，并把返回的来源字段一次填入", async () => {
     window.SpeechRecognition = MockSpeechRecognition as never;
     const result: SourceIntakeResult = { sourceType: "播客", sourceName: "得意忘形", sourceTimestamp: "18:20", sourceExcerpt: "不要急着给答案。" };

@@ -163,12 +163,12 @@ function VoiceInput({ value, onChange, disabled, preview }: { value: string; onC
     try { recognition.start(); setRecording(true); } catch { recognitionRef.current = null; setRecording(false); setMessage("语音输入启动失败，请直接输入"); }
   }
 
-  return <div className="voice-input-wrap">
-    <button type="button" className={`voice-pill ${recording ? "is-recording" : ""}`} aria-label={recording ? "停止语音输入" : "开始语音输入"} aria-pressed={recording} onClick={toggle} disabled={disabled}>
-      <span className="voice-bars" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /><i /></span>
-      <span>{recording ? "正在听" : "语音"}</span>
+  return <div className={`voice-input-wrap ${recording ? "is-recording" : ""}`}>
+    <button type="button" className={`voice-siri-dock ${recording ? "is-recording" : ""}`} aria-label={recording ? "停止口述记录" : "开始口述记录"} aria-pressed={recording} onClick={toggle} disabled={disabled}>
+      <span className="voice-siri-orb" aria-hidden="true"><AudioLines size={18} /><i /><i /><i /></span>
+      <span className="voice-siri-copy"><strong>{recording ? "我在听" : "说给拾念听"}</strong><small>{recording ? "说完轻触，文字会自然落下来" : value.trim() ? "继续口述，拾念会接着记录" : "点一下开始口述"}</small></span>
+      <span className="voice-strands" aria-hidden="true"><i /><i /><i /><i /><i /><i /></span>
     </button>
-    {recording && <div className="voice-live" role="status"><span className="voice-live-orb" aria-hidden="true"><AudioLines size={19} /><i /><i /><i /></span><span><strong>我在听</strong><small>说完停一下，文字会自然落下来</small></span></div>}
     {message && <span className="voice-message" role="status">{message}</span>}
   </div>;
 }
@@ -323,6 +323,7 @@ export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle,
       <button type="button" className="capture-star-shortcut capture-star-primary" onClick={onOpenCheckin} disabled={saving} title="摘下今天的星" aria-label="摘下今天的星"><Star size={16} /><span>摘星</span></button>
       <label className="sr-only" htmlFor="capture-thought">我的想法</label>
       <textarea id="capture-thought" className="capture-textarea" placeholder="一句想法，一段听后感……" value={capture.userText} maxLength={20000} onChange={event => onChange({ userText: event.target.value })} disabled={saving} />
+      <VoiceInput value={capture.userText} onChange={value => onChange({ userText: value })} disabled={saving} preview={preview} />
       <div className="capture-kind" role="radiogroup" aria-label="这条记录放在哪里">
         <span>放在哪里</span>
         <button type="button" role="radio" aria-checked={captureKind === "thought"} onClick={() => onCaptureKind("thought")} disabled={saving}><Lightbulb size={14} />普通念头</button>
@@ -344,7 +345,7 @@ export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle,
       </div>
     </div>
     <div className="capture-footer">
-      <div className="capture-footer-left"><VoiceInput value={capture.userText} onChange={value => onChange({ userText: value })} disabled={saving} preview={preview} /><span className={"draft-state " + (draftState === "error" ? "danger-text" : "")} aria-live="polite">{preview ? "预览输入不会保存" : draftState === "saving" ? "正在保存本机草稿…" : draftState === "saved" ? <><Check size={13} />草稿已留在此设备</> : draftState === "error" ? "草稿保存失败，请先复制文字" : "保存后会进入你的回声屿"}</span></div>
+      <div className="capture-footer-left"><span className={"draft-state " + (draftState === "error" ? "danger-text" : "")} aria-live="polite">{preview ? "预览输入不会保存" : draftState === "saving" ? "正在保存本机草稿…" : draftState === "saved" ? <><Check size={13} />草稿已留在此设备</> : draftState === "error" ? "草稿保存失败，请先复制文字" : "保存后会进入你的回声屿"}</span></div>
       <button type="button" className="btn btn-primary capture-submit" disabled={saving || !hasContent} onClick={() => onSave(false)}>{saving ? <LoaderCircle className="spin" size={16} /> : null}{saving ? "正在保存…" : "记下"}{!saving && <ArrowUpRight size={17} />}</button>
     </div>
   </section>;

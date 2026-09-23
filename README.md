@@ -4,7 +4,13 @@
 
 本项目的生产路线是中国腾讯云：上海 `ap-shanghai` CloudBase PostgreSQL、CloudBase 身份认证、CloudRun 云托管和平台内 AI。正式记录保存在云端，同一私人账号可在手机和电脑使用；浏览器仅保留按账号隔离的捕捉草稿。
 
-**当前尚未完成生产交付，没有可交付的访问地址。** 腾讯云账号已注册并完成实名认证；CloudBase 环境尚未创建，真实数据库、私人账号、AI 调用、正式域名和手机完整流程仍待验收。构建、模拟测试或配置检查通过，都不代表线上产品已可用。状态和待办见 [部署配置清单](./部署配置清单.md)。
+**已上线运行**：<https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com>
+
+线上环境为上海 `ap-shanghai` 体验版 CloudBase，含 PostgreSQL、私人账号登录、云托管服务与平台内 AI。2026-09-22 完成真实部署，`scripts/verify-live-deployment.mjs` 的 **16 项线上验收全部通过**（含真实登录、跨会话读写、真实 AI 整理与结果落库、检索、退出保护），报告见 `test-results/live-acceptance.json`。
+
+无需登录即可查看界面预览：<https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com/design-preview>
+
+尚未验收的部分：手机端排版与动画性能（HTTP 验收不覆盖），以及自助"忘记密码"。状态和待办见 [部署配置清单](./部署配置清单.md)。
 
 ## 使用方式
 
