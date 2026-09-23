@@ -155,7 +155,14 @@ function isDeployRelevant(file) {
   return normalized.startsWith("src/") || normalized.startsWith("public/");
 }
 
-/** 工作区里尚未提交的改动 + 上次发布之后新产生的提交，一起算作"待发布"。 */
+/**
+ * 工作区里尚未提交的改动 + 上次发布之后新产生的提交，一起算作"待发布"。
+ *
+ * 没有基线（从来没成功发布过）时必须保守处理：列出所有会被打包的文件，
+ * 而不是"看起来没改动就不发"。原因：改动可能已经被别处提交进 git 了
+ * （比如手动跑了一次「只检查不发布」，它也会先自动存档），此时工作区是干净的，
+ * 只看工作区就会得出"没什么要发"的错误结论——代码明明还没上线。
+ */
 async function collectPendingChanges(lastPublishedCommit) {
   const files = new Map();
 
@@ -173,20 +180,35 @@ async function collectPendingChanges(lastPublishedCommit) {
 
   const head = await git(["rev-parse", "HEAD"]);
   const headCommit = head.ok ? head.out.trim() : "";
+
   if (lastPublishedCommit && headCommit && headCommit !== lastPublishedCommit) {
     const diff = await git(["diff", "--name-only", `${lastPublishedCommit}..HEAD`]);
     if (diff.ok) {
       for (const file of diff.out.split("\n")) {
         const target = file.trim().replace(/\\/g, "/");
         if (target && isDeployRelevant(target)) {
-          const existing = files.get(target) ?? {};
-          files.set(target, { ...existing, fromCommit: true });
+          files.set(target, { ...(files.get(target) ?? {}), fromCommit: true });
+        }
+      }
+      return { files: [...files.keys()].sort(), headCommit, baselineKnown: true };
+    }
+    // 基线提交查不到（历史被重置过之类）：按"没有基线"处理，宁可多发一次。
+  }
+
+  if (!lastPublishedCommit || !headCommit) {
+    const tracked = await git(["ls-files"]);
+    if (tracked.ok) {
+      for (const file of tracked.out.split("\n")) {
+        const target = file.trim().replace(/\\/g, "/");
+        if (target && isDeployRelevant(target)) {
+          files.set(target, { ...(files.get(target) ?? {}), fromUntrackedBaseline: true });
         }
       }
     }
+    return { files: [...files.keys()].sort(), headCommit, baselineKnown: false };
   }
 
-  return { files: [...files.keys()].sort(), headCommit };
+  return { files: [...files.keys()].sort(), headCommit, baselineKnown: true };
 }
 
 /** 待发布文件里"最后一次被改动"的时间，用来判断是不是还在写。 */
