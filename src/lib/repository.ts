@@ -1,6 +1,6 @@
 import Dexie, { type Table } from "dexie";
-import { aiResultSchema, backupSchema, CAPTURE_LIMITS, captureInputSchema, noteSchema } from "./schema";
-import type { AiResult, CaptureInput, EchoNote } from "./types";
+import { aiResultSchema, backupSchema, CAPTURE_LIMITS, captureInputSchema, noteSchema, sourceIntakeRequestSchema, sourceIntakeResultSchema } from "./schema";
+import type { AiResult, CaptureInput, EchoNote, SourceIntakeRequest, SourceIntakeResult } from "./types";
 import { taskStatus, taskTags, type TaskAction } from "./task-tickets";
 
 interface Setting { key: string; value: unknown }
@@ -320,6 +320,14 @@ export const repository = {
       throw new RepositoryError("整理结果尚未确认保存，请刷新核对后重试。", "INVALID_RESPONSE");
     }
     return { applied: body.applied, note };
+  },
+  async organizeSource(input: SourceIntakeRequest): Promise<SourceIntakeResult> {
+    const parsedInput = sourceIntakeRequestSchema.safeParse(input);
+    if (!parsedInput.success) throw new RepositoryError(parsedInput.error.issues[0]?.message || "请检查语音内容。", "INVALID_INPUT");
+    const body = await request(requireUser(), "/api/source-intake", { method: "POST", body: parsedInput.data, timeout: 60_000 });
+    const parsedResult = sourceIntakeResultSchema.safeParse(body.source);
+    if (!parsedResult.success) throw new RepositoryError("AI 返回的来源信息不完整，原有内容没有改变，请重试。", "INVALID_RESPONSE");
+    return parsedResult.data;
   },
   async importNotes(notes: EchoNote[]): Promise<number> {
     const scope = requireUser();

@@ -31,6 +31,18 @@ export const captureInputSchema = z.object({
   sourceExcerpt: z.string().max(CAPTURE_LIMITS.sourceExcerpt, "来源片段最多可以保存 40,000 个字。"),
 }).strict();
 
+export const sourceIntakeRequestSchema = z.object({
+  transcript: z.string().trim().min(1, "请先说出来源信息。").max(3_000, "这段语音转写太长，请分两次告诉我。"),
+  currentSourceType: z.enum(SOURCE_TYPES),
+}).strict();
+
+export const sourceIntakeResultSchema = z.object({
+  sourceType: z.enum(SOURCE_TYPES).nullable(),
+  sourceName: z.string().trim().min(1).max(CAPTURE_LIMITS.sourceName).nullable(),
+  sourceTimestamp: z.string().trim().min(1).max(CAPTURE_LIMITS.sourceTimestamp).nullable(),
+  sourceExcerpt: z.string().trim().min(1).max(CAPTURE_LIMITS.sourceExcerpt).nullable(),
+}).strict();
+
 export const aiResultSchema = z.object({
   title: z.string().trim().min(1).max(CAPTURE_LIMITS.title),
   thoughtSummary: z.string().max(6_000),

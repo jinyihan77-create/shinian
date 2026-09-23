@@ -86,6 +86,19 @@ describe("云端确认与私人账号隔离", () => {
     expect(dispatchEvent).toHaveBeenCalledOnce();
     expect((dispatchEvent.mock.calls[0][0] as Event).type).toBe("echo:session-expired");
   });
+
+  it("来源语音只在登录后发送，并拒绝不完整的AI响应", async () => {
+    const request = { transcript: "这是播客随机波动，十二分，原话是先观察自己的感受。", currentSourceType: "播客" as const };
+    const source = { sourceType: "播客" as const, sourceName: "随机波动", sourceTimestamp: "12:00", sourceExcerpt: "先观察自己的感受。" };
+    fetchMock.mockResolvedValueOnce(json({ source }));
+    await expect(repository.organizeSource(request)).resolves.toEqual(source);
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/source-intake");
+    expect(submittedBody()).toEqual(request);
+    fetchMock.mockResolvedValueOnce(json({ source: { ...source, sourceName: "" } }));
+    await expect(repository.organizeSource(request)).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    repository.setUser(null);
+    await expect(repository.organizeSource(request)).rejects.toMatchObject({ code: "AUTH_REQUIRED" });
+  });
 });
 
 describe("分页读取完整资料库", () => {

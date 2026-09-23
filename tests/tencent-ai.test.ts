@@ -1,15 +1,17 @@
 // Mocked CloudBase Node SDK boundary. These checks do not prove a real Tencent
 // environment, credentials, billing quota or model has been connected.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { organizeWithAi } from "../src/lib/server/organize";
+import { organizeSourceWithAi, organizeWithAi } from "../src/lib/server/organize";
 import { serviceStatus } from "../src/lib/server/access";
-import { emptyCapture, type AiRequest, type AiResult } from "../src/lib/types";
+import { emptyCapture, type AiRequest, type AiResult, type SourceIntakeRequest, type SourceIntakeResult } from "../src/lib/types";
 
 const sdk = vi.hoisted(() => ({ init: vi.fn(), ai: vi.fn(), createModel: vi.fn(), generateText: vi.fn() }));
 vi.mock("@cloudbase/node-sdk", () => ({ init: sdk.init }));
 const input: AiRequest = { ...emptyCapture(), id: "a34dba25-574f-4aa8-80f7-b32774687ce2", revision: 1, userText: "听完之后复述一下。", sourceName: "我的来源", sourceUrl: "https://example.com/source" };
 const result: AiResult = { title: "用复述留下想法", thoughtSummary: "听完之后用自己的话复述。", sourceSummary: null,
   keyPoints: [{ text: "听完之后复述。", origin: "用户记录" }], tags: ["复述"], reflectionQuestions: ["你想先解释哪一点？"], possibleApplication: null };
+const sourceInput: SourceIntakeRequest = { transcript: "这是播客得意忘形，十八分二十秒，原话是不要急着给答案。", currentSourceType: "文章" };
+const sourceResult: SourceIntakeResult = { sourceType: "播客", sourceName: "得意忘形", sourceTimestamp: "18:20", sourceExcerpt: "不要急着给答案。" };
 function completion(text = JSON.stringify(result), finish = "stop") {
   return { text, rawResponses: [{ choices: [{ finish_reason: finish, message: { role: "assistant", content: text } }] }], messages: [], usage: {} };
 }
@@ -86,5 +88,24 @@ describe("腾讯云AI适配（模拟SDK边界，不是真实服务验证）", ()
     const controller = new AbortController(); controller.abort();
     await expect(organizeWithAi(input, controller.signal)).rejects.toMatchObject({ code: "AI_TIMEOUT" });
     expect(sdk.generateText).not.toHaveBeenCalled();
+  });
+
+  it("把口述来源交给腾讯AI拆分，并且只发送口述和当前类型", async () => {
+    sdk.generateText.mockResolvedValueOnce(completion(JSON.stringify(sourceResult)));
+    await expect(organizeSourceWithAi(sourceInput)).resolves.toEqual(sourceResult);
+    const [request, options] = sdk.generateText.mock.calls[0];
+    expect(request).toMatchObject({ model: "console-confirmed-model", temperature: 0.1, max_tokens: 4000, maxSteps: 1 });
+    expect(options).toEqual({ timeout: 40_000 });
+    expect(request.messages[0].content).toContain("没有听出的字段必须为 null");
+    expect(JSON.parse(request.messages[1].content)).toEqual(sourceInput);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("不把空字段或截断的口述整理冒充成功", async () => {
+    sdk.generateText.mockResolvedValueOnce(completion(JSON.stringify({ ...sourceResult, sourceName: "" })));
+    await expect(organizeSourceWithAi(sourceInput)).rejects.toMatchObject({ code: "INVALID_SOURCE_INTAKE" });
+    sdk.generateText.mockResolvedValueOnce(completion(JSON.stringify(sourceResult), "length"));
+    await expect(organizeSourceWithAi(sourceInput)).rejects.toMatchObject({ code: "INCOMPLETE_SOURCE_INTAKE" });
+    await expect(organizeSourceWithAi({ ...sourceInput, transcript: " " })).rejects.toMatchObject({ code: "SOURCE_SPEECH_REQUIRED" });
   });
 });

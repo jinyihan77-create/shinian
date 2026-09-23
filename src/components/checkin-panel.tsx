@@ -281,7 +281,7 @@ function CheckinDialog(props: DialogProps) {
         <StarCurtain key={curtainTheme} theme={curtainTheme} onPick={pickStar} paused={hidden} reduceMotion={reduced} />
         <p className={styles.pickerNote}>{preview ? "体验预览 · 摘星不会保存或增加打卡天数" : "今晚的星，在这里 · 轻触或向自己方向带走"}</p>
       </div> : <div className={styles.layout}>
-        <section className={styles.visual} aria-label="今日七芒星笺">
+        <section className={styles.visual} aria-label="今日星笺">
           <div className={styles.scene}>
             <div className={styles.halo} aria-hidden="true" />
             {summary && <SevenStarCard theme={theme} mood={mood} quote={quote} date={summary.today} totalDays={summary.totalDays} currentStreak={summary.currentStreak} sourceCount={suggestionCount} flipped={flipped} preview={preview} syncing={busy} />}

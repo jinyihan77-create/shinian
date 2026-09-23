@@ -18,6 +18,16 @@ export interface CaptureInput {
   sourceTimestamp: string;
   sourceExcerpt: string;
 }
+export interface SourceIntakeRequest {
+  transcript: string;
+  currentSourceType: SourceType;
+}
+export interface SourceIntakeResult {
+  sourceType: SourceType | null;
+  sourceName: string | null;
+  sourceTimestamp: string | null;
+  sourceExcerpt: string | null;
+}
 export interface EchoNote extends CaptureInput {
   id: string;
   title: string;

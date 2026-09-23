@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as status } from "../src/app/api/status/route";
 import { POST as organize } from "../src/app/api/organize/route";
+import { POST as sourceIntake } from "../src/app/api/source-intake/route";
 import { POST as unlock } from "../src/app/api/unlock/route";
 import { validateAiResult } from "../src/lib/server/organize";
 import { ApiError } from "../src/lib/server/http";
@@ -37,6 +38,11 @@ function post(data: unknown = payload, requestOrigin = origin) {
     method: "POST", headers: { "Content-Type": "application/json", Origin: requestOrigin }, body: JSON.stringify(data),
   });
 }
+function sourcePost(data: unknown = { transcript: "这是播客得意忘形，十八分二十秒，原话是不要急着给答案。", currentSourceType: "播客" }, requestOrigin = origin) {
+  return new Request(origin + "/api/source-intake", {
+    method: "POST", headers: { "Content-Type": "application/json", Origin: requestOrigin, "x-echo-user-id": "owner" }, body: JSON.stringify(data),
+  });
+}
 function providerResponse(output: unknown = result) {
   return new Response(JSON.stringify({ status: "completed", output: [{ type: "message", content: [
     { type: "output_text", text: JSON.stringify(output) },
@@ -57,6 +63,25 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("private AI routes (mocked boundaries, not a live provider test)", () => {
+  it("只在私人账号内把口述发送给AI，并返回经过校验的来源字段", async () => {
+    const source = { sourceType: "播客", sourceName: "得意忘形", sourceTimestamp: "18:20", sourceExcerpt: "不要急着给答案。" };
+    vi.mocked(fetch).mockResolvedValueOnce(providerResponse(source));
+    const response = await sourceIntake(sourcePost());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ source });
+    expect(mocks.requirePrivateUser).toHaveBeenCalledOnce();
+    const providerRequest = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string) as { input: { content: { text: string }[] }[] };
+    expect(JSON.parse(providerRequest.input[0].content[0].text)).toEqual({ transcript: "这是播客得意忘形，十八分二十秒，原话是不要急着给答案。", currentSourceType: "播客" });
+  });
+
+  it("拒绝跨站、未登录和空口述，且不把失败显示成整理成功", async () => {
+    expect((await sourceIntake(sourcePost(undefined, "https://elsewhere.example"))).status).toBe(403);
+    expect((await sourceIntake(sourcePost({ transcript: "", currentSourceType: "播客" }))).status).toBe(400);
+    mocks.requirePrivateUser.mockRejectedValueOnce(new ApiError(401, "AUTH_REQUIRED", "请登录"));
+    expect((await sourceIntake(sourcePost())).status).toBe(401);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("reports configuration truthfully only after authentication", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
     const response = await status();
