@@ -35,8 +35,8 @@ afterEach(() => {
   cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); frames.clear();
 });
 
-function star(index = 4) {
-  const button = screen.getByRole("button", { name: `摘下第 ${index} 颗星星` }) as HTMLButtonElement;
+function star(index = 2) {
+  const button = screen.getByRole("button", { name: new RegExp(`^摘下第 ${index} 颗星：`) }) as HTMLButtonElement;
   const captured = new Set<number>();
   Object.defineProperties(button, {
     setPointerCapture: { configurable: true, value: (id: number) => captured.add(id) },
@@ -73,7 +73,7 @@ describe("star curtain selection gestures", () => {
     expect(picked).not.toHaveBeenCalled();
     release(button, 72); fireEvent.click(button, { detail: 1 });
     expect(picked).not.toHaveBeenCalled();
-    finish(); expect(picked).toHaveBeenCalledExactlyOnceWith(3);
+    finish(); expect(picked).toHaveBeenCalledExactlyOnceWith(1);
   });
 
   it.each(["pointerCancel", "lostPointerCapture"] as const)("never selects when a long pull ends in %s", (event) => {
@@ -91,7 +91,7 @@ describe("star curtain selection gestures", () => {
     release(button, 90, 5); finish();
     expect(picked).not.toHaveBeenCalled();
     release(button, 90, 4); finish();
-    expect(picked).toHaveBeenCalledExactlyOnceWith(3);
+    expect(picked).toHaveBeenCalledExactlyOnceWith(1);
   });
 
   it("does not pick when the window loses focus during a long pull", () => {
@@ -117,10 +117,10 @@ describe("star curtain selection gestures", () => {
 
   it("supports native keyboard activation and blocks a second selection", () => {
     const picked = vi.fn(); render(<StarCurtain theme={17} onPick={picked} />);
-    const button = star(); const other = star(2);
+    const button = star(); const other = star(1);
     button.focus(); fireEvent.click(button, { detail: 0 }); fireEvent.click(other, { detail: 0 });
     expect(button.disabled).toBe(true); expect(other.disabled).toBe(true);
-    finish(); expect(picked).toHaveBeenCalledExactlyOnceWith(3);
+    finish(); expect(picked).toHaveBeenCalledExactlyOnceWith(1);
   });
 
   it("supports a small stationary touch tap without a duplicate synthetic click", () => {

@@ -180,18 +180,19 @@ function StarJourney({ day, reduced, onArrive }: { day: string; reduced: boolean
     if (locked.current) return;
     locked.current = true;
     window.setTimeout(() => { locked.current = false; }, 420);
-    setStep(value => {
-      if (value >= scenes.length - 1) { onArrive(); return value; }
-      return value + 1;
-    });
-  }, [onArrive, scenes.length]);
+    if (step >= scenes.length - 1) {
+      onArrive();
+      return;
+    }
+    setStep(value => value + 1);
+  }, [onArrive, scenes.length, step]);
   useEffect(() => {
     if (reduced) { onArrive(); return; }
     const mobile = window.matchMedia("(max-width: 760px)");
     if (!mobile.matches) return;
-    const timers = [window.setTimeout(advance, 520), window.setTimeout(advance, 1040), window.setTimeout(onArrive, 1560)];
+    const timers = [window.setTimeout(() => setStep(1), 520), window.setTimeout(() => setStep(2), 1040), window.setTimeout(onArrive, 1560)];
     return () => timers.forEach(window.clearTimeout);
-  }, [advance, onArrive, reduced]);
+  }, [onArrive, reduced]);
   return <section className={styles.journey} data-step={step} tabIndex={0}
     onWheel={event => { if (Math.abs(event.deltaY) > 12) advance(); }}
     onKeyDown={event => { if ([" ", "ArrowDown", "PageDown"].includes(event.key)) { event.preventDefault(); advance(); } }}>

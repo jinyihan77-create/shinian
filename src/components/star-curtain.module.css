@@ -14,11 +14,11 @@
 .star[data-index="3"] { z-index:3; }
 .star:active { cursor:grabbing; }
 .star:disabled { cursor:default; }
-.starFace { display:block; width:100%; height:100%; overflow:visible; position:relative; filter:drop-shadow(0 8px 10px #17132859) drop-shadow(0 0 1.5px color-mix(in srgb,var(--star-color) 36%,transparent)); }
+.starFace { display:block; width:100%; height:100%; overflow:visible; position:relative; filter:drop-shadow(0 10px 14px #0d09158c) drop-shadow(0 0 4px color-mix(in srgb,var(--star-color) 45%,transparent)); }
 .starHalo { position:absolute; width:154%; height:154%; left:-27%; top:-22%; border-radius:50%; pointer-events:none; opacity:.68; background:radial-gradient(ellipse,color-mix(in srgb,var(--star-color) 20%,transparent),transparent 67%); transition:opacity .4s,transform .5s; }
 .crystalHitGlint { position:absolute; inset:8%; pointer-events:none; border-radius:50%; opacity:.38; background:radial-gradient(circle at 34% 24%,#fff 0 1px,transparent 2px),radial-gradient(circle at 72% 64%,#fff 0 1px,transparent 2px); filter:drop-shadow(0 0 5px var(--star-color)); }
 .star:hover .starHalo,.star:focus-visible .starHalo { opacity:1; transform:scale(1.18); }
-.star:hover .starFace { filter:drop-shadow(0 8px 12px #17102380) drop-shadow(0 0 3.5px color-mix(in srgb,var(--star-color) 32%,transparent)); }
+.star:hover .starFace { filter:drop-shadow(0 12px 17px #0a0712a8) drop-shadow(0 0 8px color-mix(in srgb,var(--star-color) 50%,transparent)); }
 .star:focus-visible::after { content:""; position:absolute; inset:-6px; border:1px solid #dbc4ee75; border-radius:50%; box-shadow:0 0 20px #b296cd13; }
 .glint { animation:glimmer 4.6s ease-in-out infinite alternate; }
 .edgeGlint { animation:edgeGlimmer 5.8s ease-in-out infinite alternate; }

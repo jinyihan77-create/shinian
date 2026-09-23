@@ -27,7 +27,7 @@ function noise(seed: number) {
   };
 }
 
-// The hanging and picked faces share one broad, five-point silhouette.
+// Candidate and picked stars share one seven-point silhouette.
 const STAR_PATH = `${SEVEN_STAR_POINTS.map((point, index) => `${index ? "L" : "M"}${120 + point.x * 113} ${120 + point.y * 113}`).join(" ")}Z`;
 
 function StarFace({ id, seed, material, prominent }: { id: string; seed: number; material: ReturnType<typeof starMaterial>; prominent: boolean }) {
@@ -46,20 +46,20 @@ function StarFace({ id, seed, material, prominent }: { id: string; seed: number;
   return <svg viewBox="0 0 240 240" className={styles.starFace} data-material={kind} aria-hidden="true">
     <defs>
       <linearGradient id={`${id}-body`} x1="0" y1="0" x2="1" y2="1">
-        <stop stopColor={tint} stopOpacity=".98" />
+        <stop stopColor={tint} stopOpacity=".78" />
         <stop offset=".3" stopColor={base} stopOpacity={material.opacity} />
-        <stop offset=".64" stopColor={secondary} stopOpacity={kind === "ice" || kind === "aurora" ? ".66" : ".83"} />
-        <stop offset="1" stopColor={glow} stopOpacity=".95" />
+        <stop offset=".64" stopColor={secondary} stopOpacity={kind === "ice" || kind === "aurora" ? ".7" : ".88"} />
+        <stop offset="1" stopColor={glow} stopOpacity=".84" />
       </linearGradient>
       <linearGradient id={`${id}-edge`} x1="0" y1="0" x2=".85" y2="1">
-        <stop stopColor="#fffafb" stopOpacity=".95" />
+        <stop stopColor="#fffafb" stopOpacity=".8" />
         <stop offset=".23" stopColor={tint} stopOpacity=".48" />
         <stop offset=".5" stopColor={secondary} stopOpacity=".92" />
         <stop offset=".72" stopColor={glow} stopOpacity=".32" />
-        <stop offset="1" stopColor="#fff8f2" stopOpacity=".9" />
+        <stop offset="1" stopColor="#fff8f2" stopOpacity=".76" />
       </linearGradient>
       <radialGradient id={`${id}-cloud`} cx=".31" cy=".3" r=".75">
-        <stop stopColor="#ffffff" stopOpacity={kind === "frost" ? ".45" : ".32"} />
+        <stop stopColor="#ffffff" stopOpacity={kind === "frost" ? ".3" : ".2"} />
         <stop offset=".46" stopColor={tint} stopOpacity=".075" />
         <stop offset="1" stopColor={tint} stopOpacity="0" />
       </radialGradient>
@@ -79,7 +79,7 @@ function StarFace({ id, seed, material, prominent }: { id: string; seed: number;
     <g clipPath={`url(#${id}-clip)`}>
       <rect width="240" height="240" fill={`url(#${id}-cloud)`} />
       {(kind === "crystal" || kind === "ice") && <>
-        <path d="M120 7L113 119L13 85Z M228 85L113 119L186 211Z M53 211L113 119L120 177Z" fill="#fffaff" fillOpacity={kind === "ice" ? ".24" : ".16"} />
+        <path d="M120 7L113 119L13 85Z M228 85L113 119L186 211Z M53 211L113 119L120 177Z" fill="#fffaff" fillOpacity={kind === "ice" ? ".16" : ".1"} />
         <path d="M120 7L113 119L53 211 M13 85L113 119L228 85" fill="none" stroke={tint} strokeOpacity=".38" strokeWidth=".8" />
         <path d="M136 30L135 121L198 199L175 127Z" fill={ink} fillOpacity=".055" />
       </>}

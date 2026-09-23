@@ -21,7 +21,9 @@ let socket;
 try {
   await sleep(1800);
   const pages = await fetch("http://127.0.0.1:9334/json").then((response) => response.json());
-  socket = new WebSocket(pages[0].webSocketDebuggerUrl);
+  const page = pages.find((candidate) => candidate.type === "page" && candidate.url === "about:blank") ?? pages.find((candidate) => candidate.type === "page");
+  if (!page) throw new Error("visual-qa: no browser page target");
+  socket = new WebSocket(page.webSocketDebuggerUrl);
   const pending = new Map();
   let nextId = 1;
 

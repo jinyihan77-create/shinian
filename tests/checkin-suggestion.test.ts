@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { suggestCheckinFromNotes } from "../src/lib/checkin";
+import { checkinSourceNoteIds, suggestCheckinFromNotes } from "../src/lib/checkin";
 import { createExamples } from "../src/lib/examples";
 
 describe("suggestCheckinFromNotes", () => {
@@ -17,5 +17,14 @@ describe("suggestCheckinFromNotes", () => {
 
   it("is honest when there is no note today", () => {
     expect(suggestCheckinFromNotes([], "2026-09-23")).toEqual({ mood: "", quote: "", sourceCount: 0 });
+  });
+
+  it("links source notes by the Shanghai calendar day", () => {
+    const examples = createExamples();
+    const notes = [
+      { ...examples[0], id: "after-midnight", createdAt: "2026-09-22T16:30:00.000Z", updatedAt: "2026-09-22T16:30:00.000Z" },
+      { ...examples[1], id: "before-midnight", createdAt: "2026-09-22T15:30:00.000Z", updatedAt: "2026-09-22T15:30:00.000Z" },
+    ];
+    expect(checkinSourceNoteIds(notes, "2026-09-23")).toEqual(["after-midnight"]);
   });
 });
