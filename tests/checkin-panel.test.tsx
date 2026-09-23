@@ -72,6 +72,37 @@ describe("check-in panel confirmed-save behavior", () => {
     window.localStorage.removeItem(`shinian:star-journey:${base.today}`);
   });
 
+  it("uses wheel distance as continuous journey depth instead of jumping on a timer", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    render(<CheckinPanel preview />);
+    fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
+    const journey = screen.getByRole("region", { name: "进入星海的手势旅程" });
+    const progress = screen.getByRole("progressbar", { name: "前往星海的距离" });
+    expect(progress.getAttribute("aria-valuenow")).toBe("0");
+    fireEvent.wheel(journey, { deltaY: 90, deltaMode: 0 });
+    expect(Number(progress.getAttribute("aria-valuenow"))).toBeGreaterThan(0);
+    expect(Number(progress.getAttribute("aria-valuenow"))).toBeLessThan(34);
+    expect(screen.getByRole("heading", { name: "跟着这一点光，往前走。" })).toBeTruthy();
+  });
+
+  it("lets a touch swipe move forward through the same journey", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    render(<CheckinPanel preview />);
+    fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
+    const journey = screen.getByRole("region", { name: "进入星海的手势旅程" });
+    Object.defineProperties(journey, {
+      clientHeight: { configurable: true, value: 600 },
+      setPointerCapture: { configurable: true, value: vi.fn() },
+      hasPointerCapture: { configurable: true, value: vi.fn(() => true) },
+      releasePointerCapture: { configurable: true, value: vi.fn() },
+    });
+    fireEvent.pointerDown(journey, { pointerId: 7, pointerType: "touch", clientY: 520 });
+    fireEvent.pointerMove(journey, { pointerId: 7, pointerType: "touch", clientY: 300 });
+    fireEvent.pointerUp(journey, { pointerId: 7, pointerType: "touch", clientY: 300 });
+    expect(Number(screen.getByRole("progressbar", { name: "前往星海的距离" }).getAttribute("aria-valuenow"))).toBeGreaterThan(34);
+    expect(screen.getByRole("heading", { name: "越靠近，散落的念头越清晰。" })).toBeTruthy();
+  });
+
   it("reveals the generated card before the automatic save changes any counts", async () => {
     fetchMock.mockResolvedValueOnce(json(base));
     render(<CheckinPanel userId="owner-1" />);

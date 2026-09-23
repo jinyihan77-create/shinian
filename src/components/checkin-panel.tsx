@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowLeft, ArrowUpRight, Check, LoaderCircle, Moon, RotateCw, Sparkles, X } from "lucide-react";
 import { CHECKIN_EXPERIENCE_VERSION, CHECKIN_LIMITS, checkinSourceNoteIds, checkinSummarySchema, getCheckinDay, stableStarTheme, stableVisualSeed, suggestCheckinFromNotes, type CheckinSummary } from "@/lib/checkin";
 import { SEVEN_STAR_POINTS, STAR_MATERIALS, starMaterial, starPath } from "@/lib/star-materials";
@@ -11,6 +11,27 @@ import { StarCurtain } from "./star-curtain";
 import { SevenStarCard } from "./seven-star-card";
 const defaultQuote = "把一点微光，留给明天的自己。";
 const ENTRY_STAR_PATH = starPath(SEVEN_STAR_POINTS, 50, 46);
+const JOURNEY_SCENES = [
+  { label: "念头亮起", title: "跟着这一点光，往前走。" },
+  { label: "穿过回声", title: "越靠近，散落的念头越清晰。" },
+  { label: "抵达今夜", title: "今晚的星，在这里。" },
+] as const;
+const JOURNEY_DUST = Array.from({ length: 64 }, (_, index) => ({
+  left: 4 + ((index * 37 + index * index * 3) % 92),
+  top: 3 + ((index * 53 + index * index * 7) % 92),
+  size: 1 + (index % 4) * .45,
+  opacity: .2 + (index % 7) * .055,
+  layer: index % 3,
+}));
+const JOURNEY_STREAKS = Array.from({ length: 22 }, (_, index) => ({
+  angle: index * (360 / 22) + (index % 3) * 2.8,
+  radius: 22 + (index % 6) * 8,
+  length: 34 + (index % 5) * 13,
+}));
+
+function clampJourneyDepth(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
 
 class CheckinRequestError extends Error {
   constructor(message: string, public code?: string) { super(message); }
@@ -169,37 +190,84 @@ interface DialogProps {
 }
 
 function StarJourney({ day, reduced, onArrive }: { day: string; reduced: boolean; onArrive: () => void }) {
-  const [step, setStep] = useState(0);
-  const locked = useRef(false);
-  const scenes = [
-    { label: "念头亮起", title: "跟着这一点光，往前走。" },
-    { label: "穿过回声", title: "有些念头没有消失，只是去了更远的地方。" },
-    { label: "抵达今夜", title: "今晚的星，在这里。" },
-  ];
+  const [depth, setDepth] = useState(0);
+  const depthRef = useRef(0);
+  const gesture = useRef<{ pointerId: number; y: number; at: number; velocity: number } | null>(null);
+  const step = depth < .34 ? 0 : depth < .7 ? 1 : 2;
+  const updateDepth = useCallback((value: number | ((current: number) => number)) => {
+    const next = clampJourneyDepth(typeof value === "function" ? value(depthRef.current) : value);
+    depthRef.current = next;
+    setDepth(next);
+  }, []);
   const advance = useCallback(() => {
-    if (locked.current) return;
-    locked.current = true;
-    window.setTimeout(() => { locked.current = false; }, 420);
-    if (step >= scenes.length - 1) {
-      onArrive();
-      return;
-    }
-    setStep(value => value + 1);
-  }, [onArrive, scenes.length, step]);
+    updateDepth(current => current < .34 ? .38 : current < .7 ? .74 : 1);
+  }, [updateDepth]);
   useEffect(() => {
     if (reduced) { onArrive(); return; }
-    const mobile = window.matchMedia("(max-width: 760px)");
-    if (!mobile.matches) return;
-    const timers = [window.setTimeout(() => setStep(1), 520), window.setTimeout(() => setStep(2), 1040), window.setTimeout(onArrive, 1560)];
-    return () => timers.forEach(window.clearTimeout);
-  }, [onArrive, reduced]);
-  return <section className={styles.journey} data-step={step} tabIndex={0}
-    onWheel={event => { if (Math.abs(event.deltaY) > 12) advance(); }}
-    onKeyDown={event => { if ([" ", "ArrowDown", "PageDown"].includes(event.key)) { event.preventDefault(); advance(); } }}>
-    <div className={styles.journeySky} aria-hidden="true"><span className={styles.thoughtLight} /><i /><i /><i /><i /><i /><i /><i /></div>
-    <div className={styles.journeyCopy} key={step}><span>{scenes[step].label}</span><h2>{scenes[step].title}</h2><p>{step < 2 ? "向下滚动、按空格，或继续轻触" : "再向前一步，就能看见今晚的三颗星。"}</p></div>
-    <div className={styles.journeyProgress} aria-label={`星河旅程第 ${step + 1} 步，共 3 步`}>{Array.from({ length: 7 }, (_, index) => <i key={index} data-active={index <= step * 3} />)}</div>
-    <div className={styles.journeyActions}><button type="button" onClick={advance}>{step === 2 ? "进入星海" : "往前"}<ArrowUpRight size={15} /></button><button type="button" onClick={onArrive}>直接到星海</button></div>
+    if (depth < .995) return;
+    const timer = window.setTimeout(onArrive, 520);
+    return () => window.clearTimeout(timer);
+  }, [depth, onArrive, reduced]);
+  const journeyStyle = {
+    "--journey-depth": depth,
+    "--journey-far-scale": 1 + depth * .82,
+    "--journey-near-scale": 1 + depth * 1.72,
+    "--journey-portal-size": `${76 + depth * 390}px`,
+    "--journey-portal-opacity": .12 + depth * .58,
+    "--journey-streak-opacity": Math.max(0, (depth - .08) * .62),
+    "--journey-streak-scale": .04 + depth * 1.25,
+    "--journey-light-scale": .88 + depth * 1.08,
+    "--journey-sky-brightness": .92 + depth * .28,
+  } as CSSProperties;
+  const scene = JOURNEY_SCENES[step];
+  const progress = Math.round(depth * 100);
+  const onPointerEnd = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    const current = gesture.current;
+    if (!current || current.pointerId !== event.pointerId) return;
+    gesture.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    updateDepth(value => value + Math.max(-.08, Math.min(.14, current.velocity * 130)));
+  }, [updateDepth]);
+  return <section className={styles.journey} data-step={step} tabIndex={0} style={journeyStyle}
+    aria-label="进入星海的手势旅程"
+    onWheel={event => {
+      event.preventDefault();
+      const unit = event.deltaMode === 1 ? 18 : event.deltaMode === 2 ? event.currentTarget.clientHeight : 1;
+      const delta = event.deltaY * unit;
+      updateDepth(value => value + Math.sign(delta) * Math.min(.15, Math.abs(delta) / 680));
+    }}
+    onPointerDown={event => {
+      if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      gesture.current = { pointerId: event.pointerId, y: event.clientY, at: performance.now(), velocity: 0 };
+    }}
+    onPointerMove={event => {
+      const current = gesture.current;
+      if (!current || current.pointerId !== event.pointerId) return;
+      const now = performance.now();
+      const delta = (current.y - event.clientY) / Math.max(300, event.currentTarget.clientHeight * .72);
+      const elapsed = Math.max(8, now - current.at);
+      current.velocity = delta / elapsed;
+      current.y = event.clientY;
+      current.at = now;
+      updateDepth(value => value + delta);
+    }}
+    onPointerUp={onPointerEnd}
+    onPointerCancel={onPointerEnd}
+    onKeyDown={event => {
+      if ([" ", "ArrowDown", "PageDown"].includes(event.key)) { event.preventDefault(); advance(); }
+      if (["ArrowUp", "PageUp"].includes(event.key)) { event.preventDefault(); updateDepth(value => value - .34); }
+    }}>
+    <div className={styles.journeySky} aria-hidden="true">
+      <span className={`${styles.journeyDust} ${styles.journeyDustFar}`}>{JOURNEY_DUST.filter(star => star.layer !== 2).map((star, index) => <i key={index} style={{ left: `${star.left}%`, top: `${star.top}%`, width: `${star.size}px`, height: `${star.size}px`, opacity: star.opacity } as CSSProperties} />)}</span>
+      <span className={`${styles.journeyDust} ${styles.journeyDustNear}`}>{JOURNEY_DUST.filter(star => star.layer === 2).map((star, index) => <i key={index} style={{ left: `${star.left}%`, top: `${star.top}%`, width: `${star.size + .7}px`, height: `${star.size + .7}px`, opacity: Math.min(.72, star.opacity + .16) } as CSSProperties} />)}</span>
+      <span className={styles.journeyPortal} />
+      <span className={styles.journeyStreaks}>{JOURNEY_STREAKS.map((streak, index) => <i key={index} style={{ "--streak-angle": `${streak.angle}deg`, "--streak-radius": `${streak.radius}px`, "--streak-length": `${streak.length}px` } as CSSProperties} />)}</span>
+      <span className={styles.thoughtLight} />
+    </div>
+    <div className={styles.journeyCopy} key={step}><span>{scene.label}</span><h2>{scene.title}</h2><p>{step < 2 ? "滚轮向下，或用手指上滑，朝这点光靠近" : "再向前一点，就能看见今晚的三颗星。"}</p></div>
+    <div className={styles.journeyProgress} role="progressbar" aria-label="前往星海的距离" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>{Array.from({ length: 7 }, (_, index) => <i key={index} data-active={depth >= index / 7} />)}</div>
+    <div className={styles.journeyActions}><button type="button" onClick={advance}>{step === 2 ? "穿过这束光" : "往前"}<ArrowUpRight size={15} /></button><button type="button" onClick={onArrive}>直接到星海</button></div>
     <small>{day.replaceAll("-", ".")} · Q7</small>
   </section>;
 }
