@@ -40,10 +40,10 @@ export function SevenStarCard({ theme, mood, quote, date, totalDays, currentStre
     <svg className={styles.star} viewBox="0 0 100 100" role="presentation" aria-hidden="true">
       <defs>
         <linearGradient id={`${id}-body`} x1="0" y1="0" x2="1" y2="1">
-          <stop stopColor={material.accent} stopOpacity=".94" />
-          <stop offset=".36" stopColor={material.base} stopOpacity={material.opacity} />
-          <stop offset=".7" stopColor={secondary} stopOpacity=".84" />
-          <stop offset="1" stopColor={glow} stopOpacity=".82" />
+          <stop stopColor={material.accent} stopOpacity=".86" />
+          <stop offset=".34" stopColor={material.base} stopOpacity=".82" />
+          <stop offset=".62" stopColor="#49334f" stopOpacity=".74" />
+          <stop offset="1" stopColor={secondary} stopOpacity=".82" />
         </linearGradient>
         <linearGradient id={`${id}-edge`} x1="0" y1="0" x2="1" y2="1">
           <stop stopColor="#fffaff" stopOpacity=".96" />
@@ -62,6 +62,7 @@ export function SevenStarCard({ theme, mood, quote, date, totalDays, currentStre
       <path d={STAR_PATH} fill="none" stroke={glow} strokeOpacity=".7" strokeWidth=".34" transform="translate(0 .5) scale(.985) translate(.75 .75)" />
       <g clipPath={`url(#${id}-clip)`}>
         <rect width="100" height="100" fill={`url(#${id}-center)`} />
+        {SEVEN_STAR_POINTS.filter((_, index) => index % 2 === 0).map((point, index) => <path key={index} d={`M50 50L${50 + point.x * 47} ${50 + point.y * 47}L${50 + SEVEN_STAR_POINTS[(index * 2 + 1) % 14].x * 22} ${50 + SEVEN_STAR_POINTS[(index * 2 + 1) % 14].y * 22}Z`} fill={index % 2 ? material.accent : "#fffaff"} fillOpacity={index % 2 ? ".09" : ".065"} />)}
         <path d="M-10 71C23 84 38 18 112 37" fill="none" stroke="#ffffff" strokeOpacity=".17" strokeWidth="7" />
         <path d="M-10 78C26 90 47 34 112 53" fill="none" stroke={material.accent} strokeOpacity=".2" strokeWidth="2" />
         <g fill="#fffaff">
@@ -70,6 +71,7 @@ export function SevenStarCard({ theme, mood, quote, date, totalDays, currentStre
         <path d="M31 55L45 42L58 49L70 38" fill="none" stroke="#fffaff" strokeOpacity=".28" strokeWidth=".35" />
       </g>
     </svg>
+    <div className={styles.readingPanel} aria-hidden="true" />
     <div className={styles.content}>
       {!flipped ? <>
         <header className={styles.cardHeader}><span className={styles.signature}>Q7</span><span className={styles.date}>{shortDate(date)}</span></header>

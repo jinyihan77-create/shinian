@@ -121,10 +121,27 @@ try {
     height: 900,
   });
   await capture({
+    name: "checkin-journey-desktop.png",
+    url: "http://localhost:3000/design-preview#capture",
+    width: 1440,
+    height: 900,
+    expressions: [
+      "localStorage.clear(); document.querySelector('[aria-label=\"打开星空打卡牌\"]')?.click()",
+    ],
+  });
+  await capture({
+    name: "checkin-stars-mobile.png",
+    url: "http://localhost:3000/design-preview#capture",
+    expressions: [
+      "localStorage.clear(); document.querySelector('[aria-label=\"打开星空打卡牌\"]')?.click()",
+    ],
+    reduceMotion: true,
+  });
+  await capture({
     name: "checkin-mobile.png",
     url: "http://localhost:3000/design-preview#capture",
     expressions: [
-      "document.querySelector('[aria-label=\"摘下今天的星\"]')?.click()",
+      "document.querySelector('[aria-label=\"打开星空打卡牌\"]')?.click()",
       "document.querySelector('[aria-label^=\"摘下第\"]')?.click()",
       "new Promise((resolve) => setTimeout(resolve, 2500))",
     ],

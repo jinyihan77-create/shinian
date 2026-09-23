@@ -30,5 +30,6 @@ export const SEVEN_STAR_POINTS = Array.from({ length: 14 }, (_, index) => {
 });
 
 export function starPath(points: readonly { x: number; y: number }[], center = 50, scale = 46) {
-  return `${points.map((point, index) => `${index ? "L" : "M"}${center + point.x * scale} ${center + point.y * scale}`).join(" ")}Z`;
+  const fixed = (value: number) => Number(value.toFixed(4));
+  return `${points.map((point, index) => `${index ? "L" : "M"}${fixed(center + point.x * scale)} ${fixed(center + point.y * scale)}`).join(" ")}Z`;
 }

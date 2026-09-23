@@ -1,15 +1,16 @@
 .card { position:relative; width:min(100%, 430px); aspect-ratio:1 / 1; margin:auto; isolation:isolate; color:#fff8fd; filter:drop-shadow(0 22px 32px #08050d75) drop-shadow(0 0 18px #e2afd933); transform:translateZ(0); }
 .star { position:absolute; inset:0; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 0 8px var(--star-glow, #e6b5df)); }
 .glow { position:absolute; inset:8%; z-index:-1; border-radius:50%; filter:blur(25px); opacity:.64; }
-.content { position:absolute; inset:20% 22%; display:flex; flex-direction:column; justify-content:space-between; z-index:2; text-align:center; pointer-events:none; }
-.cardHeader,.cardFooter { display:flex; align-items:center; justify-content:space-between; gap:9px; color:#fff8fcbb; font-size:9px; letter-spacing:.08em; text-transform:uppercase; }
+.readingPanel { position:absolute; inset:18.5% 19.5%; z-index:1; clip-path:polygon(50% 0, 84% 16%, 100% 48%, 91% 82%, 65% 100%, 35% 100%, 9% 82%, 0 48%, 16% 16%); border-radius:24%; background:radial-gradient(circle at 35% 20%,#ffffff21,transparent 39%),linear-gradient(145deg,#2a182e9c,#251a37b5 54%,#192c3e9e); box-shadow:inset 0 1px 0 #ffffff4f,inset 0 0 35px #ffffff0d,0 0 0 1px #fff4fa35,0 0 24px #140c1f52; backdrop-filter:blur(13px) saturate(1.16); }
+.content { position:absolute; inset:21% 22%; display:flex; flex-direction:column; justify-content:space-between; z-index:2; text-align:center; pointer-events:none; }
+.cardHeader,.cardFooter { display:flex; align-items:center; justify-content:space-between; gap:9px; color:#fff8fcce; font-size:10px; letter-spacing:.08em; text-transform:uppercase; }
 .signature { color:#fffaff; font-weight:650; letter-spacing:.18em; text-shadow:0 0 10px #ffffff5c; }
 .date { font-variant-numeric:tabular-nums; }
 .frontCopy { display:grid; gap:12px; align-items:center; justify-items:center; min-width:0; }
 .label { display:inline-flex; align-items:center; min-height:24px; padding:3px 10px; border:1px solid #ffffff4d; border-radius:999px; background:#ffffff14; color:#fff7fb; font-size:10px; box-shadow:inset 0 1px 0 #ffffff38; }
-.frontCopy p { max-width:21ch; margin:0; color:#fffaff; font-family:var(--display-font); font-size:clamp(16px, 2.4vw, 22px); line-height:1.55; letter-spacing:.03em; overflow-wrap:anywhere; text-wrap:balance; text-shadow:0 2px 18px #160d1f70; }
+.frontCopy p { max-width:20ch; margin:0; color:#fffaff; font-family:var(--display-font); font-size:clamp(18px, 2.5vw, 23px); line-height:1.52; letter-spacing:.03em; overflow-wrap:anywhere; text-wrap:balance; text-shadow:0 2px 18px #09050ea6; }
 .frontCopy .emptyCopy { color:#fffaffb8; font-size:14px; }
-.cardFooter { color:#fffaff9c; font-size:8px; letter-spacing:.04em; }
+.cardFooter { color:#fffaffb0; font-size:8px; letter-spacing:.04em; }
 .backCopy { display:grid; justify-items:center; gap:7px; }
 .backCopy strong { color:#fffaff; font-size:clamp(44px, 7vw, 72px); line-height:1; font-weight:300; letter-spacing:.04em; text-shadow:0 0 20px #ffffff47; }
 .backCopy > span { color:#fffaffbe; font-size:10px; letter-spacing:.12em; }
@@ -20,5 +21,5 @@
 .sheen { position:absolute; inset:17%; z-index:3; pointer-events:none; border-radius:50%; background:linear-gradient(114deg,transparent 35%,#fffaff2d 45%,transparent 54%); transform:translateX(-140%) rotate(-16deg); animation:star-sheen 8s ease-in-out infinite; mix-blend-mode:screen; }
 .flipped .sheen { animation-delay:-3s; }
 @keyframes star-sheen { 0%,42% { transform:translateX(-140%) rotate(-16deg); opacity:0; } 56%,70% { transform:translateX(140%) rotate(-16deg); opacity:.7; } 82%,100% { transform:translateX(140%) rotate(-16deg); opacity:0; } }
-@media (max-width:760px) { .card { width:min(100%, 330px); } .content { inset:20% 21%; } .frontCopy p { font-size:17px; } .cardFooter { font-size:7px; } .orbit { gap:7px; } .orbit i { width:7px; height:7px; } }
+@media (max-width:760px) { .card { width:min(100%, 340px); } .readingPanel { inset:18% 18.5%; } .content { inset:20.5% 21%; } .frontCopy p { font-size:19px; } .cardHeader { font-size:9px; } .cardFooter { font-size:7px; } .orbit { gap:7px; } .orbit i { width:7px; height:7px; } }
 @media (prefers-reduced-motion:reduce) { .sheen { animation:none; } }

@@ -27,7 +27,7 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 const mood = () => screen.getByRole("textbox", { name: "此刻的心情" }) as HTMLInputElement;
 const quote = () => screen.getByRole("textbox", { name: /挂在牌上的一句话/ }) as HTMLTextAreaElement;
 const stats = () => document.querySelector('[aria-live="polite"]')!.textContent;
-const submit = () => screen.getByRole("button", { name: "收下今天的星" }) as HTMLButtonElement;
+const syncStatus = () => screen.getByRole("status", { name: "星笺同步状态" });
 const pickStar = () => fireEvent.click(screen.getByRole("button", { name: "摘下第 1 颗星星" }));
 function openCard() {
   fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
@@ -54,7 +54,7 @@ async function openReal() {
   fetchMock.mockResolvedValueOnce(json(base));
   render(<CheckinPanel userId="owner-1" />);
   openCard();
-  await waitFor(() => expect(submit().disabled).toBe(false));
+  await waitFor(() => expect(syncStatus().textContent).toContain("正在把这颗星"));
   fireEvent.change(mood(), { target: { value: "好奇" } });
   fireEvent.change(quote(), { target: { value: "留住今天的一点光。" } });
 }
@@ -68,12 +68,12 @@ describe("check-in panel confirmed-save behavior", () => {
     expect(screen.getByRole("button", { name: "摘下第 1 颗星星" })).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "此刻的心情" })).toBeNull();
     pickStar();
-    await waitFor(() => expect(submit().disabled).toBe(false));
+    await waitFor(() => expect(syncStatus().textContent).toContain("正在把这颗星"));
     expect(stats()).toContain("累计 3 天");
     expect(stats()).toContain("连续 2 天");
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][1]?.method).toBe("GET");
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(syncStatus().textContent).toContain("正在把这颗星");
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: /给今天，\s*留一颗星。/ }));
   });
 
@@ -82,7 +82,7 @@ describe("check-in panel confirmed-save behavior", () => {
     render(<CheckinPanel userId="owner-1" />);
     openCard();
 
-    expect(await screen.findByRole("button", { name: "今天已收好" }, { timeout: 3000 })).toBeTruthy();
+    await waitFor(() => expect(syncStatus().textContent).toContain("已留在今天"), { timeout: 3000 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1][1]?.method).toBe("POST");
     expect(stats()).toContain("累计 4 天");
@@ -96,7 +96,7 @@ describe("check-in panel confirmed-save behavior", () => {
     expect(mood().value).toBe("好奇");
     expect(quote().value).toBe("留住今天的一点光。");
     expect(stats()).toContain("累计 3 天");
-    expect(submit().disabled).toBe(false);
+    expect(syncStatus().textContent).toContain("正在把这颗星");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -109,7 +109,7 @@ describe("check-in panel confirmed-save behavior", () => {
     expect(screen.getByRole("button", { name: "摘下第 1 颗星星" })).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "此刻的心情" })).toBeNull();
     pickStar();
-    await waitFor(() => expect(submit().disabled).toBe(false));
+    await waitFor(() => expect(syncStatus().textContent).toContain("正在把这颗星"));
     expect(mood().value).toBe("好奇");
     expect(quote().value).toBe("留住今天的一点光。");
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -120,14 +120,11 @@ describe("check-in panel confirmed-save behavior", () => {
     render(<CheckinPanel preview />);
     openCard();
     expect(stats()).toContain("累计 0 天");
-    fireEvent.click(await screen.findByRole("button", { name: "体验收下这颗星" }));
-    expect(await screen.findByRole("button", { name: "演示已体验 · 未保存" })).toBeTruthy();
-    expect(screen.getByRole("status").textContent).toContain("不会保存");
+    await waitFor(() => expect(syncStatus().textContent).toContain("演示星笺"));
+    expect(screen.getAllByText(/不会保存/).length).toBeGreaterThan(0);
     expect(screen.getByText("演示天数")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "再摘一颗" }));
-    pickStar();
     expect(stats()).toContain("累计 1 天");
-    expect((screen.getByRole("button", { name: "演示已体验 · 未保存" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: "再摘一颗" })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -135,8 +132,7 @@ describe("check-in panel confirmed-save behavior", () => {
     await openReal();
     let acknowledge!: (response: Response) => void;
     fetchMock.mockReturnValueOnce(new Promise(resolve => { acknowledge = resolve; }));
-    const form = submit().closest("form")!;
-    fireEvent.submit(form); fireEvent.submit(form);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "POST", credentials: "same-origin",
       headers: { "x-echo-user-id": "owner-1" } });
@@ -149,26 +145,23 @@ describe("check-in panel confirmed-save behavior", () => {
     expect((screen.getByRole("button", { name: "关闭打卡牌" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText("今天的打卡已保存到你的私人账号。")).toBeNull();
     await act(async () => { acknowledge(json(saved)); });
-    expect(screen.getByRole("button", { name: "今天已收好" })).toBeTruthy();
+    expect(syncStatus().textContent).toContain("已留在今天");
     expect(stats()).toContain("累计 4 天");
-    expect(screen.getByRole("status").textContent).toContain("已保存到你的私人账号");
-    fireEvent.click(screen.getByRole("button", { name: "再摘一颗" }));
-    pickStar();
-    expect((screen.getByRole("button", { name: "今天已收好" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("今天的打卡已保存到你的私人账号。")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "再摘一颗" })).toBeNull();
     expect(stats()).toContain("累计 4 天");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("keeps text and unchanged counts after an unknown network result", async () => {
     await openReal(); fetchMock.mockRejectedValueOnce(new TypeError("offline"));
-    fireEvent.click(submit());
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("尚未确认打卡"));
     expect(mood().value).toBe("好奇"); expect(quote().value).toBe("留住今天的一点光。");
     expect(stats()).toContain("累计 3 天");
-    expect(screen.queryByRole("status")).toBeNull(); expect(submit().disabled).toBe(true);
-    fetchMock.mockResolvedValueOnce(json(base));
-    fireEvent.click(screen.getByRole("button", { name: "重新读取打卡" }));
-    await waitFor(() => expect(submit().disabled).toBe(false));
+    expect(syncStatus().textContent).toContain("还没有同步");
+    fetchMock.mockResolvedValueOnce(json(base)).mockResolvedValueOnce(json(saved));
+    fireEvent.click(screen.getByRole("button", { name: "重新核对并同步" }));
+    await waitFor(() => expect(syncStatus().textContent).toContain("已留在今天"), { timeout: 2500 });
     expect(quote().value).toBe("留住今天的一点光。");
   });
 
@@ -176,9 +169,8 @@ describe("check-in panel confirmed-save behavior", () => {
     await openReal();
     fetchMock.mockResolvedValueOnce(json({ error: "日期已经变化，请刷新后再试。", code: "DAY_CHANGED" }, 409))
       .mockResolvedValueOnce(json({ ...base, today: "2026-09-22" }));
-    fireEvent.click(submit());
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    await waitFor(() => expect(submit().disabled).toBe(false));
+    await waitFor(() => expect(syncStatus().textContent).toContain("正在把这颗星"));
     expect(mood().value).toBe("好奇"); expect(quote().value).toBe("留住今天的一点光。");
     expect(screen.queryByText("今天的打卡已保存到你的私人账号。")).toBeNull();
     expect(fetchMock.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(1);
@@ -186,23 +178,39 @@ describe("check-in panel confirmed-save behavior", () => {
 
   it("does not turn a malformed successful HTTP response into a saved state", async () => {
     await openReal(); fetchMock.mockResolvedValueOnce(json({ ...base, totalDays: 4 }));
-    fireEvent.click(submit());
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("尚未确认有效"));
     expect(stats()).toContain("累计 3 天"); expect(quote().value).toBe("留住今天的一点光。");
-    expect(screen.queryByRole("button", { name: "今天已收好" })).toBeNull();
+    expect(syncStatus().textContent).toContain("还没有同步");
   });
 
   it("never reuses an old confirmed entry as today's success when a new read fails", async () => {
     fetchMock.mockResolvedValueOnce(json(saved));
     render(<CheckinPanel userId="owner-1" />);
     openCard();
-    expect(await screen.findByRole("button", { name: "今天已收好" })).toBeTruthy();
+    await waitFor(() => expect(syncStatus().textContent).toContain("已留在今天"));
     fireEvent.click(screen.getByRole("button", { name: "关闭打卡牌" }));
     fetchMock.mockRejectedValueOnce(new TypeError("offline"));
     openCard();
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("尚未确认打卡"));
-    expect(screen.queryByRole("button", { name: "今天已收好" })).toBeNull();
+    expect(syncStatus().textContent).not.toContain("已留在今天");
     expect(screen.queryByText("今天的心情已经收好。明天再挂上一句新的话。")).toBeNull();
     expect(quote().value).toBe("");
+  });
+
+  it("auto-saves a manual star-note edit with revision protection", async () => {
+    const versioned = { ...saved, entry: { ...saved.entry!, revision: 1, updatedAt: "2026-09-21T01:00:00.000Z" } };
+    const updated = { ...versioned, entry: { ...versioned.entry!, quote: "这是我手动留下的文字。", revision: 2, updatedAt: "2026-09-21T02:00:00.000Z" } };
+    fetchMock.mockResolvedValueOnce(json(versioned)).mockResolvedValueOnce(json(updated));
+    render(<CheckinPanel userId="owner-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
+    await waitFor(() => expect(syncStatus().textContent).toContain("已留在今天"));
+    fireEvent.change(quote(), { target: { value: "这是我手动留下的文字。" } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2), { timeout: 2500 });
+    expect(fetchMock.mock.calls[1][1]?.method).toBe("PATCH");
+    expect(JSON.parse(fetchMock.mock.calls[1][1]!.body as string)).toEqual({
+      expectedDay: base.today, mood: "好奇", quote: "这是我手动留下的文字。", expectedRevision: 1,
+    });
+    expect(await screen.findByText("星笺调整已保存。")).toBeTruthy();
+    expect(stats()).toContain("累计 4 天");
   });
 });

@@ -102,6 +102,15 @@ function dayInShanghai(value: string) {
   return Number.isFinite(date.getTime()) ? getCheckinDay(date) : "";
 }
 
+/** Returns the notes that can be traced back from a daily star card. */
+export function checkinSourceNoteIds(notes: readonly EchoNote[], today = getCheckinDay()): string[] {
+  return notes
+    .filter(note => dayInShanghai(note.updatedAt || note.createdAt) === today)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .map(note => note.id)
+    .slice(0, 20);
+}
+
 function firstThought(value: string) {
   const clean = value.replace(/\s+/g, " ").trim();
   if (!clean) return "";
