@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkinSummarySchema, type CheckinSummary } from "../src/lib/checkin";
 import { ApiError } from "../src/lib/server/http";
-import { GET, POST } from "../src/app/api/checkins/route";
+import { GET, PATCH, POST } from "../src/app/api/checkins/route";
 
 const mocks = vi.hoisted(() => ({ requirePrivateUser: vi.fn(), rpc: vi.fn() }));
 vi.mock("../src/lib/server/supabase", () => ({ requirePrivateUser: mocks.requirePrivateUser }));
@@ -39,7 +39,11 @@ describe("check-in HTTP contract", () => {
     acknowledge({ data: saved, error: null });
     const response = await pending;
     expect(response.status).toBe(200); expect(await response.json()).toEqual(saved);
-    expect(mocks.rpc).toHaveBeenCalledWith("echo_create_checkin", { p_expected_day: input.expectedDay, p_mood: input.mood, p_quote: input.quote });
+    expect(mocks.rpc).toHaveBeenCalledWith("echo_create_checkin", {
+      p_expected_day: input.expectedDay, p_mood: input.mood, p_quote: input.quote,
+      p_star_variant: 0, p_theme_id: "climate-0", p_material_id: "frost",
+      p_visual_seed: "0", p_experience_version: 2, p_source_note_ids: [],
+    });
   });
   it("rejects long text, impossible dates and owner injection before storage", async () => {
     for (const value of [{ ...input, mood: "心".repeat(25) }, { ...input, quote: "句".repeat(101) },
@@ -67,5 +71,15 @@ describe("check-in HTTP contract", () => {
       expect((await POST(request(input))).status).toBe(502);
     }
     expect(checkinSummarySchema.safeParse({ ...saved, currentStreak: 20 }).success).toBe(false);
+  });
+  it("updates today's text with an expected revision without increasing the count", async () => {
+    const updated: CheckinSummary = { ...saved, entry: { ...saved.entry!, mood: "明亮", quote: "新的回响", revision: 2, updatedAt: "2026-09-21T02:00:00.000Z" } };
+    mocks.rpc.mockResolvedValueOnce({ data: updated, error: null });
+    const response = await PATCH(request({ expectedDay: input.expectedDay, mood: "明亮", quote: "新的回响", expectedRevision: 1 }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(updated);
+    expect(mocks.rpc).toHaveBeenCalledWith("echo_update_checkin", {
+      p_expected_day: input.expectedDay, p_mood: "明亮", p_quote: "新的回响", p_expected_revision: 1,
+    });
   });
 });

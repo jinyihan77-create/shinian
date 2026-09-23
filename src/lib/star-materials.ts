@@ -21,3 +21,14 @@ export const STAR_POINTS = Array.from({ length: 10 }, (_, index) => {
   return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
 });
 export const STAR_CLIP = `polygon(${STAR_POINTS.map(p => `${50 + p.x * 47}% ${50 + p.y * 47}%`).join(",")})`;
+
+/** The seven-point silhouette used by the final daily star note. */
+export const SEVEN_STAR_POINTS = Array.from({ length: 14 }, (_, index) => {
+  const angle = -Math.PI / 2 + index * Math.PI / 7;
+  const radius = index % 2 ? .48 : 1;
+  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+});
+
+export function starPath(points: readonly { x: number; y: number }[], center = 50, scale = 46) {
+  return `${points.map((point, index) => `${index ? "L" : "M"}${center + point.x * scale} ${center + point.y * scale}`).join(" ")}Z`;
+}

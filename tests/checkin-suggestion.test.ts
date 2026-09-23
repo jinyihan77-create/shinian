@@ -16,6 +16,6 @@ describe("suggestCheckinFromNotes", () => {
   });
 
   it("is honest when there is no note today", () => {
-    expect(suggestCheckinFromNotes([], "2026-09-23")).toEqual({ mood: "平静", quote: "把一点微光，留给明天的自己。", sourceCount: 0 });
+    expect(suggestCheckinFromNotes([], "2026-09-23")).toEqual({ mood: "", quote: "", sourceCount: 0 });
   });
 });

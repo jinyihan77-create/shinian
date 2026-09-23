@@ -140,7 +140,10 @@ describe("check-in panel confirmed-save behavior", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "POST", credentials: "same-origin",
       headers: { "x-echo-user-id": "owner-1" } });
-    expect(JSON.parse(fetchMock.mock.calls[1][1]!.body as string)).toEqual({ expectedDay: base.today, mood: "好奇", quote: "留住今天的一点光。" });
+    expect(JSON.parse(fetchMock.mock.calls[1][1]!.body as string)).toMatchObject({
+      expectedDay: base.today, mood: "好奇", quote: "留住今天的一点光。",
+      starVariant: 0, experienceVersion: 2, sourceNoteIds: [],
+    });
     expect(stats()).toContain("累计 3 天");
     expect((screen.getByRole("button", { name: "再摘一颗" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "关闭打卡牌" }) as HTMLButtonElement).disabled).toBe(true);
@@ -200,6 +203,6 @@ describe("check-in panel confirmed-save behavior", () => {
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("尚未确认打卡"));
     expect(screen.queryByRole("button", { name: "今天已收好" })).toBeNull();
     expect(screen.queryByText("今天的心情已经收好。明天再挂上一句新的话。")).toBeNull();
-    expect(quote().value).toBe("把一点微光，留给明天的自己。");
+    expect(quote().value).toBe("");
   });
 });

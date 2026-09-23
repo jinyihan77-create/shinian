@@ -1,42 +1,24 @@
--- Private daily check-ins. All writes use the database clock in Asia/Shanghai.
-create table if not exists public.echo_checkins (
-  user_id uuid not null references auth.users(id) on delete cascade,
-  day date not null,
-  mood text not null default '' check (char_length(mood) <= 24),
-  quote text not null default '' check (char_length(quote) <= 100),
-  star_variant integer not null default 0 check (star_variant between 0 and 2),
-  theme_id text not null default 'climate-0' check (char_length(theme_id) <= 64),
-  material_id text not null default 'frost' check (char_length(material_id) <= 64),
-  visual_seed text not null default '0' check (char_length(visual_seed) <= 128),
-  experience_version integer not null default 2 check (experience_version > 0 and experience_version <= 99),
-  source_note_ids text[] not null default '{}',
-  created_at timestamptz not null default clock_timestamp(),
-  primary key (user_id, day)
-);
+-- Upgrade daily check-ins to replay the same seven-point star across devices.
 alter table public.echo_checkins add column if not exists star_variant integer not null default 0;
 alter table public.echo_checkins add column if not exists theme_id text not null default 'climate-0';
 alter table public.echo_checkins add column if not exists material_id text not null default 'frost';
 alter table public.echo_checkins add column if not exists visual_seed text not null default '0';
 alter table public.echo_checkins add column if not exists experience_version integer not null default 2;
 alter table public.echo_checkins add column if not exists source_note_ids text[] not null default '{}';
-alter table public.echo_checkins enable row level security;
-drop policy if exists echo_checkins_owner_read on public.echo_checkins;
-create policy echo_checkins_owner_read on public.echo_checkins for select to authenticated
-  using (user_id = (select auth.uid()) and (select public.echo_is_private_member()));
-revoke all on public.echo_checkins from public, anon, authenticated;
-grant select on public.echo_checkins to authenticated;
+alter table public.echo_checkins add column if not exists updated_at timestamptz not null default clock_timestamp();
+alter table public.echo_checkins add column if not exists revision integer not null default 1;
 
--- The date parameter is deliberately unavailable to API callers.
 create or replace function public.echo_checkin_summary(p_today date) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
-  v_user uuid := public.echo_require_member();
+  v_user uuid;
   v_total bigint;
   v_streak bigint := 0;
   v_anchor date;
   v_cursor date;
   v_entry jsonb := null;
 begin
+  v_user := public.echo_require_member();
   select count(*), max(day) into v_total, v_anchor
     from public.echo_checkins where user_id = v_user and day <= p_today;
   if v_anchor >= p_today - 1 then
@@ -51,7 +33,8 @@ begin
     'createdAt', to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
     'starVariant', star_variant, 'themeId', theme_id, 'materialId', material_id,
     'visualSeed', visual_seed, 'experienceVersion', experience_version,
-    'sourceNoteIds', to_jsonb(source_note_ids)
+    'sourceNoteIds', to_jsonb(source_note_ids), 'revision', revision,
+    'updatedAt', to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
   ) into v_entry from public.echo_checkins where user_id = v_user and day = p_today;
   return jsonb_build_object(
     'today', to_char(p_today, 'YYYY-MM-DD'), 'totalDays', v_total,
@@ -60,31 +43,20 @@ begin
 end;
 $$;
 
-create or replace function public.echo_get_checkin() returns jsonb
-language plpgsql security definer set search_path = '' as $$
-begin
-  return public.echo_checkin_summary((clock_timestamp() at time zone 'Asia/Shanghai')::date);
-end;
-$$;
-
-drop function if exists public.echo_create_checkin(date, text, text);
+drop function if exists public.echo_create_checkin(date,text,text);
 create or replace function public.echo_create_checkin(
-  p_expected_day date,
-  p_mood text,
-  p_quote text,
-  p_star_variant integer default 0,
-  p_theme_id text default 'climate-0',
-  p_material_id text default 'frost',
-  p_visual_seed text default '0',
-  p_experience_version integer default 2,
-  p_source_note_ids text[] default '{}'
+  p_expected_day date, p_mood text, p_quote text,
+  p_star_variant integer default 0, p_theme_id text default 'climate-0',
+  p_material_id text default 'frost', p_visual_seed text default '0',
+  p_experience_version integer default 2, p_source_note_ids text[] default '{}'
 ) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
-  v_user uuid := public.echo_require_member();
+  v_user uuid;
   v_now timestamptz := clock_timestamp();
   v_today date := (v_now at time zone 'Asia/Shanghai')::date;
 begin
+  v_user := public.echo_require_member();
   if p_expected_day is null or p_expected_day <> v_today then
     raise exception using errcode = 'P0001', message = 'CHECKIN_DAY_CHANGED';
   end if;
@@ -97,17 +69,48 @@ begin
     or p_source_note_ids is null or cardinality(p_source_note_ids) > 20 then
     raise exception using errcode = '22023', message = 'INVALID_CHECKIN_INPUT';
   end if;
-  -- The unique key serializes competing devices. A retry preserves the first entry.
-  insert into public.echo_checkins(user_id, day, mood, quote, star_variant, theme_id, material_id, visual_seed, experience_version, source_note_ids, created_at)
-    values(v_user, v_today, btrim(p_mood), btrim(p_quote), p_star_variant, btrim(p_theme_id), btrim(p_material_id), btrim(p_visual_seed), p_experience_version, p_source_note_ids, v_now)
-    on conflict(user_id, day) do nothing;
+  insert into public.echo_checkins(
+    user_id, day, mood, quote, star_variant, theme_id, material_id,
+    visual_seed, experience_version, source_note_ids, created_at, updated_at, revision
+  ) values(
+    v_user, v_today, btrim(p_mood), btrim(p_quote), p_star_variant,
+    btrim(p_theme_id), btrim(p_material_id), btrim(p_visual_seed),
+    p_experience_version, p_source_note_ids, v_now, v_now, 1
+  ) on conflict(user_id, day) do nothing;
   return public.echo_checkin_summary(v_today);
 end;
 $$;
 
 revoke all on function public.echo_checkin_summary(date) from public, anon, authenticated;
-revoke all on function public.echo_get_checkin() from public, anon;
 revoke all on function public.echo_create_checkin(date,text,text,integer,text,text,text,integer,text[]) from public, anon;
 grant execute on function public.echo_get_checkin() to authenticated;
 grant execute on function public.echo_create_checkin(date,text,text,integer,text,text,text,integer,text[]) to authenticated;
+create or replace function public.echo_update_checkin(
+  p_expected_day date, p_mood text, p_quote text, p_expected_revision integer
+) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_user uuid;
+  v_today date := (clock_timestamp() at time zone 'Asia/Shanghai')::date;
+begin
+  v_user := public.echo_require_member();
+  if p_expected_day is null or p_expected_day <> v_today then
+    raise exception using errcode = 'P0001', message = 'CHECKIN_DAY_CHANGED';
+  end if;
+  if p_mood is null or p_quote is null or char_length(p_mood) > 24 or char_length(p_quote) > 100
+    or p_expected_revision is null or p_expected_revision < 1 then
+    raise exception using errcode = '22023', message = 'INVALID_CHECKIN_INPUT';
+  end if;
+  update public.echo_checkins
+    set mood = btrim(p_mood), quote = btrim(p_quote), updated_at = clock_timestamp(), revision = revision + 1
+    where user_id = v_user and day = v_today and revision = p_expected_revision;
+  if not found then
+    raise exception using errcode = '40001', message = 'CHECKIN_EDIT_CONFLICT';
+  end if;
+  return public.echo_checkin_summary(v_today);
+end;
+$$;
+
+revoke all on function public.echo_update_checkin(date,text,text,integer) from public, anon;
+grant execute on function public.echo_update_checkin(date,text,text,integer) to authenticated;
 NOTIFY pgrst, 'reload schema';

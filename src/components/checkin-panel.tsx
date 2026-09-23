@@ -1,28 +1,28 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowLeft, ArrowUpRight, Check, LoaderCircle, Moon, Pause, Play, RefreshCw, RotateCw, Sparkles, X } from "lucide-react";
-import { CHECKIN_LIMITS, checkinSummarySchema, getCheckinDay, suggestCheckinFromNotes, type CheckinSummary } from "@/lib/checkin";
-import { createCheckinArtwork } from "@/lib/checkin-art";
-import { STAR_MATERIALS, starMaterial } from "@/lib/star-materials";
+import { ArrowLeft, ArrowUpRight, Check, LoaderCircle, Moon, RefreshCw, RotateCw, Sparkles, X } from "lucide-react";
+import { CHECKIN_EXPERIENCE_VERSION, CHECKIN_LIMITS, checkinSummarySchema, getCheckinDay, stableStarTheme, stableVisualSeed, suggestCheckinFromNotes, type CheckinSummary } from "@/lib/checkin";
+import { SEVEN_STAR_POINTS, STAR_MATERIALS, starMaterial, starPath } from "@/lib/star-materials";
 import type { EchoNote } from "@/lib/types";
 import styles from "./checkin-panel.module.css";
 import { StarCurtain } from "./star-curtain";
-
-const LanyardCheckin = dynamic(() => import("./lanyard-checkin"), { ssr: false });
+import { SevenStarCard } from "./seven-star-card";
 const defaultQuote = "把一点微光，留给明天的自己。";
+const ENTRY_STAR_PATH = starPath(SEVEN_STAR_POINTS, 50, 46);
 
 class CheckinRequestError extends Error {
   constructor(message: string, public code?: string) { super(message); }
 }
 
-async function requestCheckin(userId: string, input?: { expectedDay: string; mood: string; quote: string }, signal?: AbortSignal): Promise<CheckinSummary> {
+type CheckinSaveInput = { expectedDay: string; mood: string; quote: string; starVariant: number; themeId: string; materialId: string; visualSeed: string; experienceVersion: number; sourceNoteIds: string[] };
+type CheckinUpdateInput = { expectedDay: string; mood: string; quote: string; expectedRevision: number };
+async function requestCheckin(userId: string, input?: CheckinSaveInput | CheckinUpdateInput, signal?: AbortSignal, writeMethod: "POST" | "PATCH" = "POST"): Promise<CheckinSummary> {
   let response: Response;
   try {
     response = await fetch("/api/checkins", {
-      method: input ? "POST" : "GET", credentials: "same-origin", cache: "no-store",
+      method: input ? writeMethod : "GET", credentials: "same-origin", cache: "no-store",
       headers: { "Content-Type": "application/json", "x-echo-user-id": userId },
       ...(input ? { body: JSON.stringify(input) } : {}), signal: signal ?? AbortSignal.timeout(20000),
     });
@@ -55,21 +55,27 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
   const [notice, setNotice] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState(0);
   const busyRef = useRef(false);
   const preserveDraftRef = useRef(false);
   const customizedRef = useRef(false);
   const lastTheme = useRef(-1);
+  const currentSuggestion = suggestCheckinFromNotes(notes);
 
   function chooseTheme() {
-    const seed = window.crypto.getRandomValues(new Uint32Array(1))[0] % 100000;
-    const next = seed % STAR_MATERIALS.length === lastTheme.current ? seed + 1 : seed;
-    lastTheme.current = next % STAR_MATERIALS.length;
+    const next = (lastTheme.current + 1 + STAR_MATERIALS.length) % STAR_MATERIALS.length;
+    lastTheme.current = next;
     setTheme(next);
   }
   function show() {
-    const suggestion = suggestCheckinFromNotes(notes);
+    const suggestion = currentSuggestion;
     if (!customizedRef.current) { setMood(suggestion.mood); setQuote(suggestion.quote); }
-    chooseTheme(); preserveDraftRef.current = false; setFlipped(false); setError(""); setNotice(""); setOpen(true);
+    const day = getCheckinDay();
+    const initial = stableStarTheme(userId ?? "preview", day, STAR_MATERIALS.length);
+    lastTheme.current = initial;
+    setTheme(initial); setSelectedVariant(0); preserveDraftRef.current = false; setFlipped(false); setError(""); setNotice("");
+    if (!preview) setSummary(null);
+    setOpen(true);
   }
   const close = useCallback(() => { if (!busyRef.current) setOpen(false); }, []);
 
@@ -92,6 +98,9 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
       setSummary(value);
       if (value.entry && !preserveDraftRef.current) {
         setMood(value.entry.mood); setQuote(value.entry.quote);
+        const savedTheme = Number((value.entry.themeId ?? "").replace(/^climate-/, ""));
+        if (Number.isFinite(savedTheme)) { lastTheme.current = savedTheme; setTheme(savedTheme); }
+        setSelectedVariant(value.entry.starVariant ?? 0);
       } else if (value.entry && preserveDraftRef.current) {
         setNotice("你的本地文字仍保留在输入框里；今天已有一条云端记录，这次文字尚未保存。");
       }
@@ -107,8 +116,8 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
     try {
       const value = preview ? {
         today: summary.today, totalDays: 1, currentStreak: 1,
-        entry: { day: summary.today, mood: mood.trim(), quote: quote.trim(), createdAt: new Date().toISOString() },
-      } : await requestCheckin(userId!, { expectedDay: summary.today, mood: mood.trim(), quote: quote.trim() });
+        entry: { day: summary.today, mood: mood.trim(), quote: quote.trim(), createdAt: new Date().toISOString(), starVariant: selectedVariant, themeId: `climate-${theme % 7}`, materialId: starMaterial(theme).kind, visualSeed: stableVisualSeed(userId ?? "preview", summary.today), experienceVersion: CHECKIN_EXPERIENCE_VERSION, sourceNoteIds: notes.filter(note => (note.updatedAt || note.createdAt).slice(0, 10) === summary.today).map(note => note.id).slice(0, 20) },
+      } : await requestCheckin(userId!, { expectedDay: summary.today, mood: mood.trim(), quote: quote.trim(), starVariant: selectedVariant, themeId: `climate-${theme % 7}`, materialId: starMaterial(theme).kind, visualSeed: stableVisualSeed(userId!, summary.today), experienceVersion: CHECKIN_EXPERIENCE_VERSION, sourceNoteIds: notes.filter(note => (note.updatedAt || note.createdAt).slice(0, 10) === summary.today).map(note => note.id).slice(0, 20) });
       setSummary(value); setMood(value.entry!.mood); setQuote(value.entry!.quote); setFlipped(false);
       setNotice(preview ? "已展示一次打卡效果。演示天数仅在当前页面，不会保存。" : "今天的打卡已保存到你的私人账号。");
     } catch (err) {
@@ -121,18 +130,33 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
     } finally { busyRef.current = false; setBusy(false); }
   }
 
+  useEffect(() => {
+    const entry = summary?.entry;
+    const expectedDay = summary?.today;
+    if (!open || preview || !entry?.revision || !expectedDay || !userId || accountPaused || busyRef.current || (entry.mood === mood.trim() && entry.quote === quote.trim())) return;
+    const timer = window.setTimeout(() => {
+      if (busyRef.current) return;
+      busyRef.current = true; setBusy(true); setError(""); setNotice("正在同步调整…");
+      void requestCheckin(userId, { expectedDay, mood: mood.trim(), quote: quote.trim(), expectedRevision: entry.revision! }, undefined, "PATCH")
+        .then(value => { setSummary(value); setNotice("星笺调整已保存。"); })
+        .catch(err => { setError(err instanceof Error ? err.message : "星笺调整尚未确认，文字仍为你保留。"); setNotice(""); })
+        .finally(() => { busyRef.current = false; setBusy(false); });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [accountPaused, mood, open, preview, quote, summary, userId]);
+
   return <>
     <button id="daily-star-entry" className={`${styles.entry} ${compact ? styles.entryCompact : ""}`} onClick={show} aria-label="打开星空打卡牌">
-      <span className={styles.entryArt} aria-hidden="true"><span className={styles.entryCord} /><span className={styles.entryBadge}><svg viewBox="0 0 100 140"><rect x="8" y="8" width="84" height="124" rx="10" fill="#24213b" stroke="currentColor" strokeOpacity=".72" /><path d="M18 39h64M18 93h64" stroke="currentColor" strokeOpacity=".16" /><circle cx="27" cy="25" r="1.8" fill="#f7eaff" /><circle cx="67" cy="48" r="1.3" fill="#e3d7ff" /><circle cx="43" cy="74" r="1" fill="#fff" /><circle cx="75" cy="108" r="1.8" fill="#f6e5ff" /></svg><small>SHINIAN</small></span></span>
-      <span className={styles.entryCopy}><span className={styles.eyebrow}>Q7 · 每天一点微光</span><strong>给今天，摘一颗星</strong><span>今天的记录已经替你拾好一句回响。</span></span>
+      <span className={styles.entryArt} aria-hidden="true"><span className={styles.entryStar}><svg viewBox="0 0 100 100"><defs><linearGradient id="entry-star-light" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#fff4fa" /><stop offset=".42" stopColor="#eeb8d2" /><stop offset=".72" stopColor="#c9b7e6" /><stop offset="1" stopColor="#b8dbea" /></linearGradient></defs><path d={ENTRY_STAR_PATH} fill="url(#entry-star-light)" fillOpacity=".86" stroke="#fff9fc" strokeOpacity=".85" strokeWidth=".7" /><circle cx="50" cy="50" r="2" fill="#fff" /></svg></span></span>
+      <span className={styles.entryCopy}><span className={styles.eyebrow}>Q7 · 一念入星河</span><strong>{currentSuggestion.sourceCount > 0 ? "今晚的星海，已经亮起" : "给今天，留一颗星"}</strong><span>{currentSuggestion.sourceCount > 0 ? `今天的 ${currentSuggestion.sourceCount} 条记录正在远处发光。` : "还没有新的记录，也可以留一颗无字星。"}</span></span>
       <span className={styles.entryAction}>去摘星<ArrowUpRight size={18} /></span>
     </button>
     {open && createPortal(<CheckinDialog
-      theme={theme} mood={mood} quote={quote} summary={summary} preview={preview} busy={busy}
-      suggestionCount={suggestCheckinFromNotes(notes).sourceCount}
+      theme={theme} mood={mood} quote={quote} summary={summary} preview={preview} busy={busy} selectedVariant={selectedVariant}
+      suggestionCount={currentSuggestion.sourceCount}
       loading={loading} error={error} notice={notice} flipped={flipped}
       disabled={accountPaused || !userId} onClose={close} onTheme={chooseTheme}
-      onSelectTheme={value => { lastTheme.current = value % STAR_MATERIALS.length; setTheme(value); setFlipped(false); }}
+      onSelectTheme={(value, variant) => { lastTheme.current = value % STAR_MATERIALS.length; setTheme(value); setSelectedVariant(variant); setFlipped(false); }}
       onMood={value => { customizedRef.current = true; setMood(value); }} onQuote={value => { customizedRef.current = true; setQuote(value); }} onFlip={() => setFlipped(value => !value)}
       onRetry={() => { preserveDraftRef.current = true; setRefresh(value => value + 1); }} onSubmit={submit}
     />, document.body)}
@@ -140,26 +164,57 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
 }
 
 interface DialogProps {
-  theme: number; mood: string; quote: string; summary: CheckinSummary | null;
+  theme: number; mood: string; quote: string; summary: CheckinSummary | null; selectedVariant: number;
   suggestionCount: number;
   preview: boolean; busy: boolean; loading: boolean; disabled: boolean; flipped: boolean;
   error: string; notice: string;
   onClose: () => void; onTheme: () => void; onMood: (value: string) => void; onQuote: (value: string) => void;
-  onSelectTheme: (theme: number) => void;
+  onSelectTheme: (theme: number, variant: number) => void;
   onFlip: () => void; onRetry: () => void; onSubmit: () => void;
 }
 
+function StarJourney({ day, reduced, onArrive }: { day: string; reduced: boolean; onArrive: () => void }) {
+  const [step, setStep] = useState(0);
+  const locked = useRef(false);
+  const scenes = [
+    { label: "念头亮起", title: "跟着这一点光，往前走。" },
+    { label: "穿过回声", title: "有些念头没有消失，只是去了更远的地方。" },
+    { label: "抵达今夜", title: "今晚的星，在这里。" },
+  ];
+  const advance = useCallback(() => {
+    if (locked.current) return;
+    locked.current = true;
+    window.setTimeout(() => { locked.current = false; }, 420);
+    setStep(value => {
+      if (value >= scenes.length - 1) { onArrive(); return value; }
+      return value + 1;
+    });
+  }, [onArrive, scenes.length]);
+  useEffect(() => {
+    if (reduced) { onArrive(); return; }
+    const mobile = window.matchMedia("(max-width: 760px)");
+    if (!mobile.matches) return;
+    const timers = [window.setTimeout(advance, 520), window.setTimeout(advance, 1040), window.setTimeout(onArrive, 1560)];
+    return () => timers.forEach(window.clearTimeout);
+  }, [advance, onArrive, reduced]);
+  return <section className={styles.journey} data-step={step} tabIndex={0}
+    onWheel={event => { if (Math.abs(event.deltaY) > 12) advance(); }}
+    onKeyDown={event => { if ([" ", "ArrowDown", "PageDown"].includes(event.key)) { event.preventDefault(); advance(); } }}>
+    <div className={styles.journeySky} aria-hidden="true"><span className={styles.thoughtLight} /><i /><i /><i /><i /><i /><i /><i /></div>
+    <div className={styles.journeyCopy} key={step}><span>{scenes[step].label}</span><h2>{scenes[step].title}</h2><p>{step < 2 ? "向下滚动、按空格，或继续轻触" : "再向前一步，就能看见今晚的三颗星。"}</p></div>
+    <div className={styles.journeyProgress} aria-label={`星河旅程第 ${step + 1} 步，共 3 步`}>{Array.from({ length: 7 }, (_, index) => <i key={index} data-active={index <= step * 3} />)}</div>
+    <div className={styles.journeyActions}><button type="button" onClick={advance}>{step === 2 ? "进入星海" : "往前"}<ArrowUpRight size={15} /></button><button type="button" onClick={onArrive}>直接到星海</button></div>
+    <small>{day.replaceAll("-", ".")} · Q7</small>
+  </section>;
+}
+
 function CheckinDialog(props: DialogProps) {
-  const { theme, mood, quote, summary, preview, busy, loading, error, notice, flipped, suggestionCount, disabled, onSubmit } = props;
+  const { theme, mood, quote, summary, preview, busy, loading, error, notice, flipped, suggestionCount, disabled, onSubmit, selectedVariant } = props;
   const dialog = useRef<HTMLDialogElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const [picked, setPicked] = useState<number | null>(null);
+  const [stage, setStage] = useState<"journey" | "star-sea" | "revealing" | "revisit">("journey");
   const [curtainTheme, setCurtainTheme] = useState(theme);
-  const [art, setArt] = useState<{ frontImage: string; backImage: string } | null>(null);
-  const [artError, setArtError] = useState(false);
-  const [fallback, setFallback] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -167,15 +222,13 @@ function CheckinDialog(props: DialogProps) {
   const material = starMaterial(theme);
   const confirmed = Boolean(summary?.entry);
   const savingDisabled = busy || loading || !summary || confirmed || (!preview && (props.disabled || Boolean(error)));
-  const unavailable = useCallback(() => setFallback(true), []);
-  const rendered = useCallback(() => setReady(true), []);
-
   function pickStar(index: number) {
-    props.onSelectTheme(curtainTheme + index);
+    props.onSelectTheme(curtainTheme + index, index);
     setPicked(index);
+    setStage("revealing");
   }
   function pickAgain() {
-    setCurtainTheme(theme + 7); setPicked(null); setReady(false); setFallback(false); setPaused(false);
+    setCurtainTheme(theme + 3); setPicked(null);
     dialog.current?.scrollTo?.({ top: 0, behavior: "instant" });
   }
   useEffect(() => {
@@ -201,15 +254,13 @@ function CheckinDialog(props: DialogProps) {
     return () => { media.removeEventListener("change", syncPreference); document.removeEventListener("visibilitychange", syncVisible); };
   }, []);
   useEffect(() => {
-    if (picked === null) return;
-    const timer = window.setTimeout(() => {
-      try {
-        setArt(createCheckinArtwork({ theme, mood, quote: quote.trim() || defaultQuote, totalDays: summary?.totalDays ?? 0, currentStreak: summary?.currentStreak ?? 0, date: summary?.today ?? getCheckinDay(), preview }));
-        setArtError(false);
-      } catch { setArtError(true); }
-    }, 180);
-    return () => clearTimeout(timer);
-  }, [theme, mood, quote, summary, preview, picked]);
+    if (summary?.entry) {
+      setPicked(summary.entry.starVariant ?? selectedVariant);
+      setStage("revisit");
+      return;
+    }
+    if (reduced || (summary?.today && window.localStorage.getItem(`shinian:star-journey:${summary.today}`) === "seen")) setStage("star-sea");
+  }, [reduced, selectedVariant, summary?.entry, summary?.today]);
   useEffect(() => {
     if (picked === null) {
       autoSaveAttempted.current = false;
@@ -222,45 +273,39 @@ function CheckinDialog(props: DialogProps) {
     }, 1200);
     return () => window.clearTimeout(timer);
   }, [picked, editing, busy, loading, summary, error, preview, disabled, onSubmit]);
-  useEffect(() => {
-    if (picked === null || ready || fallback || reduced || !art) return;
-    const timer = window.setTimeout(() => setFallback(true), 15000);
-    return () => clearTimeout(timer);
-  }, [ready, fallback, reduced, art, picked]);
-
-  const staticMode = fallback || reduced;
   return <dialog ref={dialog} className={styles.dialog} style={{ "--star-glow": material.glow, "--star-secondary": material.secondary, "--star-accent": material.accent } as CSSProperties} aria-labelledby={picked === null ? undefined : "checkin-title"} aria-label={picked === null ? "给今天，摘一颗星" : undefined}
     onCancel={event => { event.preventDefault(); props.onClose(); }}
     onClick={event => { if (event.target === event.currentTarget) props.onClose(); }}>
     <div className={styles.modal}>
       <header className={styles.modalHeader}><span><Moon size={16} />拾念<span className={styles.headerDivider}>/</span>每天一点微光</span><div className={styles.headerActions}>{picked !== null && <button className={styles.pickAgain} onClick={pickAgain} disabled={busy}><ArrowLeft size={13} />再摘一颗</button>}<button aria-label="关闭打卡牌" onClick={props.onClose} disabled={busy}><X size={20} /></button></div></header>
-      {picked === null ? <div className={styles.picker}>
+      {stage === "journey" ? <StarJourney day={summary?.today ?? getCheckinDay()} reduced={reduced} onArrive={() => {
+        const day = summary?.today ?? getCheckinDay();
+        window.localStorage.setItem(`shinian:star-journey:${day}`, "seen");
+        setStage("star-sea");
+      }} /> : picked === null ? <div className={styles.picker}>
         <StarCurtain key={curtainTheme} theme={curtainTheme} onPick={pickStar} paused={hidden} reduceMotion={reduced} />
-        <p className={styles.pickerNote}>{preview ? "体验预览 · 摘星不会保存或增加打卡天数" : "今日回响已经拾好 · 摘下一颗星，即刻收进今天"}</p>
+        <p className={styles.pickerNote}>{preview ? "体验预览 · 摘星不会保存或增加打卡天数" : "今晚的星，在这里 · 轻触或向自己方向带走"}</p>
       </div> : <div className={styles.layout}>
-        <section className={styles.visual} aria-label="星空吊牌预览">
+        <section className={styles.visual} aria-label="今日七芒星笺">
           <div className={styles.scene}>
             <div className={styles.halo} aria-hidden="true" />
-            {art && !staticMode && <LanyardCheckin {...art} theme={theme} flipped={flipped} paused={paused || hidden} onUnavailable={unavailable} onReady={rendered} className={styles.lanyard} />}
-            {art && (staticMode || !ready) && <div className={styles.staticBadge} aria-hidden="true"><span className={styles.staticCord} />{material.halo && <span className={styles.staticOrbit} />}<img src={flipped && summary ? art.backImage : art.frontImage} alt="" draggable={false} /></div>}
-            {!art && <div className={styles.sceneLoading}>{artError ? <><Sparkles /><p>{mood || "此刻的心情"}</p><strong>{quote || defaultQuote}</strong></> : <><LoaderCircle className="spin" size={20} /><span>正在描绘这一片星空…</span></>}</div>}
+            {summary && <SevenStarCard theme={theme} mood={mood} quote={quote} date={summary.today} totalDays={summary.totalDays + (summary.entry ? 0 : 1)} currentStreak={summary.currentStreak + (summary.entry ? 0 : 1)} sourceCount={suggestionCount} flipped={flipped} preview={preview} syncing={busy} />}
           </div>
-          <p className={styles.sceneCaption}>{staticMode ? "轻按下方按钮，看看另一面" : ready ? "拖动吊牌，让今天的微光轻轻晃动" : "正在挂好你的星空牌…"}</p>
+          <p className={styles.sceneCaption}>{flipped ? "最近七天的星轨，留给回看" : "这一颗星，沿着刚才的光展开"}</p>
           <div className={styles.cardControls}>
             <button onClick={props.onFlip} disabled={!summary || loading}><RotateCw size={15} />{flipped ? "看看心情" : "看看天数"}</button>
-            {!staticMode && <button onClick={() => setPaused(value => !value)} aria-label={paused ? "恢复吊牌动态" : "暂停吊牌动态"}>{paused ? <Play size={14} /> : <Pause size={14} />}{paused ? "播放" : "暂停"}</button>}
             <button onClick={props.onTheme}><RefreshCw size={14} />换种质感</button>
           </div>
           <p className={styles.material}>{material.name}<span>·</span>每次相遇，都有一点不同</p>
-          {fallback && <p className={styles.fallbackNotice}>当前显示静态吊牌，翻面和打卡仍可使用。</p>}
+          {reduced && <p className={styles.fallbackNotice}>已按减少动态效果显示，星笺仍可翻面和保存。</p>}
         </section>
         <form className={styles.form} onSubmit={event => { event.preventDefault(); props.onSubmit(); }}>
           <span className={styles.eyebrow}>{preview ? "体验预览 · 不会保存" : "你摘下的光，属于今天"}</span>
           <h2 ref={title} tabIndex={-1} id="checkin-title">给今天，<br />留一颗星。</h2>
-          <p className={styles.intro}>{suggestionCount > 0 ? `已经从今天的 ${suggestionCount} 条记录里，为你拾起这一句。` : "今天还没有新的记录，先留下一句安静的默认回响。"}</p>
-          <fieldset className={styles.fields} disabled={busy || loading || confirmed}>
+          <p className={styles.intro}>{suggestionCount > 0 ? `已经从今天的 ${suggestionCount} 条记录里，为你拾起这一句。` : "今天还没有新的记录，可以留一颗无字星，也可以补上一句话。"}</p>
+          <fieldset className={styles.fields} disabled={busy || loading}>
             <legend className="sr-only">今天的心情和金句</legend>
-            <div className={styles.generated}><span className={styles.generatedLabel}>{suggestionCount > 0 ? "根据今日记录生成" : "今日默认回响"}</span><strong className={styles.generatedMood}>{mood || "平静"}</strong><p className={styles.generatedQuote}>{quote || defaultQuote}</p></div>
+            <div className={styles.generated}><span className={styles.generatedLabel}>{suggestionCount > 0 ? "从今天的记录里拾到" : "无字星 · 等你说一句"}</span><strong className={styles.generatedMood}>{mood || "此刻"}</strong><p className={styles.generatedQuote}>{quote || "还没有一句回响"}</p></div>
             <details className={styles.adjustment} onToggle={event => setEditing(event.currentTarget.open)}><summary>调整这张牌 <span>心情与文字</span></summary><div className={styles.adjustmentBody}>
               <label className={styles.label} htmlFor="checkin-mood">此刻的心情</label>
               <input id="checkin-mood" className={styles.moodInput} value={mood} onChange={event => props.onMood(event.target.value)} maxLength={CHECKIN_LIMITS.mood} placeholder="写下自己的心情" />

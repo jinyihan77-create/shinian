@@ -36,8 +36,8 @@ for (const provider of ["supabase", "cloudbase"] as const) {
       await db.query("select set_config('request.jwt.claim.sub', $1, false)", [id]);
       await db.exec("set role authenticated");
     }
-    async function call(name: "echo_get_checkin" | "echo_create_checkin" | "echo_checkin_summary", args: unknown[] = []): Promise<CheckinSummary> {
-      const casts = { echo_get_checkin: [], echo_create_checkin: ["date", "text", "text"], echo_checkin_summary: ["date"] };
+    async function call(name: "echo_get_checkin" | "echo_create_checkin" | "echo_update_checkin" | "echo_checkin_summary", args: unknown[] = []): Promise<CheckinSummary> {
+      const casts = { echo_get_checkin: [], echo_create_checkin: ["date", "text", "text", "integer", "text", "text", "text", "integer", "text[]"], echo_update_checkin: ["date", "text", "text", "integer"], echo_checkin_summary: ["date"] };
       const placeholders = args.map((_, i) => `$${i + 1}::${casts[name][i]}`).join(",");
       const result = await db.query<{ value: CheckinSummary }>(`select public.${name}(${placeholders}) as value`, args);
       return result.rows[0].value;
@@ -54,8 +54,10 @@ for (const provider of ["supabase", "cloudbase"] as const) {
         grant usage on schema public to anon, authenticated, service_role;`);
       const first = provider === "supabase" ? "202609210001_private_library.sql" : "20260921000100_private_library.sql";
       const migration = provider === "supabase" ? "202609210002_daily_checkins.sql" : "20260921000200_daily_checkins.sql";
+      const starMigration = provider === "supabase" ? "202609230001_seven_star_checkins.sql" : "20260923000100_seven_star_checkins.sql";
       await db.exec(await readFile(new URL(`../${provider}/migrations/${first}`, import.meta.url), "utf8"));
       await db.exec(await readFile(new URL(`../${provider}/migrations/${migration}`, import.meta.url), "utf8"));
+      await db.exec(await readFile(new URL(`../${provider}/migrations/${starMigration}`, import.meta.url), "utf8"));
       await db.query("insert into auth.users(id) values($1),($2),($3)", [owner, second, stranger]);
       await db.query("insert into public.echo_private_members(user_id) values($1),($2)", [owner, second]);
     }, 30000);
@@ -106,6 +108,14 @@ for (const provider of ["supabase", "cloudbase"] as const) {
       await expect(call("echo_create_checkin", [day, "", "句".repeat(101)])).rejects.toThrow("INVALID_CHECKIN_INPUT");
       await expect(call("echo_create_checkin", [day, null, ""])).rejects.toThrow("INVALID_CHECKIN_INPUT");
       expect(await call("echo_get_checkin")).toMatchObject({ totalDays: 0, entry: null });
+    });
+    it("persists the selected star and protects manual edits with revisions", async () => {
+      const day = (await call("echo_get_checkin")).today;
+      const created = await call("echo_create_checkin", [day, "明亮", "这一句来自今天", 2, "climate-4", "ice", "7788", 2, ["note-1"]]);
+      expect(created.entry).toMatchObject({ starVariant: 2, themeId: "climate-4", materialId: "ice", visualSeed: "7788", sourceNoteIds: ["note-1"], revision: 1 });
+      const updated = await call("echo_update_checkin", [day, "安静", "手动改过的文字", 1]);
+      expect(updated).toMatchObject({ totalDays: 1, entry: { mood: "安静", quote: "手动改过的文字", revision: 2 } });
+      await expect(call("echo_update_checkin", [day, "覆盖", "过期版本", 1])).rejects.toThrow("CHECKIN_EDIT_CONFLICT");
     });
   });
 }

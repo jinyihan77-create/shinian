@@ -3,6 +3,8 @@ import type { EchoNote } from "./types";
 
 export const CHECKIN_TIME_ZONE = "Asia/Shanghai";
 export const CHECKIN_LIMITS = { mood: 24, quote: 100 } as const;
+export const CHECKIN_EXPERIENCE_VERSION = 2;
+export const CHECKIN_VARIANTS = 3;
 
 export function isCheckinDay(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith("0000")) return false;
@@ -15,14 +17,36 @@ export const checkinInputSchema = z.object({
   expectedDay: checkinDaySchema,
   mood: z.string().trim().max(CHECKIN_LIMITS.mood),
   quote: z.string().trim().max(CHECKIN_LIMITS.quote),
+  starVariant: z.number().int().min(0).max(CHECKIN_VARIANTS - 1).default(0),
+  themeId: z.string().trim().min(1).max(64).default("climate-0"),
+  materialId: z.string().trim().min(1).max(64).default("frost"),
+  visualSeed: z.string().trim().min(1).max(128).default("0"),
+  experienceVersion: z.number().int().positive().max(99).default(CHECKIN_EXPERIENCE_VERSION),
+  sourceNoteIds: z.array(z.string().trim().min(1).max(128)).max(20).default([]),
 }).strict();
 export type CheckinInput = z.infer<typeof checkinInputSchema>;
+
+export const checkinUpdateSchema = z.object({
+  expectedDay: checkinDaySchema,
+  mood: z.string().trim().max(CHECKIN_LIMITS.mood),
+  quote: z.string().trim().max(CHECKIN_LIMITS.quote),
+  expectedRevision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+}).strict();
+export type CheckinUpdate = z.infer<typeof checkinUpdateSchema>;
 
 export const checkinEntrySchema = z.object({
   day: checkinDaySchema,
   mood: z.string().max(CHECKIN_LIMITS.mood),
   quote: z.string().max(CHECKIN_LIMITS.quote),
   createdAt: z.iso.datetime(),
+  starVariant: z.number().int().min(0).max(CHECKIN_VARIANTS - 1).optional(),
+  themeId: z.string().max(64).optional(),
+  materialId: z.string().max(64).optional(),
+  visualSeed: z.string().max(128).optional(),
+  experienceVersion: z.number().int().positive().max(99).optional(),
+  sourceNoteIds: z.array(z.string().max(128)).max(20).optional(),
+  revision: z.number().int().positive().optional(),
+  updatedAt: z.iso.datetime().optional(),
 }).strict();
 export type CheckinEntry = z.infer<typeof checkinEntrySchema>;
 
@@ -35,6 +59,21 @@ export const checkinSummarySchema = z.object({
   value.entry === null || (value.entry.day === value.today && value.totalDays > 0 && value.currentStreak > 0)
 ));
 export type CheckinSummary = z.infer<typeof checkinSummarySchema>;
+
+/** A stable, account/day-scoped number for the star sea. It is intentionally non-random. */
+export function stableVisualSeed(accountId: string, day: string): string {
+  let hash = 2166136261;
+  for (const character of `${accountId}:${day}:shinian-star-v2`) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16777619);
+  }
+  return String(hash >>> 0);
+}
+
+export function stableStarTheme(accountId: string, day: string, materialCount: number): number {
+  const value = Number(stableVisualSeed(accountId, day));
+  return Number.isFinite(value) && materialCount > 0 ? value % materialCount : 0;
+}
 
 /** Presentation and previews only. A real check-in day always comes from PostgreSQL. */
 export function getCheckinDay(now: Date = new Date()): string {
@@ -75,7 +114,7 @@ export function suggestCheckinFromNotes(notes: readonly EchoNote[], today = getC
   const todayNotes = notes
     .filter(note => dayInShanghai(note.updatedAt || note.createdAt) === today)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  if (!todayNotes.length) return { mood: "平静", quote: "把一点微光，留给明天的自己。", sourceCount: 0 };
+  if (!todayNotes.length) return { mood: "", quote: "", sourceCount: 0 };
   const joined = todayNotes.map(note => `${note.title} ${note.userText} ${note.reflectionText}`).join(" ");
   const mood = /疲惫|累|困|倦/.test(joined) ? "有点疲惫"
     : /开心|轻松|轻快|兴奋|期待|喜欢/.test(joined) ? "轻快"

@@ -31,6 +31,28 @@
 .modalHeader .pickAgain { width:auto; padding:0 7px; border:0; border-radius:8px; display:flex; gap:7px; font-size:11px; background:transparent; color:#ad99be; }
 .picker { animation:arrive .65s both; }
 .pickerNote { color:#88768f; font-size:10px; text-align:center; margin:0; padding:0 15px 19px; }
+.journey { position:relative; display:grid; min-height:590px; place-items:center; overflow:hidden; outline:none; padding:72px 28px 38px; text-align:center; isolation:isolate; }
+.journeySky { position:absolute; inset:0; z-index:-1; overflow:hidden; background:radial-gradient(circle at 50% 45%,rgba(var(--star-glow),.22),transparent 8%),radial-gradient(ellipse at 50% 58%,#cfafd523,transparent 38%),linear-gradient(160deg,#130e19,#201627 50%,#101724); transition:transform .8s cubic-bezier(.2,.7,.2,1),filter .8s; }
+.journey[data-step="1"] .journeySky { transform:scale(1.13); filter:brightness(1.08); }
+.journey[data-step="2"] .journeySky { transform:scale(1.28); filter:brightness(1.18); }
+.journeySky::before,.journeySky::after { content:""; position:absolute; inset:-20%; background-image:radial-gradient(circle,#fff 0 1px,transparent 1.4px); background-size:57px 49px; opacity:.18; transform:rotate(8deg); }
+.journeySky::after { background-size:93px 81px; opacity:.12; transform:rotate(-11deg) translateX(8%); }
+.journeySky > i { position:absolute; left:50%; top:48%; width:1px; height:clamp(85px,16vw,170px); transform-origin:50% 0; border-radius:999px; background:linear-gradient(#fff9,transparent); opacity:.13; }
+.journeySky > i:nth-of-type(1) { transform:rotate(0deg); }.journeySky > i:nth-of-type(2) { transform:rotate(51deg); }.journeySky > i:nth-of-type(3) { transform:rotate(103deg); }.journeySky > i:nth-of-type(4) { transform:rotate(154deg); }.journeySky > i:nth-of-type(5) { transform:rotate(206deg); }.journeySky > i:nth-of-type(6) { transform:rotate(257deg); }.journeySky > i:nth-of-type(7) { transform:rotate(309deg); }
+.thoughtLight { position:absolute; left:50%; top:48%; width:10px; height:10px; border-radius:50%; background:#fffaff; box-shadow:0 0 10px #fff,0 0 35px rgba(var(--star-glow),.9),0 0 80px rgba(var(--star-secondary),.48); transform:translate(-50%,-50%); animation:thought-light 2.8s ease-in-out infinite; }
+.journeyCopy { display:grid; justify-items:center; gap:12px; max-width:700px; animation:journey-copy .62s both; }
+.journeyCopy > span { color:#eabed3; font-size:10px; letter-spacing:.2em; }
+.journeyCopy h2 { max-width:19ch; margin:0; color:#fff8fc; font-family:var(--display-font); font-size:clamp(29px,5vw,51px); line-height:1.35; font-weight:430; text-wrap:balance; text-shadow:0 2px 28px #08050d; }
+.journeyCopy p { margin:0; color:#cbb9cb; font-size:11px; letter-spacing:.04em; }
+.journeyProgress { display:flex; gap:9px; align-items:center; }
+.journeyProgress i { width:4px; height:4px; border-radius:50%; background:#ffffff25; transition:background .4s,box-shadow .4s,transform .4s; }
+.journeyProgress i[data-active=true] { background:#fff5fb; box-shadow:0 0 9px #f5bad7; transform:scale(1.15); }
+.journeyActions { display:flex; align-items:center; gap:12px; }
+.journeyActions button { display:inline-flex; min-height:44px; align-items:center; gap:7px; padding:8px 15px; border:1px solid #efc5dc4a; border-radius:999px; background:#f5d7e514; color:#f8e8f1; font-size:11px; }
+.journeyActions button + button { border-color:transparent; background:transparent; color:#af9eaf; }
+.journey > small { position:absolute; bottom:24px; color:#8e7d8f; font-size:8px; letter-spacing:.14em; }
+@keyframes thought-light { 0%,100% { transform:translate(-50%,-50%) scale(.88); opacity:.7; } 50% { transform:translate(-50%,-50%) scale(1.16); opacity:1; } }
+@keyframes journey-copy { from { opacity:0; transform:translateY(12px); filter:blur(5px); } to { opacity:1; transform:translateY(0); filter:blur(0); } }
 .layout { animation:arrive .75s both; }
 .form h2:focus { outline:none; }
 @keyframes arrive { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:translateY(0); } }
@@ -43,7 +65,7 @@
 .modalHeader button { display:grid; place-items:center; flex-shrink:0; width:44px; height:44px; border:1px solid #c2a9df1f; background:#cbb6e308; color:#d8cae6; border-radius:50%; }
 .layout { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); }
 .visual { position:relative; min-width:0; padding:0 12px 30px; }
-.scene { position:relative; height:475px; overflow:hidden; isolation:isolate; }
+.scene { position:relative; display:grid; height:475px; place-items:center; overflow:hidden; isolation:isolate; }
 .halo { pointer-events:none; position:absolute; width:470px; height:400px; max-width:100%; top:63px; left:50%; transform:translateX(-50%) rotate(-18deg); border-radius:50%; background:radial-gradient(ellipse at 35% 40%,rgba(var(--star-glow),.22),transparent 60%),radial-gradient(ellipse at 70% 70%,rgba(var(--star-secondary),.18),transparent 62%); filter:blur(15px); }
 .halo::after { content:""; position:absolute; width:85%; height:26%; border:1px solid rgba(var(--star-glow),.15); border-radius:50%; left:8%; top:44%; transform:rotate(-12deg); }
 .lanyard { position:absolute !important; inset:0; z-index:2; }
@@ -94,7 +116,8 @@
   .entryAction { position:absolute; bottom:17px; right:22px; font-size:11px; }
   .entry .eyebrow { font-size:10px; }
   .entryCompact { min-height: 96px; margin: 13px 0 8px; padding: 13px 15px; gap: 11px; flex-wrap: nowrap; }
-  .entryCompact .entryArt { display: none; }
+  .entryCompact .entryArt { display:grid; width:48px; height:48px; }
+  .entryCompact .entryStar { width:48px; height:48px; margin-top:0; }
   .entryCompact .entryCopy strong { font-size: 16px; }
   .entryCompact .entryCopy > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px; }
   .entryCompact .entryAction { position: static; padding: 9px; font-size: 0; }
@@ -102,6 +125,9 @@
   .dialog { width:calc(100% - 20px); max-height:calc(100dvh - 20px); border-radius:23px; }
   .modalHeader { padding:12px 14px 0; position:sticky; top:0; z-index:6; background:#272333e8; backdrop-filter:blur(8px); }
   .modalHeader > span { font-size:10px; gap:7px; }
+  .journey { min-height:calc(100dvh - 74px); padding:60px 20px 36px; }
+  .journeyCopy h2 { font-size:30px; }
+  .journeyActions { flex-direction:column; gap:3px; }
   .layout { grid-template-columns:1fr; }
   .visual { padding:0 7px 18px; }
   .scene { height:375px; }

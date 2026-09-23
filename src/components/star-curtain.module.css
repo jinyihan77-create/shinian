@@ -9,7 +9,7 @@
 .stage { position:relative; width:100%; max-width:930px; height:317px; margin:8px auto 0; perspective:750px; }
 .crystalCanvas { position:absolute !important; inset:0; z-index:2; width:100% !important; height:100% !important; pointer-events:none !important; }
 .horizon { position:absolute; pointer-events:none; top:-1px; left:4%; right:4%; height:1px; background:linear-gradient(90deg,transparent,#d6bdde07,transparent); }
-.cords { position:absolute; inset:0; z-index:1; overflow:visible; width:100%; height:100%; pointer-events:none; }
+.cords { position:absolute; inset:0; z-index:1; overflow:visible; width:100%; height:100%; pointer-events:none; opacity:0; }
 .star { position:absolute; left:var(--star-left); top:var(--star-top); width:var(--star-size); height:var(--star-size); padding:0; margin:0; border:0; outline:none; background:none; border-radius:35%; cursor:grab; touch-action:none; user-select:none; -webkit-tap-highlight-color:transparent; transform:translateX(-50%); transform-origin:50% 9.6%; transform-style:preserve-3d; opacity:calc(var(--star-depth) * var(--pick-opacity,1)); z-index:3; transition:filter .3s,opacity .5s; will-change:transform; }
 .star[data-index="3"] { z-index:3; }
 .star:active { cursor:grabbing; }
@@ -43,12 +43,9 @@
   .heading > span { font-size:8px; letter-spacing:.24em; }
   .heading p { font-size:11px; }
   .stage { height:245px; margin-top:4px; }
-  .outerStar { display:none; }
-  .star[data-index="1"] { left:11%; top:95px; width:clamp(63px,15vw,94px); height:clamp(63px,15vw,94px); }
-  .star[data-index="2"] { left:30%; top:25px; width:clamp(53px,12vw,73px); height:clamp(53px,12vw,73px); }
-  .star[data-index="3"] { left:51%; top:96px; width:clamp(108px,23vw,137px); height:clamp(108px,23vw,137px); }
-  .star[data-index="4"] { left:73%; top:17px; width:clamp(55px,13vw,80px); height:clamp(55px,13vw,80px); }
-  .star[data-index="5"] { left:90%; top:109px; width:clamp(62px,15vw,92px); height:clamp(62px,15vw,92px); }
+  .star[data-index="0"] { left:18%; top:79px; width:clamp(78px,22vw,104px); height:clamp(78px,22vw,104px); }
+  .star[data-index="1"] { left:50%; top:34px; width:clamp(112px,30vw,142px); height:clamp(112px,30vw,142px); }
+  .star[data-index="2"] { left:82%; top:84px; width:clamp(82px,23vw,110px); height:clamp(82px,23vw,110px); }
   .footer p { font-size:11px; letter-spacing:.04em; }
   .footer { padding-top:2px; min-height:73px; }
 }

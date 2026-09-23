@@ -2,8 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import styles from "./star-curtain.module.css";
-import { STAR_POINTS, starMaterial } from "@/lib/star-materials";
-import { StarCrystalField, type CrystalStarMotion } from "./star-crystal-field";
+import { SEVEN_STAR_POINTS, starMaterial } from "@/lib/star-materials";
 
 export type StarCurtainProps = {
   theme: number;
@@ -13,13 +12,9 @@ export type StarCurtainProps = {
 };
 
 const STARS = [
-  { left: 8, top: 45, size: 76, depth: 0.52 },
-  { left: 23, top: 131, size: 118, depth: 0.86 },
-  { left: 37, top: 34, size: 87, depth: 0.65 },
-  { left: 51, top: 99, size: 163, depth: 1 },
-  { left: 66, top: 16, size: 92, depth: 0.64 },
-  { left: 80, top: 138, size: 113, depth: 0.86 },
-  { left: 94, top: 58, size: 67, depth: 0.46 },
+  { left: 22, top: 73, size: 118, depth: 0.86 },
+  { left: 50, top: 39, size: 154, depth: 1 },
+  { left: 78, top: 82, size: 124, depth: 0.9 },
 ];
 const PICK_DISTANCE = 72;
 const PICK_DURATION = 780;
@@ -33,7 +28,7 @@ function noise(seed: number) {
 }
 
 // The hanging and picked faces share one broad, five-point silhouette.
-const STAR_PATH = `${STAR_POINTS.map((point, index) => `${index ? "L" : "M"}${120 + point.x * 113} ${120 + point.y * 113}`).join(" ")}Z`;
+const STAR_PATH = `${SEVEN_STAR_POINTS.map((point, index) => `${index ? "L" : "M"}${120 + point.x * 113} ${120 + point.y * 113}`).join(" ")}Z`;
 
 function StarFace({ id, seed, material, prominent }: { id: string; seed: number; material: ReturnType<typeof starMaterial>; prominent: boolean }) {
   const { kind, accent: tint, base, ink, halo } = material;
@@ -111,7 +106,7 @@ function StarFace({ id, seed, material, prominent }: { id: string; seed: number;
       {prominent && <text x="120" y="165" textAnchor="middle" fill={ink} opacity=".65" fontSize="5.5" letterSpacing="3">SHINIAN</text>}
     </g>
     {halo && <g transform="rotate(-19 120 128)" fill="none"><path d="M-12 128C-12 175 252 175 252 128" stroke={glow} strokeWidth="5" strokeOpacity=".15" /><path d="M-12 128C-12 175 252 175 252 128" stroke={`url(#${id}-orbit)`} strokeWidth="1.7" /></g>}
-    {[0, 2, 6].map((tip, index) => <g key={tip} className={styles.edgeGlint} style={{ animationDelay: `${index * -1.7}s` }} transform={`translate(${120 + STAR_POINTS[tip].x * 112} ${120 + STAR_POINTS[tip].y * 112})`} fill="#fffdf8">
+    {[0, 4, 10].map((tip, index) => <g key={tip} className={styles.edgeGlint} style={{ animationDelay: `${index * -1.7}s` }} transform={`translate(${120 + SEVEN_STAR_POINTS[tip].x * 112} ${120 + SEVEN_STAR_POINTS[tip].y * 112})`} fill="#fffdf8">
       <path d="M0-5.2L.65-.65 5.2 0 .65.65 0 5.2-.65.65-5.2 0-.65-.65Z" opacity=".78" />
       <circle r="1.25" opacity=".62" />
     </g>)}
@@ -119,7 +114,7 @@ function StarFace({ id, seed, material, prominent }: { id: string; seed: number;
   </svg>;
 }
 
-type Pendulum = CrystalStarMotion & { vx: number; vy: number; targetX: number; targetY: number };
+type Pendulum = { x: number; y: number; vx: number; vy: number; targetX: number; targetY: number; angle: number; yaw: number; scale: number; opacity: number };
 type Gesture = { index: number; pointerId: number; startX: number; startY: number; moved: boolean };
 
 export function StarCurtain({ theme, onPick, paused = false, reduceMotion = false }: StarCurtainProps) {
@@ -140,12 +135,9 @@ export function StarCurtain({ theme, onPick, paused = false, reduceMotion = fals
   const [pulling, setPulling] = useState(false);
   const [readyToPick, setReadyToPick] = useState(false);
   const [hovered, setHovered] = useState<number | null>(null);
-  const [webgl, setWebgl] = useState(false);
 
   useEffect(() => { onPickRef.current = onPick; }, [onPick]);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-  useEffect(() => { setWebgl(typeof window.WebGLRenderingContext !== "undefined"); }, []);
-
   function pick(index: number) {
     if (picked.current !== null || paused) return;
     picked.current = index;
@@ -267,7 +259,6 @@ export function StarCurtain({ theme, onPick, paused = false, reduceMotion = fals
     </header>
     <div ref={stage} className={styles.stage}>
       <div className={styles.horizon} aria-hidden="true" />
-      {webgl && <StarCrystalField theme={theme} stars={STARS} motion={bodies} stage={stage} hovered={hovered} selected={selection} paused={paused || reduceMotion} />}
       <svg className={styles.cords} aria-hidden="true">
         <defs><linearGradient id={`${uniqueId}-cord`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="220"><stop stopColor="#c8b4dc" stopOpacity="0" /><stop offset=".35" stopColor="#bca8cd" stopOpacity=".24" /><stop offset="1" stopColor="#e7d5ee" stopOpacity=".55" /></linearGradient></defs>
         {STARS.map((star, index) => <path key={index} ref={(node) => { cords.current[index] = node; }} className={index === 0 || index === 6 ? styles.outerStar : undefined} d={`M 0 0 L 0 0`} fill="none" stroke={`url(#${uniqueId}-cord)`} strokeWidth={star.depth > 0.8 ? 1.15 : 0.7} />)}
@@ -276,7 +267,7 @@ export function StarCurtain({ theme, onPick, paused = false, reduceMotion = fals
         key={index}
         ref={(node) => { buttons.current[index] = node; }}
         type="button"
-        aria-label={`摘下第 ${index + 1} 颗星星`}
+        aria-label={`摘下第 ${index + 1} 颗星：${starMaterial(theme + index).name}`}
         aria-describedby={`${uniqueId}-hint`}
         className={`${styles.star} ${index === 0 || index === 6 ? styles.outerStar : ""}`}
         data-index={index}
@@ -313,8 +304,7 @@ export function StarCurtain({ theme, onPick, paused = false, reduceMotion = fals
         onClick={() => { if (performance.now() >= suppressClickUntil.current) pick(index); }}
       >
         <span className={styles.starHalo} />
-        {!webgl && <StarFace id={`${uniqueId}-star-${index}`} seed={theme * 31 + index * 718 + 1} material={starMaterial(theme + index)} prominent={index === 3} />}
-        {webgl && <span className={styles.crystalHitGlint} aria-hidden="true" />}
+        <StarFace id={`${uniqueId}-star-${index}`} seed={theme * 31 + index * 718 + 1} material={starMaterial(theme + index)} prominent={index === 1} />
       </button>)}
     </div>
     <div className={styles.footer}>
