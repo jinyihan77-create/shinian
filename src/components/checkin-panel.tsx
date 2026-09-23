@@ -209,7 +209,7 @@ function CheckinDialog(props: DialogProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const [picked, setPicked] = useState<number | null>(null);
-  const [stage, setStage] = useState<"journey" | "star-sea" | "revealing" | "revisit">("journey");
+  const [stage, setStage] = useState<"journey" | "star-sea" | "revealing">("journey");
   const [curtainTheme, setCurtainTheme] = useState(theme);
   const [reduced, setReduced] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -251,10 +251,9 @@ function CheckinDialog(props: DialogProps) {
   useEffect(() => {
     if (summary?.entry) {
       setPicked(summary.entry.starVariant ?? selectedVariant);
-      setStage("revisit");
       return;
     }
-    if (reduced || (summary?.today && window.localStorage.getItem(`shinian:star-journey:${summary.today}`) === "seen")) setStage("star-sea");
+    if (reduced) setStage("star-sea");
   }, [reduced, selectedVariant, summary?.entry, summary?.today]);
   useEffect(() => {
     if (picked === null) {
@@ -274,8 +273,6 @@ function CheckinDialog(props: DialogProps) {
     <div className={styles.modal}>
       <header className={styles.modalHeader}><span><Moon size={16} />拾念<span className={styles.headerDivider}>/</span>一念入星河</span><div className={styles.headerActions}>{picked !== null && !confirmed && <button className={styles.pickAgain} onClick={pickAgain} disabled={busy}><ArrowLeft size={13} />再摘一颗</button>}<button aria-label="关闭打卡牌" onClick={props.onClose} disabled={busy}><X size={20} /></button></div></header>
       {stage === "journey" ? <StarJourney day={summary?.today ?? getCheckinDay()} reduced={reduced} onArrive={() => {
-        const day = summary?.today ?? getCheckinDay();
-        window.localStorage.setItem(`shinian:star-journey:${day}`, "seen");
         setStage("star-sea");
       }} /> : picked === null ? <div className={styles.picker}>
         <StarCurtain key={curtainTheme} theme={curtainTheme} onPick={pickStar} paused={hidden} reduceMotion={reduced} />

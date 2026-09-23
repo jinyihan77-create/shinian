@@ -60,6 +60,18 @@ async function openReal() {
 }
 
 describe("check-in panel confirmed-save behavior", () => {
+  it("每次打开都重新进入星河旅程，不受旧的已看记录影响", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    window.localStorage.setItem(`shinian:star-journey:${base.today}`, "seen");
+    render(<CheckinPanel preview />);
+    fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
+    expect(screen.getByRole("heading", { name: "跟着这一点光，往前走。" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "关闭打卡牌" }));
+    fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
+    expect(screen.getByRole("heading", { name: "跟着这一点光，往前走。" })).toBeTruthy();
+    window.localStorage.removeItem(`shinian:star-journey:${base.today}`);
+  });
+
   it("reveals the generated card before the automatic save changes any counts", async () => {
     fetchMock.mockResolvedValueOnce(json(base));
     render(<CheckinPanel userId="owner-1" />);
