@@ -1,4 +1,4 @@
-React Bits HalftoneReveal, AeroShards and ParticleText
+React Bits HalftoneReveal, AeroShards, ParticleText and LatticeLoader
 Upstream: https://github.com/DavidHDev/react-bits
 Component source supplied by the user; adapted for this application.
 

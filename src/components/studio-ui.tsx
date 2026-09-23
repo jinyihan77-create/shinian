@@ -164,7 +164,7 @@ function VoiceInput({ value, onChange, disabled, preview }: { value: string; onC
 
   return <div className="voice-input-wrap">
     <button type="button" className={`voice-pill ${recording ? "is-recording" : ""}`} aria-label={recording ? "停止语音输入" : "开始语音输入"} aria-pressed={recording} onClick={toggle} disabled={disabled}>
-      <span className="voice-bars" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+      <span className="voice-bars" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /><i /></span>
       <span>{recording ? "正在听" : "语音"}</span>
     </button>
     {recording && <div className="voice-live" role="status"><span className="voice-live-orb" aria-hidden="true"><AudioLines size={19} /><i /><i /><i /></span><span><strong>我在听</strong><small>说完停一下，文字会自然落下来</small></span></div>}

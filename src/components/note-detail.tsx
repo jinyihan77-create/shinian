@@ -12,6 +12,7 @@ import flashcardStyles from "./art-flashcard.module.css";
 import { preserveTaskTags, visibleTags, type TaskAction } from "@/lib/task-tickets";
 import { TaskJourneyBar } from "./task-journey-bar";
 import { captureKindFromTags } from "@/lib/note-context";
+import LatticeLoader from "./lattice-loader";
 
 export interface NoteDetailProps {
   note: EchoNote;
@@ -279,11 +280,12 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
       </form>
 
       <section className="panel detail-section">
-        <SectionTitle number="03" title="AI 帮我整理" hint="理清线索，留一点继续思考的空间。" action={<button className="btn ai-organize-button" onClick={() => void organize()} disabled={processing || !canOrganize || contentDirty || editingAi || Boolean(busy)}>{processing ? <LoaderCircle className="spin" size={16} /> : <Sparkles size={16} />}{processing ? "正在整理…" : note.aiResult || note.aiStatus === "error" ? "重新整理" : "整理一下"}</button>} />
+        <SectionTitle number="03" title="AI 帮我整理" hint="理清线索，留一点继续思考的空间。" action={<button className="btn ai-organize-button" onClick={() => void organize()} disabled={processing || !canOrganize || contentDirty || editingAi || Boolean(busy)}>{!processing && <Sparkles size={16} />}{processing ? "正在整理…" : note.aiResult || note.aiStatus === "error" ? "重新整理" : "整理一下"}</button>} />
         {contentDirty && <p className="inline-notice">请先保存想法和来源的修改，再重新整理。</p>}
         {stale && <p className="inline-notice">内容已修改，建议重新整理。以下保留的是上一次的结果。</p>}
         {note.aiError && <p className="inline-notice error" role="alert">{note.aiError}</p>}
         {!canOrganize && <p className="inline-notice">只有来源信息，还需要补充一点想法或来源文字，才能开始整理。</p>}
+        {processing && <div className="ai-thinking-state"><LatticeLoader label="正在理清线索" pattern="orbit" grid={3} shape="round" color="#efc4df" cellSize={7} gap={3} fontSize={14} step={105} idleOpacity={0.16} glow glowColor="#e5a9d3" /></div>}
         {note.aiResult || aiBaseline ? <>
           <p className="ai-basis muted">{stale ? "以下结果基于修改前提供的记录与材料。" : note.sourceExcerpt.trim() ? note.userText.trim() ? "本次整理依据：你的记录和你提供的来源片段" : "本次整理依据：你提供的来源片段；未提供个人想法" : "本次整理依据：你的记录；未读取来源正文"}</p>
           {aiBaseline ? <AiEditor key={note.id} result={aiBaseline.result} hasThought={aiBaseline.hasThought} hasSource={aiBaseline.hasSource} blocked={Boolean(busy)} onCancel={() => { setAiBaseline(null); setAiDirty(false); setSyncError(""); }} onSave={saveAi} onDirtyChange={setAiDirty} onError={error => { reportError(error); }} /> : note.aiResult && <AiResultView result={note.aiResult} />}
@@ -291,7 +293,7 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
             if (!note.aiResult) return;
             setAiBaseline({ result: structuredClone(note.aiResult), hasThought: Boolean(note.userText.trim()), hasSource: Boolean(note.sourceExcerpt.trim()), version: note.storageVersion }); setAiDirty(false); setSyncError("");
           }}><Pencil size={15} />编辑整理内容</button>}
-        </> : canOrganize && <div className="empty-state"><Sparkles size={25} /><p>{processing ? "正在理清这条记录里的线索……" : "先留下记录，想整理的时候再来。"}</p><p className="muted">整理只使用这条记录和你补充的片段。你也可以直接写下自己的理解。</p></div>}
+        </> : canOrganize && !processing && <div className="empty-state"><Sparkles size={25} /><p>先留下记录，想整理的时候再来。</p><p className="muted">整理只使用这条记录和你补充的片段。你也可以直接写下自己的理解。</p></div>}
       </section>
 
       <section className="panel detail-section reflection-section">
