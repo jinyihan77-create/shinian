@@ -245,7 +245,7 @@ if (!deploy.ok) {
   1. 过几分钟重试：npm run ship -- --skip-build
   2. 若云端已有新版本但流量未切换，可查看：node scripts/deploy-tencent.mjs --detail
   3. 用验收脚本确认线上到底是不是好的：
-     npx tsx scripts/verify-live-deployment.mjs --origin https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com
+     npm run verify:live -- --origin https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com
 `);
   await finish(1, {
     result: "deploy-failed",
@@ -270,7 +270,7 @@ console.log(`
 
 建议再跑一次真实验收，确认线上功能正常：
 
-  npx tsx scripts/verify-live-deployment.mjs --origin https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com
+  npm run verify:live -- --origin https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com
 
 如果验收发现问题，回退到上一个存档点：
   git reset --hard HEAD~1

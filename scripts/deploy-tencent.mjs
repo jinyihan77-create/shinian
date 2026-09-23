@@ -190,7 +190,7 @@ async function main() {
     console.log("  2. 控制台 AI → 生文模型，开启要用的模型，模型名要与 CLOUDBASE_AI_MODEL 完全一致。");
     console.log("  3. 环境变量保存后需再发布一次才生效：npm run deploy:tencent -- --no-prepare --yes");
     console.log("  4. 查看正式地址：node scripts/deploy-tencent.mjs --detail");
-    console.log("  5. 真实验收：node scripts/verify-live-deployment.mjs --origin https://你的地址");
+    console.log("  5. 真实验收：npm run verify:live -- --origin https://你的地址");
     printConfigStatus();
     console.log("\n本脚本只完成代码上传，不代表网站已可登录、同步或 AI 已可用。");
   } catch (error) {

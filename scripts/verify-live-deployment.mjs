@@ -1,8 +1,8 @@
 /**
  * Real HTTP acceptance only. Run after deployment:
- *   node scripts/verify-live-deployment.mjs --origin https://your-site.example
+ *   npm run verify:live -- --origin https://your-site.example
  * Configuration only, without requests or AI charges:
- *   node scripts/verify-live-deployment.mjs --check-config
+ *   npm run verify:live -- --check-config
  * Credentials come from .env.tencent-owner.local / environment variables;
  * OWNER_PASSWORD overrides OWNER_INITIAL_PASSWORD after a password change.
  * A live run invokes AI once and deletes only its own uniquely marked record.
@@ -246,7 +246,7 @@ async function main() {
   const originIndex = args.indexOf("--origin");
   const allowed = new Set(["--check-config", "--no-env"]);
   if (args.some((arg, index) => !allowed.has(arg) && !(arg === "--origin" && args[index + 1] && !args[index + 1].startsWith("--")) && !(index > 0 && args[index - 1] === "--origin"))) {
-    console.error("参数无效。用法：node scripts/verify-live-deployment.mjs [--origin HTTPS网址] [--check-config] [--no-env]"); process.exitCode = 1; return;
+    console.error("参数无效。用法：npm run verify:live -- [--origin HTTPS网址] [--check-config] [--no-env]"); process.exitCode = 1; return;
   }
   try {
     const report = await verifyLiveDeployment({ origin: originIndex >= 0 ? args[originIndex + 1] : undefined, checkOnly: args.includes("--check-config"), readLocal: !args.includes("--no-env") });

@@ -14,7 +14,7 @@
     "setup:tencent": "node scripts/setup-tencent.mjs",
     "prepare:tencent": "node scripts/prepare-tencent-deploy.mjs",
     "deploy:tencent": "node scripts/deploy-tencent.mjs",
-    "verify:live": "node scripts/verify-live-deployment.mjs",
+    "verify:live": "tsx scripts/verify-live-deployment.mjs",
     "ship": "node scripts/ship.mjs",
     "auto:status": "node scripts/auto-publish.mjs --status",
     "auto:install": "node scripts/auto-publish-install.mjs install",
@@ -56,6 +56,7 @@
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.1.0",
     "tailwindcss": "^4.2.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vercel": "^59.23.2",
     "vitest": "^4.0.18"
