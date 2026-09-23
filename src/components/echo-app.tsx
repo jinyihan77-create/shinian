@@ -174,6 +174,7 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
     const proceed = () => {
       currentHash.current = hash;
       window.location.hash = hash; setView(next); setNoteId(id ?? null); window.scrollTo({ top: 0, behavior: "instant" });
+      document.querySelector<HTMLElement>(".main-wrap")?.scrollTo({ top: 0, behavior: "instant" });
     };
     if (!window.dispatchEvent(new CustomEvent("echo:before-navigate", { cancelable: true, detail: { proceed } }))) return;
     proceed();
@@ -378,8 +379,8 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
           </>}
         </>}
       </main>
-      <MobileNav view={view} onNavigate={next => navigate(next)} />
     </div>
+    <MobileNav view={view} onNavigate={next => navigate(next)} />
     {toast && <div className={`toast toast-${toast.tone}`} role={toast.tone === "error" ? "alert" : "status"}>{toast.tone === "success" ? <CheckCircle2 size={18} /> : <CircleHelp size={18} />}<span>{toast.message}</span><button className="icon-button" onClick={() => setToast(null)} aria-label="关闭提示"><X size={15} /></button></div>}
 
   </div>;

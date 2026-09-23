@@ -454,15 +454,36 @@ input:focus, textarea:focus, select:focus {
 }
 
 @media (max-width: 760px) {
+  body:has(.app-shell) { overflow: hidden; }
+  .app-shell,
+  .preview-shell {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    height: 100svh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .preview-shell { height: calc(100svh - 36px); }
   .space-header { width: calc(100% - 28px); min-height: 64px; }
   .space-header .brand strong { font-size: 16px; }
   .space-nav { display: none; }
   .space-account .sync-indicator span:last-child { display: none; }
+  .main-wrap {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-color: #b9a5c966 transparent;
+    scrollbar-width: thin;
+  }
+  .main-wrap::-webkit-scrollbar { width: 5px; }
+  .main-wrap::-webkit-scrollbar-track { background: transparent; }
+  .main-wrap::-webkit-scrollbar-thumb { border-radius: 999px; background: #b9a5c966; }
   .main-content, .main-content.capture-page {
     width: calc(100% - 24px);
-    padding-bottom: calc(112px + env(safe-area-inset-bottom));
+    padding-bottom: 22px;
   }
-  .main-content.capture-page { margin-top: -64px; padding-top: 64px; }
+  .main-content.capture-page { margin-top: 0; padding-top: 0; }
   .capture-space { min-height: calc(100svh - 78px); border-radius: 21px; }
   .capture-space .capture-heading h1 { font-size: clamp(31px, 9vw, 44px); }
   .capture-space .capture-textarea { min-height: 150px; }
@@ -481,10 +502,13 @@ input:focus, textarea:focus, select:focus {
   .backup-action { border-radius: 15px; padding: 16px 14px; }
   .preview-banner { padding-inline: 10px; font-size: 10px; }
   .mobile-nav {
-    position: fixed;
-    inset: auto 10px max(10px, env(safe-area-inset-bottom)) 10px;
+    position: relative;
+    inset: auto;
     z-index: 50;
     display: flex;
+    width: calc(100% - 20px);
+    max-width: 460px;
+    margin: 7px auto max(10px, env(safe-area-inset-bottom));
     align-items: stretch;
     justify-content: space-around;
     min-height: 62px;
@@ -515,7 +539,7 @@ input:focus, textarea:focus, select:focus {
   .mobile-nav button span:first-child { font-size: 21px; line-height: 1; color: #c8b8d7; }
   .mobile-nav button.active { background: #ffffff12; color: #f8f2fa; }
   .mobile-nav button.active span:first-child { color: #f8f2fa; }
-  .capture-space .preview-recent { scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  .capture-space .preview-recent { scroll-margin-bottom: 20px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -912,7 +936,7 @@ body,
   box-shadow: 0 30px 90px #08040d66, 0 0 32px #ff91bd12, inset 0 1px 0 #ffffff1e;
 }
 .capture-space::before {
-  background: radial-gradient(ellipse at 50% 18%, #ff91bd2a, transparent 43%), radial-gradient(ellipse at 14% 86%, #bfddeb1e, transparent 42%), linear-gradient(180deg, #18121e00 52%, #18121ec4);
+  background: radial-gradient(ellipse at 50% 18%, #ff91bd24, transparent 43%), radial-gradient(ellipse at 14% 86%, #bfddeb18, transparent 42%), linear-gradient(180deg, #18121e00 52%, #18121e78);
 }
 
 .capture-prompt-window {

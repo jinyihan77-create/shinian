@@ -1,12 +1,12 @@
 .echo-shards-scene { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .echo-shards-stage { position: absolute; inset: 0; opacity: .95; transition: opacity .8s; mask-image: linear-gradient(#000 0%, #000 48%, transparent 88%); }
 .echo-shards-stage > .aero-shards { position: absolute; inset: 0; pointer-events: none; }
-.echo-shards-still { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity .6s; }
+.echo-shards-still { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .92; transition: opacity .6s; }
 .echo-shards-stage:has(.aero-shards[data-ready='true']) > .echo-shards-still { opacity: 0; }
 .echo-shards-scene[data-quiet='true'] .echo-shards-stage { opacity: .25; }
 .scene-pause { position: absolute; right: 28px; bottom: 24px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid #ffffff18; border-radius: 50%; background: #120f17; color: #b8adbf; pointer-events: auto; }
 .entry-art { position: absolute; inset: 0; pointer-events: none; }
-@media(max-width:600px) { .echo-shards-stage { inset: 0 -180px 0 -260px; opacity: .7; } .scene-pause { right: 16px; bottom: 10px; } }
+@media(max-width:600px) { .echo-shards-stage { inset: 0 -90px 0 -120px; opacity: .88; } .scene-pause { right: 16px; bottom: 10px; } }
 @media(prefers-reduced-motion:reduce) { .echo-shards-stage, .echo-shards-still { transition: none; } }
 
 /* The capture surface is the one immersive moment in the product. Keep the

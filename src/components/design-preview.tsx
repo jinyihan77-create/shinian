@@ -48,6 +48,7 @@ export function DesignPreview() {
     setView(next); setMessage("");
     window.history.replaceState(null, "", `#${next === "note" ? "library" : next}`);
     window.scrollTo({ top: 0, behavior: "instant" });
+    document.querySelector<HTMLElement>(".main-wrap")?.scrollTo({ top: 0, behavior: "instant" });
   }
   function open(note: EchoNote) { setSelected(note); setReflection(note.reflectionText); navigate("note"); }
   async function transitionTask(note: EchoNote, action: TaskAction) {
