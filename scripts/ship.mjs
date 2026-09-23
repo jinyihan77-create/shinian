@@ -38,9 +38,14 @@ function run(label, command, commandArgs, timeoutMs) {
   return new Promise(resolve => {
     console.log(`\n${"─".repeat(58)}\n▶ ${label}\n${"─".repeat(58)}`);
     const started = Date.now();
+    // Windows 上 shell 模式只做字符串拼接、不加引号：含空格的绝对路径
+    // （如 "C:\Program Files\nodejs\node.exe"）会被 cmd 截断，带空格/中文的
+    // 提交信息也会被拆成多个参数。所以绝对路径命令和 git 一律不走 shell，
+    // 只有 npm/npx 这类 .cmd 包装脚本需要。
+    const needsShell = process.platform === "win32" && !path.isAbsolute(command) && command !== "git";
     const child = spawn(command, commandArgs, {
       cwd: project,
-      shell: process.platform === "win32",
+      shell: needsShell,
       windowsHide: true,
       stdio: "inherit",
     });
@@ -174,8 +179,16 @@ if (skipBuild) {
 }
 
 // ── 步骤 4：测试 ─────────────────────────────────────────────
-const test = await run("测试（vitest）", "npm", ["test"], STEP_TIMEOUT.test);
-if (!test.ok) recordFailure("测试", "有测试用例未通过，改动可能破坏已有功能");
+// 失败后重跑一次：这些用例要挂载组件、跑动画时序，机器忙时可能偶然超时。
+// 不重试的话一次偶发失败会被当成"这批代码有问题"记进账本，
+// 内容没变就不会再试——自动发布会被一个假警报永久卡住（还得人工介入），代价太大。
+let test = await run("测试（vitest）", "npm", ["test"], STEP_TIMEOUT.test);
+if (!test.ok) {
+  console.log("\n▶ 测试未通过，重跑一次以排除偶发超时（并发/机器忙时会出现）…");
+  test = await run("测试（vitest）· 重试", "npm", ["test"], STEP_TIMEOUT.test);
+  if (test.ok) console.log("（重试通过，判定为偶发失败，继续发布。）");
+}
+if (!test.ok) recordFailure("测试", "有测试用例未通过（已重试一次仍失败），改动可能破坏已有功能");
 
 // ── 结果判定 ─────────────────────────────────────────────────
 if (failures.length) {

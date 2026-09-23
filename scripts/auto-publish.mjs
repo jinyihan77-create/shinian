@@ -297,6 +297,9 @@ async function rollbackTo(config, versionName) {
 
 async function publishViaGate() {
   const failedSteps = [];
+  // 只有这几步失败才会阻止发布。存档类步骤失败是非致命的（ship 里会继续往下走），
+  // 不能算进"未通过"，否则状态页会误报。
+  const fatalSteps = ["类型检查（tsc）", "生产构建（next build）", "测试（vitest）", "测试（vitest）· 重试", "发布到云托管"];
   const result = await runStreaming(process.execPath, ["scripts/ship.mjs"], {
     // 告诉 ship：锁已经在自动发布手里，别再抢一次（会自己锁死自己）；
     // 账本也由自动发布在这边统一记（它还要做健康检查和回滚）。
@@ -305,7 +308,7 @@ async function publishViaGate() {
       const text = line.trimEnd();
       if (text.trim()) console.log(text);
       const match = text.match(/^✗\s+(.+?)\s+未通过（用时/);
-      if (match) failedSteps.push(match[1]);
+      if (match && fatalSteps.includes(match[1])) failedSteps.push(match[1]);
     },
   });
   return { ok: result.ok, failedSteps };

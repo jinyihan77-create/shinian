@@ -986,7 +986,7 @@ body,
 }
 @keyframes voice-ring { from { opacity: .72; transform: scale(.86); } to { opacity: 0; transform: scale(1.35); } }
 
-.btn:not(.btn-ghost):not(.settings-entry-link),
+.btn:not(.btn-ghost):not(.settings-entry-link):not(.ai-organize-button),
 .capture-space .capture-submit {
   border: 1px solid #ffc6dc5c;
   background: radial-gradient(circle at 18% 8%, #ffffff42, transparent 34%), linear-gradient(135deg, #ff91bdc9, #c29ddebb 58%, #b9d9e7a8);
@@ -995,7 +995,7 @@ body,
   backdrop-filter: blur(12px) saturate(1.18);
   transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, filter .2s ease;
 }
-.btn:not(.btn-ghost):not(.settings-entry-link):hover:not(:disabled),
+.btn:not(.btn-ghost):not(.settings-entry-link):not(.ai-organize-button):hover:not(:disabled),
 .capture-space .capture-submit:hover:not(:disabled) {
   border-color: #ffe0ecb8;
   background: radial-gradient(circle at 18% 8%, #ffffff5c, transparent 34%), linear-gradient(135deg, #ffa8cacd, #cdb0e4c4 58%, #c7e2ecc0);
@@ -1003,7 +1003,7 @@ body,
   box-shadow: inset 0 1px 0 #ffffff9c, 0 14px 34px #0d071158, 0 0 24px #ff91bd38;
   transform: translateY(-2px);
 }
-.btn:not(.btn-ghost):not(.settings-entry-link):active:not(:disabled),
+.btn:not(.btn-ghost):not(.settings-entry-link):not(.ai-organize-button):active:not(:disabled),
 .capture-space .capture-submit:active:not(:disabled) { transform: translateY(1px) scale(.985); }
 .btn-secondary {
   border-color: #f2c3d34a;
@@ -1019,13 +1019,14 @@ body,
   overflow: hidden;
   min-height: 48px;
   padding: 11px 18px 11px 14px;
-  border: 1px solid #edc9dc42;
-  border-radius: 14px 14px 14px 5px;
-  background: radial-gradient(circle at 18% 12%, #f5c7dd19, transparent 38%), linear-gradient(135deg, #2f2334ed, #251e30ed 54%, #202b37e8);
-  color: #f7eaf1;
+  border: 1px solid #efd2e147;
+  border-radius: 15px 15px 15px 6px;
+  background: radial-gradient(circle at 12% 10%, #efbed51f, transparent 35%), linear-gradient(135deg, #342735f2, #241f2df2 56%, #1e2933ee);
+  color: #fff7fb;
   font-size: 13px;
   font-weight: 520;
-  box-shadow: inset 0 1px 0 #ffffff20, inset 0 -1px 0 #a8d2e311, 0 11px 28px #08050c45, 0 0 0 1px #ffffff05;
+  text-shadow: 0 1px 10px #f0bed535;
+  box-shadow: inset 0 1px 0 #ffffff26, inset 0 -1px 0 #a8d2e30d, 0 12px 30px #08050c52, 0 0 18px #e4aac01a;
   backdrop-filter: blur(14px) saturate(1.12);
 }
 .ai-organize-button::before {
