@@ -64,8 +64,13 @@ export const aiResultSchema = z.object({
     origin: z.enum(["用户记录", "来源片段"]),
   }).strict()).max(3),
   tags: z.array(z.string().trim().min(1).max(40)).max(5),
-  reflectionQuestions: z.array(z.string().trim().min(1).max(500)).min(1).max(2),
+  // Older records can contain one or two prompts; new AI results produce three.
+  reflectionQuestions: z.array(z.string().trim().min(1).max(500)).min(1).max(3),
   possibleApplication: z.string().max(2_000).nullable(),
+  actionItem: z.object({
+    title: z.string().trim().min(1).max(80),
+    nextStep: z.string().trim().min(1).max(160),
+  }).strict().nullable().optional(),
 }).strict();
 
 export const noteSchema = captureInputSchema.extend({

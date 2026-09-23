@@ -13,6 +13,8 @@ import { preserveTaskTags, visibleTags, type TaskAction } from "@/lib/task-ticke
 import { TaskJourneyBar } from "./task-journey-bar";
 import { captureKindFromTags } from "@/lib/note-context";
 import LatticeLoader from "./lattice-loader";
+import { ReflectionTriptych } from "./reflection-triptych";
+import { guidedReflectionQuestions } from "@/lib/reflection";
 
 export interface NoteDetailProps {
   note: EchoNote;
@@ -26,7 +28,7 @@ const captureOf = (note: EchoNote): CaptureInput => ({ userText: note.userText, 
 const parseTags = (text: string) => [...new Set(text.split(/[，,、\n]/).map(tag => tag.trim()).filter(Boolean))];
 const messageOf = (error: unknown) => error instanceof Error ? error.message : "暂时没有保存成功，已输入的文字还在，请再试一次。";
 const formatDate = (value: string) => new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric" }).format(new Date(value));
-const questionOf = (note: EchoNote) => note.reflectionPrompt || note.aiResult?.reflectionQuestions[0] || DEFAULT_QUESTION;
+const questionOf = (note: EchoNote) => guidedReflectionQuestions(note)[0] || DEFAULT_QUESTION;
 interface ReflectionDraft { text: string; prompt: string; baseText: string; basePrompt: string; version: number | undefined }
 interface AiEditBaseline { result: AiResult; hasThought: boolean; hasSource: boolean; version: number | undefined }
 
@@ -79,7 +81,10 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
   const stale = Boolean(note.aiResult && note.aiInputRevision !== note.revision);
   const captureKind = captureKindFromTags(note.tags);
   const canOrganize = Boolean(note.userText.trim() || note.sourceExcerpt.trim());
-  const questions = note.aiResult?.reflectionQuestions.slice(0, 2) ?? [DEFAULT_QUESTION];
+  const generatedQuestions = guidedReflectionQuestions(note);
+  const questions: [string, string, string] = reflectionDraft && reflectionDraft.prompt !== generatedQuestions[0]
+    ? [reflectionDraft.prompt, ...generatedQuestions.filter(question => question !== reflectionDraft.prompt)].slice(0, 3) as [string, string, string]
+    : generatedQuestions;
   const currentQuestion = reflectionDraft?.prompt ?? questionOf(note);
   const editedVersionChanged = (editingContent && contentBaseline.current.version !== note.storageVersion)
     || (editingMeta && metaBaseline.current.version !== note.storageVersion)
@@ -300,14 +305,12 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
         <SectionTitle number="04" title="三句话，留给未来的自己" hint="一幅画收藏风景，一张卡留住你的理解。" />
         <div className={flashcardStyles.workbench}>
         <form className={flashcardStyles.writing} onSubmit={saveReflection}>
-          <p className={flashcardStyles.intro}>我理解了什么？它为什么触动我？我想怎样试一试？<br />每行写一句，翻面就能看到自己的闪卡。</p>
+          <p className={flashcardStyles.intro}>顺着三个问题往下说，答案会自然长成一张属于你的闪卡。</p>
           <details className={reflectionStyles.panel} open>
             <summary className={reflectionStyles.summary}><span className={reflectionStyles.index}>04</span><span className={reflectionStyles.summaryCopy}><strong>写下自己的理解</strong><span>{note.reflectionText.trim() ? "已经留下一段自己的话，随时续写。" : "不必完整，从一句自己的话开始。"}</span></span><ChevronDown className={reflectionStyles.chevron} size={18} /></summary>
             <div className={reflectionStyles.body}>
               <div className={reflectionStyles.editor}>
-                <p className="reflection-question">{currentQuestion}</p>
-                {questions.length > 1 && <details className="question-options"><summary className="muted">换一个思考角度<ChevronDown size={14} /></summary><div className="actions">{questions.filter(question => question !== currentQuestion).map(question => <button type="button" className="btn btn-ghost" key={question} disabled={busy === "reflection"} onClick={() => updateReflection({ prompt: question })}>{question}</button>)}</div></details>}
-                <label className="sr-only" htmlFor={`reflection-${note.id}`}>我自己的理解</label><textarea id={`reflection-${note.id}`} className={reflectionStyles.textarea} rows={6} value={reflection} onChange={event => updateReflection({ text: event.target.value })} maxLength={CAPTURE_LIMITS.reflectionText} placeholder={"我理解了……\n它让我想到……\n下一次，我想试试……"} disabled={busy === "reflection"} />
+                <ReflectionTriptych idPrefix={`reflection-${note.id}`} value={reflection} questions={questions} onChange={text => updateReflection({ text })} disabled={busy === "reflection"} />
                 <div className={`actions ${reflectionStyles.actions}`}><button className="btn btn-primary" disabled={Boolean(busy) || (!reflectionDirty && !promptDirty)}>{busy === "reflection" ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}保存我的理解</button>{reflectionDraft && <button type="button" className="btn btn-ghost" disabled={Boolean(busy)} onClick={() => { setReflectionDraft(null); setSyncError(""); }}>取消本次修改</button>}<span className={reflectionStyles.status}>{reflectionDirty || promptDirty ? "有尚未保存的修改" : note.reflectionText.trim() ? "已保存，随时可以继续写。" : "不必完整，也不需要标准答案。"}</span></div>
               </div>
               <aside className={reflectionStyles.standard}><strong>这是你的解释</strong>只写你此刻的理解。它会保存在这条灵感里，不覆盖原始记录，也不算作 AI 的内容。</aside>
@@ -381,7 +384,7 @@ function AiEditor({ result, hasThought, hasSource, blocked, onSave, onCancel, on
     {draft.keyPoints.length < 3 && <button type="button" className="btn btn-ghost" disabled={disabled} onClick={() => setDraft({ ...draft, keyPoints: [...draft.keyPoints, { text: "", origin: hasThought ? "用户记录" : "来源片段" }] })}><Plus size={15} />补充要点</button>}
     <label className="field"><span className="field-label">建议标签 · 最多 5 个，用逗号隔开</span><input className="input" value={tags} onChange={event => setTags(event.target.value)} disabled={disabled} /></label>
     {draft.reflectionQuestions.map((question, index) => <label className="field" key={index}><span className="field-label">思考问题 {index + 1}</span><div className="actions"><input className="input" value={question} onChange={event => setDraft({ ...draft, reflectionQuestions: draft.reflectionQuestions.map((item, i) => i === index ? event.target.value : item) })} maxLength={500} required disabled={disabled} />{draft.reflectionQuestions.length > 1 && <button type="button" className="btn btn-ghost" aria-label={`删除问题 ${index + 1}`} disabled={disabled} onClick={() => setDraft({ ...draft, reflectionQuestions: draft.reflectionQuestions.filter((_, i) => i !== index) })}><X size={16} /></button>}</div></label>)}
-    {draft.reflectionQuestions.length < 2 && <button type="button" className="btn btn-ghost" disabled={disabled} onClick={() => setDraft({ ...draft, reflectionQuestions: [...draft.reflectionQuestions, ""] })}><Plus size={15} />补充一个问题</button>}
+    {draft.reflectionQuestions.length < 3 && <button type="button" className="btn btn-ghost" disabled={disabled} onClick={() => setDraft({ ...draft, reflectionQuestions: [...draft.reflectionQuestions, ""] })}><Plus size={15} />补充一个问题</button>}
     <label className="field"><span className="field-label">可尝试的应用 · 选填</span><textarea className="textarea" rows={3} value={draft.possibleApplication ?? ""} onChange={event => setDraft({ ...draft, possibleApplication: event.target.value })} maxLength={2000} disabled={disabled} /></label>
     <div className="actions"><button className="btn btn-primary" disabled={disabled}>{saving ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}保存整理内容</button><button type="button" className="btn btn-ghost" onClick={onCancel} disabled={disabled}>取消</button></div>
   </form>;

@@ -273,7 +273,7 @@ export const repository = {
   },
   updateAiResult(id: string, result: AiResult, version?: number): Promise<EchoNote> {
     const parsed = aiResultSchema.safeParse(result);
-    if (!parsed.success) return Promise.reject(new RepositoryError("请检查整理内容：最多 3 条要点、5 个标签和 2 个思考问题。", "INVALID_INPUT"));
+    if (!parsed.success) return Promise.reject(new RepositoryError("请检查整理内容：最多 3 条要点、5 个标签和 3 个思考问题。", "INVALID_INPUT"));
     return patch(id, "aiResult", parsed.data, version);
   },
   async remove(id: string, version?: number): Promise<void> {

@@ -206,7 +206,7 @@ export const repository = {
   updateAiResult(id: string, result: AiResult): Promise<EchoNote> {
     return safely(() => db.transaction("rw", db.notes, async () => {
       const parsed = aiResultSchema.safeParse(result);
-      if (!parsed.success) throw new Error("请检查整理内容：最多 3 条要点、5 个标签和 2 个思考问题。");
+      if (!parsed.success) throw new Error("请检查整理内容：最多 3 条要点、5 个标签和 3 个思考问题。");
       const note = await requireNote(id);
       if (!note.aiResult) throw new Error("这条记录还没有整理结果。");
       if (note.aiStatus === "processing") throw new Error("正在整理，完成后再编辑结果。");

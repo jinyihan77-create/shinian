@@ -1,4 +1,5 @@
 import { DEFAULT_QUESTION, emptyCapture, type EchoNote } from "./types";
+import { taskTags } from "./task-tickets";
 
 /** These are explicit fictional examples, never inserted on startup. */
 export function createExamples(): EchoNote[] {
@@ -8,7 +9,7 @@ export function createExamples(): EchoNote[] {
     reflectionText: "", revision: 1, createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(), isExample: true,
   };
-  return [
+  const examples: EchoNote[] = [
     {
       ...base, id: "eccc0001-0000-4000-8000-000000000001", title: "听完以后，试着说三句话",
       userText: "我发现自己听了很多播客，但如果不自己讲一遍，过两天就忘了。也许听完先写三句话，比收藏更多内容更有用。",
@@ -29,4 +30,6 @@ export function createExamples(): EchoNote[] {
       reflectionText: "我想把周日散步留作不听新内容的时间，用自己的话复述本周最有感触的三个想法。先想清楚，再决定哪些值得继续写。",
     },
   ];
+  examples[1] = { ...examples[1], tags: taskTags(examples[1], "queue") };
+  return examples;
 }

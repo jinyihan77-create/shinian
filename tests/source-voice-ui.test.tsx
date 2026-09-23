@@ -20,10 +20,10 @@ class MockSpeechRecognition {
   }
 }
 
-function composer(preview = false, onOrganizeSource = vi.fn<(_transcript: string) => Promise<SourceIntakeResult>>()) {
+function composer(preview = false, onOrganizeSource = vi.fn<(_transcript: string) => Promise<SourceIntakeResult>>(), onSave = vi.fn()) {
   const onChange = vi.fn();
-  render(<CaptureComposer capture={emptyCapture()} onChange={onChange} sourceOpen onSourceToggle={() => {}} saving={false} draftState="idle" onSave={() => {}} onOrganizeSource={onOrganizeSource} preview={preview} />);
-  return { onChange, onOrganizeSource };
+  render(<CaptureComposer capture={emptyCapture()} onChange={onChange} sourceOpen onSourceToggle={() => {}} saving={false} draftState="idle" onSave={onSave} onOrganizeSource={onOrganizeSource} preview={preview} />);
+  return { onChange, onOrganizeSource, onSave };
 }
 
 afterEach(() => {
@@ -31,6 +31,7 @@ afterEach(() => {
   MockSpeechRecognition.current = null;
   delete window.SpeechRecognition;
   delete window.webkitSpeechRecognition;
+  Reflect.deleteProperty(navigator, "mediaDevices");
 });
 
 describe("来源语音入口", () => {
@@ -41,6 +42,22 @@ describe("来源语音入口", () => {
     expect(document.querySelector(".voice-strands")).toBeTruthy();
     expect(document.querySelector(".voice-live")).toBeNull();
     expect(screen.getByRole("button", { name: "开始口述记录" })).toBeTruthy();
+  });
+
+  it("主记录口述结束后自动保存并在后台整理", async () => {
+    window.SpeechRecognition = MockSpeechRecognition as never;
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] }) },
+    });
+    const onSave = vi.fn();
+    composer(false, undefined, onSave);
+    fireEvent.click(screen.getByRole("button", { name: "开始口述记录" }));
+    await screen.findByRole("button", { name: "停止口述记录" });
+    MockSpeechRecognition.current?.say("今晚我要先写下文章开头。 ");
+    fireEvent.click(screen.getByRole("button", { name: "停止口述记录" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledExactlyOnceWith(true));
+    expect(screen.getByText("已经听见，正在替你收好…")).toBeTruthy();
   });
 
   it("说完后只调用一次AI，并把返回的来源字段一次填入", async () => {

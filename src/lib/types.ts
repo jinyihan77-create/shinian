@@ -9,6 +9,10 @@ export interface AiResult {
   tags: string[];
   reflectionQuestions: string[];
   possibleApplication: string | null;
+  actionItem?: {
+    title: string;
+    nextStep: string;
+  } | null;
 }
 export interface CaptureInput {
   userText: string;

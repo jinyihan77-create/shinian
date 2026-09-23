@@ -5,7 +5,7 @@
  *   npm run verify:live -- --check-config
  * Credentials come from .env.tencent-owner.local / environment variables;
  * OWNER_PASSWORD overrides OWNER_INITIAL_PASSWORD after a password change.
- * A live run invokes AI twice (source extraction and note organization) and
+ * A live run invokes AI three times (source extraction, deletion planning and note organization) and
  * deletes only its own uniquely marked record.
  */
 import { randomUUID } from "node:crypto";
@@ -17,8 +17,8 @@ import { searchNotes } from "../src/lib/search.ts";
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const reportPath = path.join(project, "test-results/live-acceptance.json");
-const stepNames = ["configuration", "anonymous_access", "login", "session", "source_intake", "create", "mark_test_title", "list", "second_login", "cross_session_read", "ai", "reflection", "search", "delete", "second_logout", "logout", "logout_verified"];
-const labels = { configuration: "配置", anonymous_access: "未登录访问保护", login: "登录", session: "会话", source_intake: "语音来源 AI 整理", create: "保存测试记录", mark_test_title: "标注验收记录", list: "资料库读取", second_login: "独立会话登录", cross_session_read: "跨会话读取", ai: "真实 AI 整理", reflection: "保存自己的理解", search: "检索云端内容", delete: "清理测试记录", second_logout: "退出独立会话", logout: "退出登录", logout_verified: "退出后访问保护" };
+const stepNames = ["configuration", "anonymous_access", "login", "session", "source_intake", "create", "mark_test_title", "list", "delete_plan", "second_login", "cross_session_read", "ai", "reflection", "search", "delete", "second_logout", "logout", "logout_verified"];
+const labels = { configuration: "配置", anonymous_access: "未登录访问保护", login: "登录", session: "会话", source_intake: "语音来源 AI 整理", create: "保存测试记录", mark_test_title: "标注验收记录", list: "资料库读取", delete_plan: "AI 清理候选", second_login: "独立会话登录", cross_session_read: "跨会话读取", ai: "真实 AI 整理", reflection: "保存自己的理解", search: "检索云端内容", delete: "清理测试记录", second_logout: "退出独立会话", logout: "退出登录", logout_verified: "退出后访问保护" };
 
 class CheckFailure extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -177,6 +177,14 @@ export async function verifyLiveDeployment({ env = process.env, origin, readLoca
     if (!await step("list", async () => {
       const found = (await listAll(primary)).find(item => item.id === testId);
       requireValue(found && owns(found) && found.title === title, "SAVED_RECORD_MISSING_FROM_LIST");
+    })) return report;
+    if (!await step("delete_plan", async () => {
+      const body = await primary.request("/api/delete-plan", { method: "POST", body: { command: `找出标题中含有验收测试编号 ${testId} 的记录` }, timeout: 75_000 });
+      requireValue(typeof body?.plan?.interpretation === "string" && body.plan.interpretation.length > 0
+        && Array.isArray(body.plan.matches) && body.plan.matches.length === 1
+        && body.plan.matches[0]?.id === testId && typeof body.plan.matches[0]?.reason === "string", "DELETE_PLAN_NOT_CONFIRMED");
+      const stored = checkedNote(await primary.request(`/api/notes/${testId}`), testId);
+      requireValue(owns(stored) && stored.storageVersion === note.storageVersion, "DELETE_PLAN_CHANGED_RECORD");
     })) return report;
     if (!await step("second_login", async () => { await login(secondary, config.email, config.password); requireValue(secondary.userId === primary.userId, "SECOND_SESSION_IDENTITY_MISMATCH"); })) return report;
     if (!await step("cross_session_read", async () => {

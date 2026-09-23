@@ -63,27 +63,31 @@ describe("撕票行为", () => {
 });
 
 describe("待办票据", () => {
-  it("待开始自动排在进行中之前，同一状态保留原有顺序", () => {
+  it("想做自动排在进行中之前，进行中按处理时间后移", () => {
     const [first, second, third] = createExamples();
-    const activeFirst = { ...first, tags: taskTags(first, "start") };
-    const activeThird = { ...third, tags: taskTags(third, "start") };
-    expect(orderTicketsByProgress([activeFirst, second, activeThird], "departure").map(note => note.id)).toEqual([
-      second.id, activeFirst.id, activeThird.id,
+    const pendingFirst = { ...first, tags: taskTags(first, "queue") };
+    const pendingSecond = second;
+    const pendingThird = { ...third, tags: taskTags(third, "queue") };
+    const activeFirst = { ...pendingFirst, tags: taskTags(pendingFirst, "start"), updatedAt: "2026-09-24T01:00:00.000Z" };
+    const activeThird = { ...pendingThird, tags: taskTags(pendingThird, "start"), updatedAt: "2026-09-24T02:00:00.000Z" };
+    expect(orderTicketsByProgress([activeThird, pendingSecond, activeFirst], "departure").map(note => note.id)).toEqual([
+      pendingSecond.id, activeFirst.id, activeThird.id,
     ]);
-    expect(orderTicketsByProgress([activeFirst, second, activeThird], "arrival").map(note => note.id)).toEqual([
-      activeFirst.id, second.id, activeThird.id,
+    expect(orderTicketsByProgress([activeThird, pendingSecond, activeFirst], "arrival").map(note => note.id)).toEqual([
+      activeThird.id, pendingSecond.id, activeFirst.id,
     ]);
   });
 
   it("开始事项需等待保存确认，连点不重复提交，也不生成图片", async () => {
-    const note = createExamples()[0];
+    const plain = createExamples()[0];
+    const note = { ...plain, tags: taskTags(plain, "queue") };
     const before = structuredClone(note);
     let finish!: () => void;
     const onTransition = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
     const onOpen = vi.fn();
     render(<PendingTickets notes={[note]} kind="departure" preview paused onOpen={onOpen} onTransition={onTransition} />);
-    fireEvent.keyDown(screen.getByRole("button", { name: `拖动票根，开始并打开：${note.title}` }), { key: "Enter" });
-    fireEvent.click(screen.getByRole("button", { name: `开始并打开：${note.title}` }));
+    fireEvent.keyDown(screen.getByRole("button", { name: `拖动票根，开始这一步：${note.title}` }), { key: "Enter" });
+    fireEvent.click(screen.getByRole("button", { name: `开始这一步：${note.title}` }));
     expect(onTransition).toHaveBeenCalledExactlyOnceWith(note, "start");
     expect(onOpen).not.toHaveBeenCalled();
     expect(note).toEqual(before);
@@ -96,23 +100,34 @@ describe("待办票据", () => {
   });
 
   it("保存失败保留待办状态，恢复可重试的票根并明确显示失败", async () => {
-    const note = createExamples()[0];
+    const plain = createExamples()[0];
+    const note = { ...plain, tags: taskTags(plain, "queue") };
     const onTransition = vi.fn().mockRejectedValue(new Error("网络中断，尚未保存"));
     render(<PendingTickets notes={[note]} kind="departure" preview={false} paused onOpen={vi.fn()} onTransition={onTransition} />);
-    fireEvent.keyDown(screen.getByRole("button", { name: `拖动票根，开始并打开：${note.title}` }), { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("button", { name: `拖动票根，开始这一步：${note.title}` }), { key: "Enter" });
     expect((await screen.findByRole("alert")).textContent).toContain("尚未保存");
-    fireEvent.click(screen.getByRole("button", { name: `开始并打开：${note.title}` }));
+    fireEvent.click(screen.getByRole("button", { name: `开始这一步：${note.title}` }));
     await waitFor(() => expect(onTransition).toHaveBeenCalledTimes(2));
     expect(screen.queryByText("已完成")).toBeNull();
   });
 
+  it("AI 误判时可以把行动票改回普通想法", async () => {
+    const plain = createExamples()[0];
+    const note = { ...plain, tags: taskTags(plain, "queue") };
+    const onTransition = vi.fn().mockResolvedValue(undefined);
+    render(<PendingTickets notes={[note]} kind="departure" preview={false} paused onOpen={vi.fn()} onTransition={onTransition} />);
+    fireEvent.click(screen.getByRole("button", { name: `这只是想法：${note.title}` }));
+    await waitFor(() => expect(onTransition).toHaveBeenCalledExactlyOnceWith(note, "dismiss"));
+  });
+
   it("进行中的事项只打开内容，明确点击完成才更新状态", async () => {
     const original = createExamples()[0];
-    const note = { ...original, tags: taskTags(original, "start") };
+    const queued = { ...original, tags: taskTags(original, "queue") };
+    const note = { ...queued, tags: taskTags(queued, "start") };
     const onTransition = vi.fn().mockResolvedValue(undefined);
     const onOpen = vi.fn();
     render(<PendingTickets notes={[note]} kind="departure" preview paused onOpen={onOpen} onTransition={onTransition} />);
-    fireEvent.click(screen.getByRole("button", { name: `打开记录：${note.title}` }));
+    fireEvent.click(screen.getByRole("button", { name: `继续：${note.title}` }));
     expect(onOpen).toHaveBeenCalledWith(note);
     expect(onTransition).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: `标记完成：${note.title}` }));
@@ -121,7 +136,8 @@ describe("待办票据", () => {
 
   it("已完成事项可回看但不会自动重启，重新列入需要主动选择", async () => {
     const original = createExamples()[0];
-    const active = { ...original, tags: taskTags(original, "start") };
+    const queued = { ...original, tags: taskTags(original, "queue") };
+    const active = { ...queued, tags: taskTags(queued, "start") };
     const note = { ...active, tags: taskTags(active, "complete") };
     const onTransition = vi.fn().mockResolvedValue(undefined);
     const onOpen = vi.fn();
@@ -129,19 +145,20 @@ describe("待办票据", () => {
     fireEvent.keyDown(screen.getByRole("button", { name: `拖动票根，回看记录：${note.title}` }), { key: "Enter" });
     expect(onOpen).toHaveBeenCalledExactlyOnceWith(note);
     expect(onTransition).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: `重新列入待办：${note.title}` }));
+    fireEvent.click(screen.getByRole("button", { name: `再做一次：${note.title}` }));
     await waitFor(() => expect(onTransition).toHaveBeenCalledExactlyOnceWith(note, "reopen"));
   });
 
   it("详情页有未保存修改时不能推进事项，失败不会变成已完成", async () => {
     const original = createExamples()[0];
-    const note = { ...original, tags: taskTags(original, "start") };
+    const queued = { ...original, tags: taskTags(original, "queue") };
+    const note = { ...queued, tags: taskTags(queued, "start") };
     const onTransition = vi.fn().mockRejectedValue(new Error("云端未确认"));
     const view = render(<TaskJourneyBar note={note} onTransition={onTransition} blockedReason="先保存修改" />);
-    fireEvent.click(screen.getByRole("button", { name: "标记完成" }));
+    fireEvent.click(screen.getByRole("button", { name: "完成" }));
     expect(onTransition).not.toHaveBeenCalled();
     view.rerender(<TaskJourneyBar note={note} onTransition={onTransition} />);
-    fireEvent.click(screen.getByRole("button", { name: "标记完成" }));
+    fireEvent.click(screen.getByRole("button", { name: "完成" }));
     expect((await screen.findByRole("alert")).textContent).toContain("云端未确认");
     expect(screen.getByText("进行中")).toBeTruthy();
   });

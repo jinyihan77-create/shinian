@@ -11,7 +11,7 @@ import { NoteDetail } from "./note-detail";
 import { CaptureComposer, CaptureSpace, MobileNav, SpaceHeader } from "./studio-ui";
 import { CheckinPanel } from "./checkin-panel";
 import type { LibraryFilter } from "@/lib/search";
-import type { TaskAction } from "@/lib/task-tickets";
+import { taskStatus, type TaskAction } from "@/lib/task-tickets";
 import { captureContextTags, isCaptureKind, type CaptureKind } from "@/lib/note-context";
 
 type View = "capture" | "library" | "settings" | "note";
@@ -107,8 +107,8 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
     if (paused) throw new Error("账号当前暂停写入，请稍后再试。");
     const saved = await repository.updateTask(note, action);
     await onUpdated(saved);
-    setFilter(action === "complete" ? "arrival" : "departure");
-    notify(action === "complete" ? "这件事已标记完成。" : action === "reopen" ? "已重新列入待办。" : "这件事已开始，进度已经保存。");
+    setFilter(action === "complete" ? "arrival" : action === "dismiss" ? "all" : "departure");
+    notify(action === "complete" ? "这张行动票已经盖章。" : action === "reopen" ? "已重新放回行动票。" : action === "dismiss" ? "已经改回普通记录，不再作为行动提醒。" : action === "queue" ? "已经收进行动票。" : "已经开始这一步，进度已保存。");
   }
   const deleteNotes = useCallback(async (targets: EchoNote[]) => {
     if (paused) throw new Error("账号当前暂停写入，请稍后再试。");
@@ -237,7 +237,7 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
       setNotes(current => current.map(item => item.id === note.id ? { ...item, aiStatus: "processing" } : item));
       const result = await repository.organize(note.id, note.revision);
       await onUpdated(result.note);
-      notify(result.applied ? "整理已保存到云端。试着用自己的话再说一次。" : "内容已更新，这次结果未覆盖新内容，请重新整理。", result.applied ? "success" : "info");
+      notify(result.applied ? taskStatus(result.note) === "pending" ? "已经收好，也从里面听见了一件可以做的事。行动票已放进回声屿。" : "已经收好。它会安静地留在回声屿，等你以后回来。" : "内容已更新，这次结果未覆盖新内容，请重新整理。", result.applied ? "success" : "info");
     } catch (error) {
       notify(errorMessage(error), error instanceof RepositoryError && error.code === "AI_SAVED_REFRESH_FAILED" ? "info" : "error");
     } finally { inFlight.current.delete(note.id); await reload().catch(() => {}); }
@@ -250,7 +250,7 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
       await draftWrites.current;
       const note = await repository.create(capture, captureContextTags(captureKind));
       ++draftVersion.current; pendingDraft.current = null; setCapture(emptyCapture(capture.sourceType)); setDraftState("idle"); setSourceOpen(false);
-      await onUpdated(note); notify(captureKind === "relationship" ? "已经收进今天，也留在你和 TA 的片刻里。" : captureKind === "moment" ? "已经收进今天的片刻。" : "已保存到云端，今天的星也在下方等你。");
+      await onUpdated(note); notify(withAi ? "已经收好，正在听里面有没有一件想做的事…" : captureKind === "relationship" ? "已经收进今天，也留在你和 TA 的片刻里。" : captureKind === "moment" ? "已经收进今天的片刻。" : "已保存到云端，今天的星也在下方等你。");
       if (withAi) void organize(note);
     } catch (error) {
       const previousSaved = error instanceof RepositoryError && error.code === "PREVIOUS_SUBMISSION_SAVED";
@@ -396,7 +396,7 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
               {importPreview && previewCounts && <div className="import-preview"><h3>备份检查完成</h3><p>新增 <strong>{previewCounts.added}</strong> 条 · 重复 <strong>{previewCounts.duplicates}</strong> 条 · 无效 <strong>{previewCounts.invalid}</strong> 条</p><p className="small-note">同一编号的记录默认跳过，已有资料会保留。</p><div className="actions"><button className="btn btn-secondary" onClick={() => setImportPreview(null)} disabled={settingsBusy}>取消</button><button className="btn btn-primary" onClick={() => void confirmImport()} disabled={settingsBusy}>{settingsBusy && <LoaderCircle size={15} className="spin" />}确认恢复</button></div></div>}
             </section>
             <section className="panel settings-panel"><div className="settings-heading"><div className="settings-icon"><LockKeyhole size={21} /></div><div><h2>私人账号</h2><p className="account-email">{user.email}</p></div><button className="btn btn-secondary account-logout" disabled={accountBusy} onClick={requestLogout}>退出登录</button></div><p className="settings-description">手机和电脑使用同一邮箱及密码登录。退出后，云端资料仍在；当前设备的捕捉草稿会在原账号重新登录后恢复。</p><details className="password-settings" onToggle={event => { if (event.currentTarget.open) void loadPasswordCapability(); }}><summary>修改账号密码</summary><form onSubmit={e => void changePassword(e)}><p className="small-note">{passwordCapability?.message || "正在检查密码修改服务…"}</p><div className="form-grid"><label className="field"><span className="field-label">当前密码</span><input className="input" type="password" autoComplete="current-password" required maxLength={256} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} /></label><label className="field"><span className="field-label">新密码（至少 12 位）</span><input className="input" type="password" autoComplete="new-password" required minLength={12} maxLength={256} value={newPassword} onChange={e => setNewPassword(e.target.value)} /></label></div>{passwordCapability?.requiresVerification && <><p className="small-note">新密码须为 12–64 位，含大写字母、小写字母、数字和特殊字符。</p><label className="field"><span className="field-label">验证码</span><input className="input" inputMode="numeric" autoComplete="one-time-code" required pattern="[0-9]{4,8}" maxLength={8} value={verificationCode} onChange={e => setVerificationCode(e.target.value)} /></label><button type="button" className="btn btn-secondary" disabled={sendingCode || !passwordCapability.verificationAvailable} onClick={() => void sendPasswordCode()}>{sendingCode ? "正在发送…" : "获取验证码"}</button></>}{passwordMessage && <p className="inline-notice" role="status">{passwordMessage}</p>}{!passwordCapability && <button type="button" className="btn btn-secondary" onClick={() => void loadPasswordCapability()}>重新检查</button>}<button className="btn btn-primary" disabled={accountBusy || !passwordCapability?.verificationAvailable}>{accountBusy && <LoaderCircle size={15} className="spin" />}保存新密码</button></form></details></section>
-            <section className="panel settings-panel"><div className="settings-heading"><div className="settings-icon"><Sparkles size={21} /></div><div><h2>AI 整理</h2><p>{aiStatus.message}</p></div><span className={`chip ${aiStatus.available ? "chip-green" : ""}`}>{aiStatus.available ? "已配置" : aiStatus.configured ? "暂不可用" : "未配置"}</span></div><p className="settings-description">只有你主动使用“告诉 AI 来源”或“整理这条灵感”时，相关文字才会发送给 AI。来源链接仅作为出处保存，不会自动读取正文。</p><p className="small-note">AI 未配置时，记录、搜索、自己的输出和备份都能正常使用。服务配置方法见项目使用说明。</p><div className="actions settings-footer"><button className="btn btn-secondary" onClick={() => void refreshAi()}>重新检查</button></div></section>
+            <section className="panel settings-panel"><div className="settings-heading"><div className="settings-icon"><Sparkles size={21} /></div><div><h2>AI 整理</h2><p>{aiStatus.message}</p></div><span className={`chip ${aiStatus.available ? "chip-green" : ""}`}>{aiStatus.available ? "已配置" : aiStatus.configured ? "暂不可用" : "未配置"}</span></div><p className="settings-description">每次“记下”后，这条记录的文字会交给 AI 整理，并判断其中是否有明确想做的事。AI 只会生成行动建议或清理候选；来源链接不会自动读取正文，删除仍必须由你确认。</p><p className="small-note">AI 未配置时，记录、搜索、自己的输出和备份都能正常使用。服务配置方法见项目使用说明。</p><div className="actions settings-footer"><button className="btn btn-secondary" onClick={() => void refreshAi()}>重新检查</button></div></section>
             <section className="panel settings-panel"><div className="settings-heading"><div className="settings-icon"><Leaf size={22} /></div><div><h2>先看看一条灵感的样子</h2><p>加入 3 条明确标记的演示资料，体验记录与检索。</p></div></div><button className="btn btn-secondary" onClick={() => void loadExamples()} disabled={settingsBusy}><Plus size={16} />加载示例资料</button><p className="small-note demo-note">示例没有真实节目出处，也不代表实际 AI 生成；可以随时逐条删除。</p></section>
             <div className="page-footnote"><EchoMark small /><span>拾念 · 一个慢慢长大的第二大脑</span></div>
           </>}

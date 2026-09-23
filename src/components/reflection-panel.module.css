@@ -48,6 +48,23 @@
 
 .editor { padding-top: 18px; }
 
+.reflectionGrid { display: grid; gap: 10px; }
+.reflectionField { display: grid; gap: 8px; min-width: 0; border: 1px solid rgb(238 188 215 / 18%); border-radius: 16px 7px 16px 7px; padding: 13px 14px 11px; background: linear-gradient(130deg, rgb(249 174 208 / 8%), rgb(175 143 210 / 7%) 56%, rgb(128 190 204 / 5%)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%); transition: border-color .2s ease, box-shadow .2s ease, background .2s ease; }
+.reflectionField:focus-within, .reflectionField[data-active="true"] { border-color: rgb(242 182 210 / 52%); background: linear-gradient(130deg, rgb(249 174 208 / 13%), rgb(175 143 210 / 10%) 56%, rgb(128 190 204 / 7%)); box-shadow: 0 0 0 3px rgb(232 145 185 / 8%), inset 0 1px 0 rgb(255 255 255 / 8%); }
+.fieldTop { display: flex; align-items: center; gap: 9px; }
+.fieldIndex { color: #d99bb8; font-size: 9px; letter-spacing: .16em; }
+.fieldLabel { color: #d8c4d1; font-size: 10px; letter-spacing: .08em; }
+.guidingQuestion { color: #f2e6ed; font-size: 13px; line-height: 1.55; text-wrap: pretty; }
+.lineShell { position: relative; display: block; }
+.lineShell textarea { display: block; width: 100%; min-height: 64px; resize: vertical; border: 0; border-top: 1px solid rgb(255 255 255 / 7%); padding: 10px 42px 4px 0; background: transparent; color: #fff8fc; font-family: var(--ui-font); font-size: 15px; line-height: 1.65; outline: 0; }
+.lineShell textarea::placeholder { color: #8f7e8b; }
+.lineVoice { position: absolute; right: 0; bottom: 5px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgb(242 180 208 / 23%); border-radius: 12px 5px 12px 5px; background: linear-gradient(145deg, rgb(240 147 186 / 14%), rgb(154 128 198 / 13%)); color: #e9bbd0; }
+.lineVoice:hover:not(:disabled), .lineVoice[aria-pressed="true"] { border-color: rgb(255 200 222 / 58%); background: linear-gradient(145deg, rgb(240 147 186 / 30%), rgb(154 128 198 / 24%)); color: #fff2f8; box-shadow: 0 0 16px rgb(232 139 181 / 17%); }
+.lineVoice[aria-pressed="true"] svg { animation: reflection-listen 1s ease-in-out infinite alternate; }
+.lineVoice:disabled { opacity: .4; }
+.advanceHint, .voiceMessage { margin: 1px 2px 0; color: #948692; font-size: 10px; line-height: 1.5; }
+.voiceMessage { color: #e5afc7; }
+
 .textarea {
   display: block;
   width: 100%;
@@ -86,8 +103,14 @@
   .summaryCopy span { font-size: 11px; }
   .body { grid-template-columns: 1fr; gap: 0; padding: 0 14px 14px; }
   .editor { padding-top: 14px; }
+  .reflectionGrid { gap: 9px; }
+  .reflectionField { padding: 12px 12px 9px; }
+  .guidingQuestion { font-size: 12px; }
+  .lineShell textarea { min-height: 58px; font-size: 16px; }
   .textarea { min-height: 145px; padding: 14px; }
   .standard { margin-top: 13px; padding: 11px 0 0 13px; border-top: 1px solid rgb(255 255 255 / 6%); border-left: 1px solid rgb(192 132 252 / 24%); }
 }
 
 @media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
+@keyframes reflection-listen { from { transform: scale(.88); filter: drop-shadow(0 0 2px #f0a9c8); } to { transform: scale(1.08); filter: drop-shadow(0 0 8px #f0a9c8); } }
+@media (prefers-reduced-motion: reduce) { .reflectionField, .lineVoice[aria-pressed="true"] svg { transition: none; animation: none; } }

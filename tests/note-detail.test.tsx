@@ -107,7 +107,7 @@ describe("详情同步保护（模拟repository边界的实际组件交互）", 
     vi.mocked(repository.saveReflection).mockResolvedValueOnce(acknowledged);
     fireEvent.click(screen.getByRole("button", { name: "保存我的理解" }));
     await waitFor(() => expect(handlers.onUpdated).toHaveBeenCalledWith(acknowledged));
-    expect(repository.saveReflection).toHaveBeenCalledWith(note.id, "尚未保存的个人解释。", note.reflectionPrompt, 7);
+    expect(repository.saveReflection).toHaveBeenCalledWith(note.id, "尚未保存的个人解释。\n它提醒我收藏不等于真正掌握。\n下一次我会先复述，再决定是否收藏。", note.reflectionPrompt, 7);
   });
 
   it("409冲突保留输入并提供复制与重开说明，取消修改后才显示最新云端内容", async () => {
@@ -118,7 +118,7 @@ describe("详情同步保护（模拟repository边界的实际组件交互）", 
     fireEvent.click(screen.getByRole("button", { name: "保存我的理解" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("请先复制"));
     expect(reflection().value).toBe("冲突时也不能丢的想法。");
-    expect(repository.saveReflection).toHaveBeenCalledWith(note.id, "冲突时也不能丢的想法。", note.reflectionPrompt, 7);
+    expect(repository.saveReflection).toHaveBeenCalledWith(note.id, "冲突时也不能丢的想法。\n它提醒我收藏不等于真正掌握。\n下一次我会先复述，再决定是否收藏。", note.reflectionPrompt, 7);
     expect(handlers.onUpdated).not.toHaveBeenCalled();
     expect(handlers.onNotify).toHaveBeenCalledWith(expect.stringContaining("当前输入仍保留"), "error");
     fireEvent.click(screen.getByRole("button", { name: "取消本次修改" }));

@@ -131,11 +131,16 @@ type ComposerProps = {
   preview?: boolean;
 };
 
-function VoiceInput({ value, onChange, disabled, preview }: { value: string; onChange: (value: string) => void; disabled: boolean; preview: boolean }) {
+function VoiceInput({ value, onChange, onCommit, disabled, preview }: { value: string; onChange: (value: string) => void; onCommit: () => void; disabled: boolean; preview: boolean }) {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const baseTextRef = useRef("");
-  const [recording, setRecording] = useState(false);
+  const heardRef = useRef(false);
+  const failedRef = useRef(false);
+  const commitRef = useRef(onCommit);
+  const [voiceState, setVoiceState] = useState<"idle" | "requesting" | "recording" | "error">("idle");
   const [message, setMessage] = useState("");
+
+  useEffect(() => { commitRef.current = onCommit; }, [onCommit]);
 
   useEffect(() => () => {
     const recognition = recognitionRef.current;
@@ -143,33 +148,75 @@ function VoiceInput({ value, onChange, disabled, preview }: { value: string; onC
     recognition?.stop();
   }, []);
 
-  function toggle() {
+  async function toggle() {
     if (recognitionRef.current) { recognitionRef.current.stop(); return; }
+    if (voiceState === "requesting") return;
     const Constructor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Constructor) { setMessage("当前浏览器不支持语音输入，请直接输入"); return; }
+    if (!Constructor) { setVoiceState("error"); setMessage("当前浏览器不支持语音输入，请直接输入"); return; }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setVoiceState("error");
+      setMessage("当前浏览器无法访问麦克风，请检查浏览器和系统权限后重试");
+      return;
+    }
+    setVoiceState("requesting");
+    setMessage("请在浏览器提示中允许麦克风权限…");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+    } catch (error) {
+      const name = error && typeof error === "object" && "name" in error ? String(error.name) : "";
+      setVoiceState("error");
+      setMessage(name === "NotAllowedError" || name === "SecurityError"
+        ? "麦克风权限未开启。请点击地址栏的锁形图标，允许麦克风后再试。"
+        : "无法访问麦克风，请检查浏览器和系统权限后重试");
+      return;
+    }
     const recognition = new Constructor();
     recognition.lang = "zh-CN";
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     baseTextRef.current = value.trim();
+    heardRef.current = false;
+    failedRef.current = false;
     recognition.onresult = event => {
       const next = composeSpeechInput(baseTextRef.current, event.results);
-      if (next) onChange(next);
+      if (next) { heardRef.current = true; onChange(next); }
     };
-    recognition.onerror = event => { setRecording(false); setMessage(event.error === "not-allowed" ? "麦克风权限未开启，请允许后重试" : "没有识别到清晰语音，请重试"); };
-    recognition.onend = () => { setRecording(false); recognitionRef.current = null; };
+    recognition.onerror = event => {
+      failedRef.current = true;
+      setVoiceState("error");
+      setMessage(event.error === "not-allowed"
+        ? "麦克风权限未开启。请点击地址栏的锁形图标，允许麦克风后再试。"
+        : "没有识别到清晰语音，请点击重试或直接输入");
+    };
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      if (failedRef.current) { setVoiceState("error"); return; }
+      setVoiceState("idle");
+      if (heardRef.current && !failedRef.current && !preview) {
+        setMessage("已经听见，正在替你收好…");
+        window.setTimeout(() => commitRef.current(), 180);
+      }
+    };
     recognitionRef.current = recognition;
     setMessage(preview ? "语音只填写本次预览，不会保存" : "");
-    try { recognition.start(); setRecording(true); } catch { recognitionRef.current = null; setRecording(false); setMessage("语音输入启动失败，请直接输入"); }
+    try { recognition.start(); setVoiceState("recording"); } catch {
+      recognitionRef.current = null;
+      setVoiceState("error");
+      setMessage("语音输入启动失败，请检查麦克风权限后重试");
+    }
   }
 
-  return <div className={`voice-input-wrap ${recording ? "is-recording" : ""}`}>
-    <button type="button" className={`voice-siri-dock ${recording ? "is-recording" : ""}`} aria-label={recording ? "停止口述记录" : "开始口述记录"} aria-pressed={recording} onClick={toggle} disabled={disabled}>
+  const recording = voiceState === "recording";
+  const requesting = voiceState === "requesting";
+  const hasError = voiceState === "error";
+  return <div className={`voice-input-wrap ${recording ? "is-recording" : ""} ${hasError ? "has-error" : ""}`}>
+    <button type="button" className={`voice-siri-dock ${recording ? "is-recording" : ""} ${requesting ? "is-requesting" : ""} ${hasError ? "is-error" : ""}`} aria-label={recording ? "停止口述记录" : requesting ? "正在请求麦克风权限" : hasError ? "麦克风权限错误，点击重试" : "开始口述记录"} aria-pressed={recording} aria-busy={requesting} onClick={() => void toggle()} disabled={disabled || requesting}>
       <span className="voice-siri-orb" aria-hidden="true"><AudioLines size={18} /><i /><i /><i /></span>
-      <span className="voice-siri-copy"><strong>{recording ? "我在听" : "说给拾念听"}</strong><small>{recording ? "说完轻触，文字会自然落下来" : value.trim() ? "继续口述，拾念会接着记录" : "点一下开始口述"}</small></span>
+      <span className="voice-siri-copy"><strong>{recording ? "我在听" : requesting ? "正在请求权限" : hasError ? "麦克风需要权限" : "说给拾念听"}</strong><small>{recording ? "说完轻触，文字会自然落下来" : requesting ? "请在浏览器提示中允许麦克风" : hasError ? "点击重试，或检查地址栏的锁形图标" : value.trim() ? "继续口述，拾念会接着记录" : "点一下开始口述"}</small></span>
       <span className="voice-strands" aria-hidden="true"><i /><i /><i /><i /><i /><i /></span>
     </button>
-    {message && <span className="voice-message" role="status">{message}</span>}
+    {message && <span className={`voice-message ${hasError ? "is-error" : ""}`} role="status">{message}</span>}
   </div>;
 }
 
@@ -317,13 +364,13 @@ export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle,
   ] as const;
   const linkPlaceholder = capture.sourceType === "播客" ? "粘贴节目链接" : capture.sourceType === "文章" ? "粘贴文章链接" : capture.sourceType === "书籍" ? "豆瓣、微信读书或书籍链接（选填）" : capture.sourceType === "视频" ? "粘贴视频链接" : "添加相关链接（选填）";
   return <section className="capture-composer" aria-label="快速记录" onKeyDown={event => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !event.nativeEvent.isComposing && !saving && hasContent) { event.preventDefault(); onSave(false); }
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !event.nativeEvent.isComposing && !saving && hasContent) { event.preventDefault(); onSave(true); }
   }}>
     <div className="writing-surface">
       <button type="button" className="capture-star-shortcut capture-star-primary" onClick={onOpenCheckin} disabled={saving} title="摘下今天的星" aria-label="摘下今天的星"><Star size={16} /><span>摘星</span></button>
       <label className="sr-only" htmlFor="capture-thought">我的想法</label>
       <textarea id="capture-thought" className="capture-textarea" placeholder="一句想法，一段听后感……" value={capture.userText} maxLength={20000} onChange={event => onChange({ userText: event.target.value })} disabled={saving} />
-      <VoiceInput value={capture.userText} onChange={value => onChange({ userText: value })} disabled={saving} preview={preview} />
+      <VoiceInput value={capture.userText} onChange={value => onChange({ userText: value })} onCommit={() => onSave(true)} disabled={saving} preview={preview} />
       <div className="capture-kind" role="radiogroup" aria-label="这条记录放在哪里">
         <span>放在哪里</span>
         <button type="button" role="radio" aria-checked={captureKind === "thought"} onClick={() => onCaptureKind("thought")} disabled={saving}><Lightbulb size={14} />普通念头</button>
@@ -346,7 +393,7 @@ export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle,
     </div>
     <div className="capture-footer">
       <div className="capture-footer-left"><span className={"draft-state " + (draftState === "error" ? "danger-text" : "")} aria-live="polite">{preview ? "预览输入不会保存" : draftState === "saving" ? "正在保存本机草稿…" : draftState === "saved" ? <><Check size={13} />草稿已留在此设备</> : draftState === "error" ? "草稿保存失败，请先复制文字" : "保存后会进入你的回声屿"}</span></div>
-      <button type="button" className="btn btn-primary capture-submit" disabled={saving || !hasContent} onClick={() => onSave(false)}>{saving ? <LoaderCircle className="spin" size={16} /> : null}{saving ? "正在保存…" : "记下"}{!saving && <ArrowUpRight size={17} />}</button>
+      <button type="button" className="btn btn-primary capture-submit" disabled={saving || !hasContent} onClick={() => onSave(true)}>{saving ? <LoaderCircle className="spin" size={16} /> : null}{saving ? "正在收好…" : "记下"}{!saving && <ArrowUpRight size={17} />}</button>
     </div>
   </section>;
 }

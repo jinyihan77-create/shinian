@@ -24,6 +24,10 @@ function fieldsFor(note: EchoNote): { name: string; value: string }[] {
       { name: "AI 标签建议", value: note.aiResult.tags.join(" · ") },
       ...note.aiResult.reflectionQuestions.map(value => ({ name: "AI 思考问题", value })),
       { name: "可尝试的应用", value: note.aiResult.possibleApplication || "" },
+      ...(note.aiResult.actionItem ? [
+        { name: "行动票", value: note.aiResult.actionItem.title },
+        { name: "行动票下一步", value: note.aiResult.actionItem.nextStep },
+      ] : []),
     ] : []),
   ];
 }
@@ -44,7 +48,7 @@ export function searchNotes(
 ): SearchMatch[] {
   const words = [...new Set(query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean))];
   return notes.filter(note => {
-    if (filter === "departure" && taskStatus(note) === "completed") return false;
+    if (filter === "departure" && !["pending", "active"].includes(taskStatus(note))) return false;
     if (filter === "arrival" && taskStatus(note) !== "completed") return false;
     return !tag || note.tags.includes(tag);
   }).flatMap(note => {

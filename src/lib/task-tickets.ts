@@ -1,32 +1,44 @@
 import type { EchoNote } from "./types";
 import { isCaptureContextTag } from "./note-context";
 
-export type TaskStatus = "pending" | "active" | "completed";
-export type TaskAction = "start" | "complete" | "reopen";
+export type TaskStatus = "none" | "pending" | "active" | "completed";
+export type TaskAction = "queue" | "start" | "complete" | "reopen" | "dismiss";
 
 // Persist with the existing version-checked metadata write, so tasks share the
 // same private storage, synchronization and backup contract as their notes.
 const ACTIVE_TAG = "__shinian_task:active";
 const COMPLETED_TAG = "__shinian_task:completed";
-export const isTaskTag = (tag: string) => tag === ACTIVE_TAG || tag === COMPLETED_TAG;
+const PENDING_TAG = "__shinian_task:pending";
+const DISMISSED_TAG = "__shinian_task:dismissed";
+export const isTaskTag = (tag: string) => [PENDING_TAG, ACTIVE_TAG, COMPLETED_TAG, DISMISSED_TAG].includes(tag);
 export const isSystemTag = (tag: string) => isTaskTag(tag) || isCaptureContextTag(tag);
 export const visibleTags = (tags: string[]) => tags.filter(tag => !isSystemTag(tag));
 
-export function taskStatus(note: Pick<EchoNote, "tags">): TaskStatus {
+export function taskStatus(note: Pick<EchoNote, "tags"> & Partial<Pick<EchoNote, "aiResult">>): TaskStatus {
   if (note.tags.includes(COMPLETED_TAG)) return "completed";
-  return note.tags.includes(ACTIVE_TAG) ? "active" : "pending";
+  if (note.tags.includes(ACTIVE_TAG)) return "active";
+  if (note.tags.includes(DISMISSED_TAG)) return "none";
+  return note.tags.includes(PENDING_TAG) || Boolean(note.aiResult?.actionItem) ? "pending" : "none";
 }
 
-export const taskLabels: Record<TaskStatus, string> = { pending: "待开始", active: "进行中", completed: "已完成" };
+export const taskLabels: Record<TaskStatus, string> = { none: "普通记录", pending: "想做", active: "进行中", completed: "已完成" };
 
 export function taskTags(note: Pick<EchoNote, "tags">, action: TaskAction): string[] {
   const current = taskStatus(note);
-  if ((action === "start" && current !== "pending") || (action === "complete" && current !== "active") || (action === "reopen" && current !== "completed")) {
+  if ((action === "queue" && current !== "none") || (action === "start" && current !== "pending") || (action === "complete" && current !== "active") || (action === "reopen" && current !== "completed") || (action === "dismiss" && current !== "pending")) {
     throw new Error("事项状态已变化，请刷新后再试。");
   }
   const tags = note.tags.filter(tag => !isTaskTag(tag));
   if (tags.length >= 30) throw new Error("这条记录的标签已满，请先减少一个标签，再更新事项状态。");
-  return [...tags, action === "complete" ? COMPLETED_TAG : ACTIVE_TAG];
+  const next = action === "queue" ? PENDING_TAG : action === "complete" ? COMPLETED_TAG : action === "dismiss" ? DISMISSED_TAG : ACTIVE_TAG;
+  return [...tags, next];
+}
+
+export function actionTicketCopy(note: Pick<EchoNote, "title" | "aiResult">) {
+  return {
+    title: note.aiResult?.actionItem?.title || note.title,
+    nextStep: note.aiResult?.actionItem?.nextStep || "打开记录，先完成最小的一步。",
+  };
 }
 
 /** Title/tag editing cannot silently reset a task's progress. */
