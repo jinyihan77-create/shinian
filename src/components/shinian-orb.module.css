@@ -1,0 +1,74 @@
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 48% 47%, #bc719d38 0 10%, #7b5b9842 28%, transparent 56%),
+    radial-gradient(circle at 22% 18%, #df8fb21b, transparent 38%),
+    radial-gradient(circle at 76% 78%, #75a9bd16, transparent 42%),
+    #0d0912;
+  touch-action: pan-y;
+}
+
+.root canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity .65s ease;
+}
+
+.root[data-state="ready"] canvas { opacity: 1; }
+
+.fallback {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(55vmin, 520px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 35% 28%, #fff6fc 0 2%, #f8dbe9 7%, transparent 21%),
+    radial-gradient(circle at 31% 28%, #eb9fbe 0 8%, transparent 34%),
+    radial-gradient(circle at 66% 72%, #86b9ca45, transparent 34%),
+    radial-gradient(circle at 48% 45%, #df8eaf, #9b78b6 45%, #5b446f 72%, #271c32 100%);
+  box-shadow: 0 0 28px #ebb2ce66, 0 0 100px #b777aa43, inset -28px -34px 58px #24152d7d, inset 20px 17px 42px #fff4fa2b;
+  filter: saturate(.88);
+  opacity: 1;
+  transition: opacity .65s ease;
+}
+
+.fallback::before,
+.fallback::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.fallback::before {
+  inset: -6%;
+  border: 1px solid #f7d8e78a;
+  filter: blur(7px);
+  opacity: .58;
+}
+
+.fallback::after {
+  inset: 12% 8% 18% 14%;
+  background: conic-gradient(from 210deg, transparent, #f6c7dc2b, transparent 34%, #b8d7e127, transparent 70%);
+  filter: blur(14px);
+}
+
+.root[data-state="ready"] .fallback { opacity: 0; }
+
+@media (max-width: 700px) {
+  .fallback { width: min(82vw, 430px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root canvas,
+  .fallback { transition: none; }
+}

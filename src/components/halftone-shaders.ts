@@ -125,7 +125,7 @@ void main() {
     print = mix(print, print * vec3(0.98, 0.86, 0.10), covY);
     print = mix(print, print * vec3(0.08), covK);
   } else if (uMode == 1) {
-    vec3 ink2 = mix(uInk.gbr, vec3(0.90, 0.24, 0.30), 0.7);
+    vec3 ink2 = mix(uInk.gbr, mix(uInk, uPaper, 0.18), 0.62);
     float lumA = dot(gradeRGB(sampleCell(st, dens, ang).rgb), vec3(0.299, 0.587, 0.114));
     float lumB = dot(gradeRGB(sampleCell(st, dens, ang + radians(38.0)).rgb), vec3(0.299, 0.587, 0.114));
     float covA = coverage(st, dens, ang, 1.0 - lumA, 1.0);

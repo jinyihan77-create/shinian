@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FLASHCARD_TAG, paintingForNote, reflectionThoughts, withFlashcardFavorite } from "../src/lib/art-flashcards";
+import { FLASHCARD_TAG, PAINTINGS, paintingForNote, reflectionThoughts, withFlashcardFavorite } from "../src/lib/art-flashcards";
 
 describe("personal oil-painting flashcards", () => {
   it("preserves every thought, including more than three and punctuation", () => {
@@ -17,5 +17,9 @@ describe("personal oil-painting flashcards", () => {
   it("keeps the same oil painting when reopening a note on another device", () => {
     expect(paintingForNote("test-note")).toEqual(paintingForNote("test-note"));
     expect(paintingForNote("test-note").source).toMatch(/^https:\/\/www\.metmuseum\.org\//);
+  });
+  it("gives every oil painting its own halftone palette", () => {
+    expect(new Set(PAINTINGS.map(painting => painting.palette.name)).size).toBe(PAINTINGS.length);
+    expect(new Set(PAINTINGS.map(painting => `${painting.palette.paper}/${painting.palette.ink}`)).size).toBe(PAINTINGS.length);
   });
 });

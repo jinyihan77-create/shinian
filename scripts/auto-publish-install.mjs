@@ -79,10 +79,12 @@ async function writeLauncher() {
 function queryTask() {
   const result = schtasks(["/query", "/tn", TASK_NAME, "/xml"]);
   if (result.code !== 0) return { installed: false };
-  const enabled = /<Enabled>true<\/Enabled>/i.test(result.out);
+  // Windows 在任务**启用**时会把 <Enabled> 元素整个省掉，停用时才写 <Enabled>false</Enabled>。
+  // 所以不能只看 true，必须反着判：存在且为 false 才算停用。
+  const disabled = /<Enabled>false<\/Enabled>/i.test(result.out);
   const interval = result.out.match(/<Interval>PT(\d+)M<\/Interval>/i)?.[1] ?? "";
   const batterySafe = /<DisallowStartIfOnBatteries>false<\/DisallowStartIfOnBatteries>/i.test(result.out);
-  return { installed: true, enabled, interval, batterySafe };
+  return { installed: true, enabled: !disabled, interval, batterySafe };
 }
 
 /** 取当前用户的 SID，任务定义里要用它来绑定"以本用户身份运行"。 */

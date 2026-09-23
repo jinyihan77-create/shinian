@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import { ArrowUpRight, Bookmark, Check, LoaderCircle, RotateCw } from "lucide-react";
 import { paintingForNote, reflectionThoughts } from "@/lib/art-flashcards";
 import FlipCard from "./flip-card";
@@ -30,8 +30,18 @@ export function ArtFlashcard({ noteId, title, text, favorite = false, onFavorite
   const prompts = ["我理解了什么", "它为什么触动我", "我想怎样试一试"];
   const cardThoughts = Array.from({ length: Math.max(3, thoughts.length) }, (_, index) => thoughts[index] || "");
   const reason = blockedReason || (!favorite && !complete ? `再写 ${missing} 句，半色调画面就会显影成完整闪卡。` : "");
+  const paletteStyle = {
+    "--flashcard-paper": painting.palette.paper,
+    "--flashcard-ink": painting.palette.ink,
+    "--flashcard-accent": painting.palette.accent,
+    "--flashcard-glow": painting.palette.glow,
+    "--flashcard-sheen": painting.palette.sheen,
+    "--flashcard-shade": painting.palette.shade,
+    "--flashcard-deep": painting.palette.deep,
+    "--flashcard-border": painting.palette.border,
+  } as CSSProperties;
 
-  return <article className={styles.artifact} aria-label={`${complete ? "油画闪卡" : "正在显影的闪卡"}：${title}`}>
+  return <article className={styles.artifact} style={paletteStyle} aria-label={`${complete ? "油画闪卡" : "正在显影的闪卡"}：${title}`}>
     <div className={styles.overline}><span>拾念 · 油画闪卡</span><span>{complete ? preview ? "演示" : "私人珍藏" : `正在显影 ${thoughts.length}/3`}</span></div>
     <FlipCard
       width={340} height={440} radius={22} flipped={flipped} onFlipChange={setFlipped}
@@ -54,8 +64,8 @@ export function ArtFlashcard({ noteId, title, text, favorite = false, onFavorite
         {!complete && <HalftoneReveal
           src={`/artworks/${painting.id}-1600.webp`}
           mode="duotone"
-          inkColor="#68465f"
-          paperColor="#e6bfd2"
+          inkColor={painting.palette.ink}
+          paperColor={painting.palette.paper}
           dotSize={0.68}
           dotDensity={92}
           angle={24}
@@ -67,7 +77,7 @@ export function ArtFlashcard({ noteId, title, text, favorite = false, onFavorite
           idleReveal={0}
           borderRadius="22px"
           className={styles.halftoneArt}
-          label={`${painting.artist}《${painting.title}》的莓粉半色调画面，移动指针或轻触可局部显露原画`}
+          label={`${painting.artist}《${painting.title}》的${painting.palette.name}半色调画面，移动指针或轻触可局部显露原画`}
         />}
         {complete && imageError && <span className={styles.imageError}>画作暂时未能加载<br />仍可翻面查看自己的理解</span>}
         <span className={styles.frontShade} />

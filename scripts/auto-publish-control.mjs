@@ -36,7 +36,9 @@ function schtasks(taskArgs) {
 function taskState() {
   const result = schtasks(["/query", "/tn", TASK_NAME, "/xml"]);
   if (result.code !== 0) return { installed: false, enabled: false };
-  return { installed: true, enabled: /<Enabled>true<\/Enabled>/i.test(result.out) };
+  // Windows 在任务**启用**时会省略 <Enabled> 元素，停用时才写 <Enabled>false</Enabled>。
+  // 所以必须反着判，只看 true 会把正常工作的任务误报成"已停用"。
+  return { installed: true, enabled: !/<Enabled>false<\/Enabled>/i.test(result.out) };
 }
 
 /** 在当前窗口里跑一个脚本并等它结束，输出直接继承（用户能实时看到进度）。 */
@@ -51,9 +53,34 @@ function runVisible(scriptArgs) {
   });
 }
 
+/**
+ * 全程共用同一个 readline 实例。
+ *
+ * 每次提问都新建一个 readline 的话，在输入被重定向 / 提前结束（EOF）的场景下
+ * 会留下未决的 Promise，Node 退出时报 "unsettled top-level await"。
+ * 共用实例并监听 close，就能在输入通道关闭时干净退出。
+ */
+const rl = createInterface({ input: process.stdin, output: process.stdout });
+let stdinClosed = false;
+rl.on("close", () => { stdinClosed = true; });
+
 function ask(question) {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise(resolve => rl.question(question, answer => { rl.close(); resolve(answer.trim()); }));
+  if (stdinClosed) return Promise.resolve("");
+  return new Promise(resolve => {
+    // 输入通道关闭（重定向结束、Ctrl+Z、管道被掐断）时 question 的回调不会触发，
+    // 单纯 await 会留下未决 Promise，Node 会在退出时打印 "unsettled top-level await"。
+    // 这里和 close 事件赛跑，保证任何情况下都能 resolve。
+    let settled = false;
+    const done = value => {
+      if (settled) return;
+      settled = true;
+      rl.off("close", onClose);
+      resolve(value);
+    };
+    const onClose = () => done("");
+    rl.once("close", onClose);
+    rl.question(question, answer => done(answer.trim()));
+  });
 }
 
 async function pause() {
@@ -246,8 +273,11 @@ async function main() {
   if (once === "--status") return void await showStatus();
 
   for (;;) {
+    if (stdinClosed) { console.log("\n（输入已结束，退出。）\n"); return; }
     process.stdout.write(MENU);
     const choice = await ask("请输入数字后回车：");
+    // 关闭管道 / 按 Ctrl+Z 时 question 回调拿不到内容，视为退出。
+    if (stdinClosed && !choice) { console.log("\n再见。\n"); return; }
     switch (choice) {
       case "1": await showStatus(); await pause(); break;
       case "2": await publishNow(); break;

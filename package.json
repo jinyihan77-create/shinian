@@ -15,7 +15,12 @@
     "prepare:tencent": "node scripts/prepare-tencent-deploy.mjs",
     "deploy:tencent": "node scripts/deploy-tencent.mjs",
     "verify:live": "node scripts/verify-live-deployment.mjs",
-    "ship": "node scripts/ship.mjs"
+    "ship": "node scripts/ship.mjs",
+    "auto:status": "node scripts/auto-publish.mjs --status",
+    "auto:install": "node scripts/auto-publish-install.mjs install",
+    "auto:uninstall": "node scripts/auto-publish-install.mjs uninstall",
+    "auto:run": "node scripts/auto-publish.mjs --force",
+    "auto:probe": "node scripts/auto-publish.mjs --probe"
   },
   "dependencies": {
     "@cloudbase/node-sdk": "^3.18.3",
