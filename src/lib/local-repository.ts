@@ -31,7 +31,7 @@ function storageError(error: unknown): Error {
   const name = error instanceof Error ? error.name : "";
   if (name === "QuotaExceededError") return new Error("浏览器存储空间不足。请先导出已有资料，再释放空间后重试。");
   if (["MissingAPIError", "SecurityError", "InvalidStateError", "OpenFailedError", "DatabaseClosedError", "UnknownError"].includes(name)) {
-    return new Error("暂时无法打开本地灵感集。请检查浏览器是否允许网站保存数据，或退出隐私模式后重试。");
+    return new Error("暂时无法打开本地回声屿。请检查浏览器是否允许网站保存数据，或退出隐私模式后重试。");
   }
   if (error instanceof Error && /[\u4e00-\u9fff]/.test(error.message)) return error;
   return new Error("本地资料保存或读取失败，请重试。已输入的内容仍为你保留。");

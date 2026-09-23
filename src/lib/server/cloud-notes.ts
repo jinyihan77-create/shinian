@@ -46,14 +46,14 @@ function databaseError(error: { message?: string; code?: string }): never {
     NO_AI_RESULT: [409, "这条记录还没有整理结果。"],
     NO_AI_INPUT: [400, "请先补充一点想法或来源文字，再进行整理。"],
     RATE_LIMITED: [429, "整理请求较多，请稍后重试。你的记录仍然保留。"],
-    PRIVATE_ACCOUNT_REQUIRED: [403, "当前账号没有这个私人灵感集的访问权限。"],
+    PRIVATE_ACCOUNT_REQUIRED: [403, "当前账号没有这个私人资料库的访问权限。"],
   };
   const matched = errors[error.message ?? ""];
   if (matched) throw new ApiError(matched[0], error.message!, matched[1]);
   if (["42P01", "42883", "PGRST202", "PGRST205"].includes(error.code ?? "")) {
-    throw new ApiError(503, "DATABASE_NOT_READY", "云端灵感集尚未初始化，请先完成部署配置。此次操作没有确认保存成功。");
+    throw new ApiError(503, "DATABASE_NOT_READY", "云端资料库尚未初始化，请先完成部署配置。此次操作没有确认保存成功。");
   }
-  throw new ApiError(503, "CLOUD_UNAVAILABLE", "暂时无法连接云端灵感集，无法确认此次操作是否保存。请保留输入，恢复连接后刷新核对。");
+  throw new ApiError(503, "CLOUD_UNAVAILABLE", "暂时无法连接云端资料库，无法确认此次操作是否保存。请保留输入，恢复连接后刷新核对。");
 }
 
 async function rpc<T>(client: DataClient, name: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -94,7 +94,7 @@ const pageByteLimit = 3500 * 1024;
 export const cloudNotes = {
   async listPage(client: DataClient, cursor?: string | null): Promise<{ notes: EchoNote[]; nextCursor: string | null }> {
     if (cursor !== undefined && cursor !== null && !idSchema.safeParse(cursor).success) {
-      throw new ApiError(400, "INVALID_CURSOR", "灵感集分页位置无效，请重新打开灵感集。");
+      throw new ApiError(400, "INVALID_CURSOR", "资料库分页位置无效，请重新打开回声屿。");
     }
     await rpc(client, "echo_recover_ai");
     let query = client.from("echo_notes").select(fields).order("id", { ascending: true }).limit(pageSize + 1);
@@ -144,9 +144,9 @@ export const cloudNotes = {
     if (!data) throw new ApiError(404, "NOT_FOUND", "这条记录不存在，可能已在另一台设备删除。");
     return rowNote(data);
   },
-  async create(client: DataClient, id: string, input: CaptureInput): Promise<EchoNote> {
+  async create(client: DataClient, id: string, input: CaptureInput, tags: string[] = []): Promise<EchoNote> {
     const content = cleanInput(input);
-    const note = { ...content, title: temporaryTitle(content), tags: [], aiStatus: "not_started", aiResult: null,
+    const note = { ...content, title: temporaryTitle(content), tags, aiStatus: "not_started", aiResult: null,
       aiInputRevision: null, aiError: null, reflectionPrompt: DEFAULT_QUESTION, reflectionText: "", revision: 1, isExample: false };
     return readNote(await rpc(client, "echo_create_note", { p_id: validateNoteId(id), p_note: note, p_capture: content }));
   },

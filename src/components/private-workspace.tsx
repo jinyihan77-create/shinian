@@ -82,7 +82,7 @@ export function PrivateWorkspace() {
           <span className="auth-emblem">{session?.configured === false ? <Cloud size={27} /> : <LockKeyhole size={25} />}</span>
           
           <h1 className="kinetic-heading"><EchoHeading>{session?.configured === false ? "你的空间正在准备中" : "回到你的灵感空间"}</EchoHeading></h1>
-          <p className="auth-description">{session?.configured === false ? "私人账号和云端灵感集尚未接通，当前还不能保存或同步正式资料。" : "登录同一个私人账号，在手机和电脑上继续你的思考。"}</p>
+          <p className="auth-description">{session?.configured === false ? "私人账号和云端资料库尚未接通，当前还不能保存或同步正式资料。" : "登录同一个私人账号，在手机和电脑上继续你的思考。"}</p>
           {session?.configured && <form onSubmit={e => void login(e)}>
             <label className="field"><span className="field-label">邮箱</span><input className="input" type="email" autoComplete="username" placeholder="你的私人登录邮箱" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} disabled={submitting} /></label>
             <label className="field"><span className="field-label">密码</span><input className="input" type="password" autoComplete="current-password" placeholder="输入账号密码" required maxLength={256} value={password} onChange={e => setPassword(e.target.value)} disabled={submitting} /></label>

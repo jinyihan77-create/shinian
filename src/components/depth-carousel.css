@@ -1,4 +1,4 @@
-.depth-carousel { position: relative; width: 100%; min-height: 390px; display: flex; align-items: center; justify-content: center; perspective: 1280px; perspective-origin: 50% 48%; touch-action: pan-y; outline: none; user-select: none; cursor: grab; }
+.depth-carousel { position: relative; width: 100%; min-height: 325px; display: flex; align-items: center; justify-content: center; perspective: 1280px; perspective-origin: 50% 48%; touch-action: pan-y; outline: none; user-select: none; cursor: grab; }
 .depth-carousel:active { cursor: grabbing; }
 .depth-carousel:focus-visible { outline: 1px solid #c7e8f044; outline-offset: 8px; border-radius: 28px; }
 .depth-carousel__stage { position: absolute; inset: 0; transform-style: preserve-3d; }
@@ -14,5 +14,5 @@
 .depth-carousel__dots { position: absolute; bottom: 11px; left: 50%; z-index: 20; display: flex; gap: 7px; padding: 8px 11px; transform: translateX(-50%); border: 1px solid #d7f4ff1c; border-radius: 999px; background: #0d151aa8; backdrop-filter: blur(10px); }
 .depth-carousel__dots button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: #dff7ff4a; cursor: pointer; transition: width .25s ease, background .25s ease; }
 .depth-carousel__dots button.is-active { width: 22px; background: #dff7ff; }
-@media (max-width: 620px) { .depth-carousel { min-height: 330px; } .depth-carousel__arrow { width: 36px; height: 36px; font-size: 26px; } .depth-carousel__arrow--prev { left: 0; } .depth-carousel__arrow--next { right: 0; } }
+@media (max-width: 620px) { .depth-carousel { min-height: 282px; } .depth-carousel__arrow { width: 36px; height: 36px; font-size: 26px; } .depth-carousel__arrow--prev { left: 0; } .depth-carousel__arrow--next { right: 0; } }
 @media (prefers-reduced-motion: reduce) { .depth-carousel__arrow, .depth-carousel__dots button { transition: none; } }

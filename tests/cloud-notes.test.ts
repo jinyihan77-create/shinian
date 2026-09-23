@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { initializeTencent } from "../scripts/setup-tencent.mjs";
 import { taskStatus, taskTags } from "../src/lib/task-tickets";
 import type { EchoNote } from "../src/lib/types";
+import { captureContextTags } from "../src/lib/note-context";
 
 const mocks = vi.hoisted(() => ({ requirePrivateUser: vi.fn(), rpc: vi.fn() }));
 vi.mock("../src/lib/server/supabase", () => ({ requirePrivateUser: mocks.requirePrivateUser }));
@@ -104,6 +105,18 @@ describe("private notes HTTP contract (mocked Supabase boundary)", () => {
     const response = await pending;
     expect(response.status).toBe(201); expect(await response.json()).toEqual({ note: persisted });
     expect(mocks.requirePrivateUser.mock.calls[0][0].headers.get("x-echo-user-id")).toBe(owner);
+  });
+
+  it("accepts only private capture context tags and includes them in the atomic create", async () => {
+    const tags = captureContextTags("relationship");
+    const tagged = { ...persisted, tags };
+    mocks.rpc.mockResolvedValueOnce({ data: tagged, error: null });
+    const response = await createRoute(request("POST", { id, input: capture, tags }));
+    expect(response.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith("echo_create_note", expect.objectContaining({ p_note: expect.objectContaining({ tags }) }));
+    mocks.rpc.mockClear();
+    expect((await createRoute(request("POST", { id, input: capture, tags: ["公开主题"] }))).status).toBe(400);
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it("rejects malformed and failed cloud acknowledgments without announcing successful saves", async () => {

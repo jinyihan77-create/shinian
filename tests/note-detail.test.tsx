@@ -24,7 +24,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 function fixture() {
-  const note: EchoNote = { ...createExamples()[2], reflectionText: "最初在云端保存的理解。", reflectionPrompt: "你会怎样解释？", storageVersion: 7 };
+  const note: EchoNote = { ...createExamples()[2], reflectionText: "我重新说清了自己的理解。\n它提醒我收藏不等于真正掌握。\n下一次我会先复述，再决定是否收藏。", reflectionPrompt: "你会怎样解释？", storageVersion: 7 };
   const handlers = { onBack: vi.fn(), onUpdated: vi.fn<() => Promise<void>>().mockResolvedValue(undefined), onOrganize: vi.fn<() => Promise<void>>().mockResolvedValue(undefined), onNotify: vi.fn() };
   const view = render(<NoteDetail note={note} {...handlers} />);
   const rerender = (updated: EchoNote) => view.rerender(<NoteDetail note={updated} {...handlers} />);
@@ -33,6 +33,15 @@ function fixture() {
 }
 
 describe("详情同步保护（模拟repository边界的实际组件交互）", () => {
+  it("少于三句话时显示半色调显影态并阻止提前收藏", () => {
+    const { note, rerender } = fixture();
+    rerender({ ...note, reflectionText: "我只写下了第一句。" });
+    expect(screen.getByLabelText(`正在显影的闪卡：${note.title}`)).toBeTruthy();
+    expect(screen.getByText("正在显影 1/3")).toBeTruthy();
+    expect(screen.getByText("再写 2 句，半色调画面就会显影成完整闪卡。")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "收藏闪卡" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("收藏传当前版本、保留标签，只有收到保存确认后才显示已收藏", async () => {
     const { note, handlers, rerender } = fixture();
     let acknowledge!: (note: EchoNote) => void;

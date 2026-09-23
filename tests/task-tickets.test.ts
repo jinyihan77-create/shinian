@@ -3,6 +3,7 @@ import { createExamples } from "../src/lib/examples";
 import { searchNotes } from "../src/lib/search";
 import { createBackup, parseBackup, toMarkdown } from "../src/lib/backup";
 import { taskStatus, taskTags, preserveTaskTags, visibleTags, ticketNumber } from "../src/lib/task-tickets";
+import { captureContextTags } from "../src/lib/note-context";
 
 describe("独立于 AI 与理解的事项进度", () => {
   it("只有显式完成才进入终点票，两个列表互斥且覆盖所有事项", () => {
@@ -47,5 +48,13 @@ describe("独立于 AI 与理解的事项进度", () => {
     const full = Array.from({ length: 30 }, (_, index) => "主题" + index);
     expect(() => taskTags({ tags: full }, "start")).toThrow("标签已满");
     expect(() => preserveTaskTags(full, active.tags)).toThrow("标签已满");
+  });
+
+  it("私人记录去向不会污染主题筛选，并在事项流转和标签编辑后保留", () => {
+    const note = { ...createExamples()[0], tags: [...captureContextTags("relationship"), "相处"] };
+    expect(visibleTags(note.tags)).toEqual(["相处"]);
+    const active = { ...note, tags: taskTags(note, "start") };
+    expect(active.tags).toEqual(expect.arrayContaining(captureContextTags("relationship")));
+    expect(preserveTaskTags(["新主题"], active.tags)).toEqual(expect.arrayContaining([...captureContextTags("relationship"), "新主题"]));
   });
 });

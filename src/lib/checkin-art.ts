@@ -305,28 +305,29 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
 }
 
 function paintFront(ctx: CanvasRenderingContext2D, theme: ArtTheme, options: CheckinArtworkOptions) {
+  centeredText(ctx, "Q7 / 07", 188, `500 14px ${SANS}`, rgba(theme.ink, .52));
   const mood = options.mood.trim() || "此刻平静";
-  const moodSize = Array.from(mood).length > 14 ? 25 : 29;
+  const moodSize = Array.from(mood).length > 14 ? 32 : 38;
   ctx.font = `400 ${moodSize}px ${SANS}`;
-  const moodLines = wrapText(ctx, mood, 336);
-  moodLines.forEach((line, index) => centeredText(ctx, line, 363 + index * 29, `500 ${moodSize}px ${SANS}`, rgba(theme.ink, .88)));
+  const moodLines = wrapText(ctx, mood, 390);
+  moodLines.forEach((line, index) => centeredText(ctx, line, 363 + index * 38, `500 ${moodSize}px ${SANS}`, rgba(theme.ink, .88)));
   let quote = (options.quote.trim() || "把一点微光，留给明天的自己。").replaceAll("\r", "");
   quote = quote.replace(/\n\s*\n/g, "\n");
   if (quote.split("\n").length > 7) quote = quote.replace(/\s+/g, " ");
-  const quoteTop = moodLines.length > 1 ? 414 : 403;
-  const quoteBottom = 641;
-  let fontSize = Array.from(quote).length <= 10 ? 56 : 50;
+  const quoteTop = moodLines.length > 1 ? 448 : 412;
+  const quoteBottom = 705;
+  let fontSize = Array.from(quote).length <= 10 ? 82 : 68;
   let lines: string[] = [];
-  while (fontSize >= 18) {
-    ctx.font = `500 ${fontSize}px ${SERIF}`;
-    lines = wrapText(ctx, quote, 400);
+  while (fontSize >= 28) {
+    ctx.font = `550 ${fontSize}px ${SERIF}`;
+    lines = wrapText(ctx, quote, 490);
     if (lines.length * fontSize * 1.35 <= quoteBottom - quoteTop) break;
     fontSize -= 1;
   }
   const lineHeight = fontSize * 1.35;
   const firstBaseline = (quoteTop + quoteBottom - (lines.length - 1) * lineHeight) / 2 + fontSize * .32;
-  lines.forEach((line, index) => centeredText(ctx, line, firstBaseline + index * lineHeight, `500 ${fontSize}px ${SERIF}`, theme.ink));
-  const footerY = Math.max(608, Math.min(671, firstBaseline + (lines.length - 1) * lineHeight + 45));
+  lines.forEach((line, index) => centeredText(ctx, line, firstBaseline + index * lineHeight, `550 ${fontSize}px ${SERIF}`, theme.ink));
+  const footerY = Math.max(724, Math.min(780, firstBaseline + (lines.length - 1) * lineHeight + 62));
   ctx.strokeStyle = rgba(theme.ink, .19);
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -335,6 +336,7 @@ function paintFront(ctx: CanvasRenderingContext2D, theme: ArtTheme, options: Che
   ctx.stroke();
   centeredText(ctx, options.date.replaceAll("-", "."), footerY + 8, `400 17px ${SANS}`, rgba(theme.ink, .62));
   if (options.preview) centeredText(ctx, "演示牌 · 非真实记录", footerY + 36, `400 16px ${SANS}`, rgba(theme.ink, .64));
+  centeredText(ctx, "KEEP A THOUGHT · KEEP A STAR.", 868, `400 13px ${SANS}`, rgba(theme.ink, .48));
 }
 
 function dayCount(value: number) {
@@ -342,6 +344,7 @@ function dayCount(value: number) {
 }
 
 function paintBack(ctx: CanvasRenderingContext2D, theme: ArtTheme, options: CheckinArtworkOptions) {
+  centeredText(ctx, "Q7 · PRIVATE ORBIT", 322, `500 13px ${SANS}`, rgba(theme.ink, .5));
   centeredText(ctx, "与自己相遇", 381, `400 25px ${SERIF}`, rgba(theme.ink, .8));
   const total = String(dayCount(options.totalDays)).padStart(2, "0");
   let fontSize = 127;

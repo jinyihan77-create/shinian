@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { EchoNote } from "./types";
 
 export const CHECKIN_TIME_ZONE = "Asia/Shanghai";
 export const CHECKIN_LIMITS = { mood: 24, quote: 100 } as const;
@@ -53,4 +54,35 @@ export function summarizeCheckinDays(days: readonly string[], today: string): { 
   let currentStreak = 0;
   while (savedDays.has(cursor)) { currentStreak++; cursor = previous(cursor); }
   return { totalDays: savedDays.size, currentStreak };
+}
+
+export type CheckinSuggestion = { mood: string; quote: string; sourceCount: number };
+
+function dayInShanghai(value: string) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? getCheckinDay(date) : "";
+}
+
+function firstThought(value: string) {
+  const clean = value.replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  const sentence = clean.match(/^.*?[。！？!?](?:\s|$)/)?.[0]?.trim() || clean;
+  return Array.from(sentence).length > 48 ? `${Array.from(sentence).slice(0, 47).join("")}…` : sentence;
+}
+
+/** Produces an editable daily card draft from notes already saved for today. */
+export function suggestCheckinFromNotes(notes: readonly EchoNote[], today = getCheckinDay()): CheckinSuggestion {
+  const todayNotes = notes
+    .filter(note => dayInShanghai(note.updatedAt || note.createdAt) === today)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  if (!todayNotes.length) return { mood: "平静", quote: "把一点微光，留给明天的自己。", sourceCount: 0 };
+  const joined = todayNotes.map(note => `${note.title} ${note.userText} ${note.reflectionText}`).join(" ");
+  const mood = /疲惫|累|困|倦/.test(joined) ? "有点疲惫"
+    : /开心|轻松|轻快|兴奋|期待|喜欢/.test(joined) ? "轻快"
+      : /焦虑|担心|难过|失落|纠结|混乱/.test(joined) ? "有些起伏"
+        : /好奇|发现|原来|为什么|想知道/.test(joined) ? "充满好奇"
+          : /散步|平静|慢慢|呼吸|安静/.test(joined) ? "平静" : "慢慢来";
+  const latest = todayNotes[0];
+  const quote = firstThought(latest.reflectionText) || firstThought(latest.userText) || firstThought(latest.title) || "今天也留下了一点属于自己的光。";
+  return { mood, quote, sourceCount: todayNotes.length };
 }

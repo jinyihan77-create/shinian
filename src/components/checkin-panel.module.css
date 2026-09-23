@@ -13,6 +13,16 @@
 .entryCopy strong { color:#f1e8f8; font-size:24px; font-weight:500; letter-spacing:.02em; }
 .entryCopy > span:last-child { font-size:13px; color:#bcaec9; }
 .entryAction { display:flex; align-items:center; gap:8px; color:#d0bcdf; font-size:13px; white-space:nowrap; }
+.entryCompact { min-height: 108px; margin: 16px 0 10px; padding: 15px 24px; border-radius: 21px; }
+.entryCompact .entryArt { width: 62px; height: 78px; }
+.entryCompact .entryCord { top: -33px; left: 30px; height: 56px; }
+.entryCompact .entryBadge { width: 50px; height: 69px; margin-top: 11px; gap: 3px; border-radius: 9px; }
+.entryCompact .entryBadge svg { width: 42px; height: 56px; }
+.entryCompact .entryBadge small { font-size: 6px; letter-spacing: 2px; }
+.entryCompact .entryCopy { gap: 5px; }
+.entryCompact .entryCopy strong { font-size: 19px; }
+.entryCompact .entryCopy > span:last-child { font-size: 11px; }
+.entryCompact .entryAction { padding: 10px 13px; border: 1px solid #efc6db2e; border-radius: 999px; background: #f4cfe00b; }
 .entryStar { display:block; width:92px; height:92px; margin-top:21px; transform:rotate(-9deg); filter:drop-shadow(0 8px 18px #ab88d62b); transition:transform .6s; }
 .entryStar svg { width:100%; height:100%; }
 .entry:hover .entryStar { transform:rotate(5deg); }
@@ -83,6 +93,12 @@
   .entryCopy > span:last-child { font-size:12px; line-height:1.8; }
   .entryAction { position:absolute; bottom:17px; right:22px; font-size:11px; }
   .entry .eyebrow { font-size:10px; }
+  .entryCompact { min-height: 96px; margin: 13px 0 8px; padding: 13px 15px; gap: 11px; flex-wrap: nowrap; }
+  .entryCompact .entryArt { display: none; }
+  .entryCompact .entryCopy strong { font-size: 16px; }
+  .entryCompact .entryCopy > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px; }
+  .entryCompact .entryAction { position: static; padding: 9px; font-size: 0; }
+  .entryCompact .entryAction svg { width: 17px; height: 17px; }
   .dialog { width:calc(100% - 20px); max-height:calc(100dvh - 20px); border-radius:23px; }
   .modalHeader { padding:12px 14px 0; position:sticky; top:0; z-index:6; background:#272333e8; backdrop-filter:blur(8px); }
   .modalHeader > span { font-size:10px; gap:7px; }
@@ -113,3 +129,65 @@
   .modalHeader .pickAgain { font-size:10px; gap:4px; }
 }
 @media (prefers-reduced-motion:reduce) { .entryStar { transition:none; } .layout,.picker { animation:none; } }
+
+/* The daily ritual keeps one clear path: pick a star, review the generated card, save. */
+.entry {
+  border-color: #efc5dd38;
+  background: radial-gradient(ellipse at 12% 30%, #e3a5c621, transparent 46%), radial-gradient(ellipse at 82% 80%, #a7bde21a, transparent 48%), linear-gradient(125deg, #251c2bdb, #17141edb);
+  box-shadow: 0 22px 58px #05030848, inset 0 1px 0 #ffffff1b;
+}
+.entry::after { background: conic-gradient(from 125deg, transparent 0 24%, #efbddb75 34%, #a7c9ea5e 45%, transparent 57% 82%, #f0d3e75c 92%, transparent); }
+.entryAction { color: #e8c6dc; }
+.dialog {
+  background: #211a28;
+  border-color: #f0cde044;
+  box-shadow: 0 42px 150px #030205a3, 0 0 42px #dda6c717, inset 0 1px 0 #ffffff20;
+}
+.modal { background: radial-gradient(ellipse at 14% 34%, rgba(var(--star-glow),.2), transparent 54%), radial-gradient(ellipse at 96% 15%, #d49bbb15, transparent 42%), linear-gradient(135deg,#ffffff07,#18121f00 62%); }
+.modalHeader { background: linear-gradient(#211a28f2,#211a28c7); }
+.layout { grid-template-columns: minmax(390px, .96fr) minmax(320px, .82fr); align-items: start; }
+.visual { padding: 0 16px 26px; }
+.scene { height: 430px; overflow: hidden; border-radius: 22px; }
+.scene::after { content: ""; position: absolute; z-index: 5; inset: 10px; pointer-events: none; border: 1px solid #ffffff0c; border-radius: 19px; }
+.staticBadge img { width: min(270px, 68%); image-rendering: auto; }
+.sceneCaption { position: static; display: block; margin: 9px 12px 12px; color: #c5b2c0; font-size: 11px; line-height: 1.5; text-align: center; pointer-events: none; }
+.cardControls { margin-top: 0; }
+.form { padding: 26px 38px 30px 24px; }
+.form h2 { margin-top: 10px; font-size: 32px; line-height: 1.34; letter-spacing: 0; }
+.intro { max-width: 38ch; margin-top: 9px; color: #c8b4c2; }
+.fields { margin-top: 20px; }
+.generated {
+  position: relative;
+  overflow: hidden;
+  padding: 17px 18px 18px;
+  border: 1px solid #efc9df32;
+  border-radius: 17px;
+  background: linear-gradient(140deg, #e4adc71a, #a58fc313 52%, #9cc4df10);
+  box-shadow: inset 0 1px 0 #ffffff17;
+}
+.generated::after { content: ""; position: absolute; inset: auto -15% -55% 22%; height: 100px; pointer-events: none; background: radial-gradient(ellipse, #e4adc729, transparent 67%); filter: blur(18px); }
+.generatedLabel { position: relative; z-index: 1; display: block; color: #bda9b8; font-size: 9px; letter-spacing: .14em; }
+.generatedMood { position: relative; z-index: 1; display: inline-block; margin-top: 11px; color: #e9c7db; font-size: 12px; font-weight: 500; }
+.generatedQuote { position: relative; z-index: 1; margin: 8px 0 0; color: #fff5fa; font-family: var(--display-font); font-size: 19px; line-height: 1.65; overflow-wrap: anywhere; }
+.adjustment { margin-top: 10px; border: 1px solid #ffffff17; border-radius: 14px; background: #ffffff06; }
+.adjustment summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 13px; color: #d4bfcd; font-size: 12px; cursor: pointer; list-style: none; }
+.adjustment summary::-webkit-details-marker { display: none; }
+.adjustment summary span { color: #907d8b; font-size: 10px; }
+.adjustment[open] summary { border-bottom: 1px solid #ffffff12; }
+.adjustmentBody { padding: 14px; }
+.adjustmentBody .quoteLabel { margin-top: 15px; }
+.stats { margin: 16px 0 13px; }
+.submit { border-color: #f0cde0b8; background: linear-gradient(120deg,#f0d5e3,#c8cbea 62%,#d8ecf2); color: #2d202b; box-shadow: 0 10px 28px #dba9c621; }
+
+@media (max-width:760px) {
+  .layout { grid-template-columns: 1fr; }
+  .visual { padding: 0 7px 12px; }
+  .scene { height: 330px; border-radius: 18px; }
+  .sceneCaption { margin-block: 7px 10px; }
+  .staticBadge img { width: min(230px, 70%); }
+  .form { padding: 20px 20px 26px; }
+  .form h2 { font-size: 27px; }
+  .generatedQuote { font-size: 17px; }
+  .cardControls { overflow-x: auto; justify-content: flex-start; padding: 0 4px 4px; scrollbar-width: none; }
+  .cardControls button { flex: 0 0 auto; }
+}

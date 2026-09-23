@@ -11,11 +11,29 @@
 .card { position: relative; display: block; isolation: isolate; filter: drop-shadow(0 0 4px #cbe8f03d); }
 .card::after { content: ""; position: absolute; z-index: 5; inset: -2px; border-radius: 24px; pointer-events: none; background: conic-gradient(from 18deg, transparent 0 20%, #e8fbff 28%, #89d0e4 36%, transparent 45% 71%, #f5e3c1 81%, transparent 90% 100%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; padding: 2px; opacity: .72; filter: blur(.1px) drop-shadow(0 0 5px #bfe8f070); animation: flashcard-edge-glow 5.6s ease-in-out infinite; }
 .front { position: relative; width: 100%; height: 100%; background: #283333; }
-.front img { display: block; height: 100%; width: 100%; object-fit: cover; }
-.frontShade { position: absolute; inset: 0; background: linear-gradient(180deg, #101c1726, transparent 28%, #0c151317 44%, #101810e8 100%); box-shadow: inset 0 0 0 1px #ffffff30; border-radius: 22px; }
+.front img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 48%;
+  transform: scale(1.075);
+  transform-origin: center;
+}
+.halftoneArt { position: absolute; inset: 0; height: 100%; background: #e6bfd2; }
+.frontIncomplete { background: #d9abc4; }
+.frontIncomplete .frontShade { background: linear-gradient(180deg, #35203a1f, transparent 28%, #35203a12 48%, #29192ab8 100%); box-shadow: inset 0 0 0 1px #ffe8f55c; }
+.frontIncomplete::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background: radial-gradient(circle at 76% 18%, #c9e8f12e, transparent 26%), linear-gradient(112deg, transparent 18%, #fff4fa1a 44%, transparent 66%); mix-blend-mode: screen; }
+.frontShade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, #101c1726, transparent 28%, #0c151317 44%, #101810e8 100%); box-shadow: inset 0 0 0 1px #ffffff30; border-radius: 22px; }
 .edition { position: absolute; inset: 24px 24px auto; font-size: 8px; font-weight: 600; letter-spacing: .21em; color: #fffdf2; text-shadow: 0 1px 8px #000b; }
 .edition > span { display: block; margin-top: 6px; font-size: 7px; opacity: .68; letter-spacing: .25em; }
+.developing { position: absolute; z-index: 2; top: 77px; right: 24px; display: flex; align-items: baseline; gap: 5px; color: #fff5fa; text-shadow: 0 2px 12px #4d213d80; }
+.developing b { font-family: "Noto Serif SC", "Songti SC", SimSun, serif; font-size: 38px; font-weight: 400; line-height: 1; }
+.developing span { font-size: 9px; letter-spacing: .08em; }
 .caption { position: absolute; inset: auto 25px 25px; color: #f7f2e4; }
+.frontIncomplete .edition,
+.frontIncomplete .developing,
+.frontIncomplete .caption { pointer-events: none; }
 .rule { display: block; width: 24px; border-top: 1px solid #f5e5bda1; margin-bottom: 17px; }
 .artifact .caption h3 { margin: 0; color: #f7f2e4; font-family: "Noto Serif SC", "Songti SC", SimSun, serif; font-size: 23px; line-height: 1.45; font-weight: 500; letter-spacing: .035em; }
 .caption p { margin: 9px 0 23px; color: #e4e0d0; font-size: 10px; letter-spacing: .05em; }

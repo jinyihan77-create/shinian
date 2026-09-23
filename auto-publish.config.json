@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "quietMinutes": 5,
+  "retryCooldownMinutes": 30,
+  "healthCheckRetries": 3,
+  "autoRollback": true
+}

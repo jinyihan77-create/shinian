@@ -12,11 +12,12 @@ import { CaptureComposer, CaptureSpace, MobileNav, SpaceHeader } from "./studio-
 import { CheckinPanel } from "./checkin-panel";
 import type { LibraryFilter } from "@/lib/search";
 import type { TaskAction } from "@/lib/task-tickets";
+import { captureContextTags, isCaptureKind, type CaptureKind } from "@/lib/note-context";
 
 type View = "capture" | "library" | "settings" | "note";
 type Tone = "success" | "error" | "info";
 type Filter = LibraryFilter;
-const storageMessage = "点击保存后，资料写入私人云端灵感集。手机和电脑登录同一账号即可同步；未提交的草稿只留在当前设备。";
+const storageMessage = "点击保存后，资料写入你的私人回声屿。手机和电脑登录同一账号即可同步；未提交的草稿只留在当前设备。";
 const aiDefault: AiServiceStatus = { configured: false, available: false, requiresUnlock: false, message: "正在检查 AI 服务…" };
 function errorMessage(error: unknown) { return error instanceof Error ? error.message : "操作暂时失败，请再试一次。"; }
 function hasContent(input: CaptureInput) { return [input.userText, input.sourceName, input.sourceUrl, input.sourceTimestamp, input.sourceExcerpt].some(v => v.trim()); }
@@ -38,6 +39,7 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
   const [ready, setReady] = useState(false);
   const [bootError, setBootError] = useState("");
   const [capture, setCapture] = useState<CaptureInput>(emptyCapture());
+  const [captureKind, setCaptureKind] = useState<CaptureKind>("thought");
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [sourceOpen, setSourceOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -106,7 +108,7 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
     const saved = await repository.updateTask(note, action);
     await onUpdated(saved);
     setFilter(action === "complete" ? "arrival" : "departure");
-    notify(action === "complete" ? "这件事已完成，终点票已保存。" : action === "reopen" ? "已重新启程，事项进度已保存。" : "已启程，按自己的节奏完成这件事。");
+    notify(action === "complete" ? "这件事已标记完成。" : action === "reopen" ? "已重新列入待办。" : "这件事已开始，进度已经保存。");
   }
   const bootstrap = useCallback(async () => {
     if (booting.current) return;
@@ -114,10 +116,11 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
     setBootError("");
     try {
       await repository.init();
-      const [allNotes, draft, seen, lastType] = await Promise.all([repository.list(), repository.getDraft(), repository.getPreference("storageNoticeSeen"), repository.getPreference("sourceType")]);
+      const [allNotes, draft, seen, lastType, lastKind] = await Promise.all([repository.list(), repository.getDraft(), repository.getPreference("storageNoticeSeen"), repository.getPreference("sourceType"), repository.getPreference("captureKind")]);
       setNotes(allNotes); setSyncState("synced"); setLastSync(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }));
       const initial = draft ?? emptyCapture(SOURCE_TYPES.includes(lastType as typeof SOURCE_TYPES[number]) ? lastType as typeof SOURCE_TYPES[number] : "播客");
       setCapture(initial); setSourceOpen(Boolean(initial.sourceExcerpt || initial.sourceName || initial.sourceTimestamp));
+      setCaptureKind(isCaptureKind(lastKind) ? lastKind : "thought");
       setDraftState(draft && hasContent(draft) ? "saved" : "idle"); setNoticeVisible(!seen); booted.current = true; setReady(true);
     } catch (error) { setSyncState("error"); setBootError(errorMessage(error)); }
     finally { booting.current = false; }
@@ -193,6 +196,10 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
     if (draftTimer.current !== null) window.clearTimeout(draftTimer.current);
     draftTimer.current = window.setTimeout(() => { void flushDraft(); }, 280);
   }
+  function updateCaptureKind(next: CaptureKind) {
+    setCaptureKind(next);
+    void repository.setPreference("captureKind", next).catch(() => notify("记录去向会用于本次保存，但暂时无法记住这个偏好。", "info"));
+  }
   async function dismissNotice() {
     setNoticeVisible(false);
     try { await repository.setPreference("storageNoticeSeen", "true"); } catch { /* This preference does not affect stored notes. */ }
@@ -218,9 +225,9 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
     try {
       await flushDraft();
       await draftWrites.current;
-      const note = await repository.create(capture);
+      const note = await repository.create(capture, captureContextTags(captureKind));
       ++draftVersion.current; pendingDraft.current = null; setCapture(emptyCapture(capture.sourceType)); setDraftState("idle"); setSourceOpen(false);
-      await onUpdated(note); notify("已保存到云端，稍后也可以整理。"); navigate("note", note.id);
+      await onUpdated(note); notify(captureKind === "relationship" ? "已经收进今天，也留在你和 TA 的片刻里。" : captureKind === "moment" ? "已经收进今天的片刻。" : "已保存到云端，今天的星也在下方等你。");
       if (withAi) void organize(note);
     } catch (error) {
       const previousSaved = error instanceof RepositoryError && error.code === "PREVIOUS_SUBMISSION_SAVED";
@@ -323,7 +330,7 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
   }
   async function loadExamples() {
     if (settingsBusy) return; setSettingsBusy(true);
-    try { const count = await repository.importNotes(createExamples()); await onUpdated(); notify(count ? `已加入 ${count} 条演示资料。` : "演示资料已经在灵感集里了。"); navigate("library"); }
+    try { const count = await repository.importNotes(createExamples()); await onUpdated(); notify(count ? `已加入 ${count} 条演示资料。` : "演示资料已经在回声屿里了。"); navigate("library"); }
     catch (error) { notify(errorMessage(error), "error"); } finally { setSettingsBusy(false); }
   }
 
@@ -337,9 +344,10 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
     <SpaceHeader view={view} onNavigate={navigate} status={<button className={"sync-indicator " + (syncState === "error" ? "danger-text" : "")} title={syncLabel} aria-label={syncLabel} disabled={syncState === "loading"} onClick={() => void reload().catch(error => notify(errorMessage(error), "error"))}><span className={"sync-dot " + syncState} /><span>{syncState === "error" ? "同步中断" : syncState === "loading" ? "同步中" : "已同步"}</span></button>} />
     <div className="main-wrap">
       <main className={`main-content ${view === "capture" ? "capture-page" : ""}`}>
-        {!ready ? <div className="panel loading-panel">{bootError ? <><CircleHelp size={32} /><h2>灵感集暂时无法打开</h2><p>{bootError}</p><button className="btn btn-primary" onClick={() => void bootstrap()}>重新尝试</button></> : <><LoaderCircle className="spin" size={28} /><p>正在打开你的灵感空间…</p></>}</div> : <>
+        {!ready ? <div className="panel loading-panel">{bootError ? <><CircleHelp size={32} /><h2>回声屿暂时无法打开</h2><p>{bootError}</p><button className="btn btn-primary" onClick={() => void bootstrap()}>重新尝试</button></> : <><LoaderCircle className="spin" size={28} /><p>正在打开你的回声屿…</p></>}</div> : <>
           {view === "capture" && <CaptureSpace>
-            <CaptureComposer capture={capture} onChange={updateCapture} sourceOpen={sourceOpen} onSourceToggle={() => setSourceOpen(!sourceOpen)} saving={saving} draftState={draftState} onSave={organize => void saveCapture(organize)} />
+            <CaptureComposer capture={capture} onChange={updateCapture} sourceOpen={sourceOpen} onSourceToggle={() => setSourceOpen(!sourceOpen)} saving={saving} draftState={draftState} onSave={organize => void saveCapture(organize)} captureKind={captureKind} onCaptureKind={updateCaptureKind} onOpenCheckin={() => document.getElementById("daily-star-entry")?.click()} />
+            <CheckinPanel key={`capture-${user.id}`} userId={user.id} notes={notes} accountPaused={paused} compact />
             {recent[0] && <button className="last-thought" onClick={() => navigate("note", recent[0].id)}><span>上一次记下</span><span>{recent[0].title}</span><ArrowUpRight size={14} /></button>}
           </CaptureSpace>}
 
@@ -349,13 +357,16 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
             onCreate={() => navigate("capture")} onOpen={note => navigate("note", note.id)} onTransition={transitionTask}
           />}
 
-          {view === "note" && (selected ? <>{!cloudSelected && <p className="inline-notice error-notice" role="alert">这条记录已不在最新云端列表中，可能已在另一设备删除。当前输入仍保留，请先复制需要的内容。</p>}<NoteDetail key={selected.id} note={selected} onBack={() => navigate("library")} onUpdated={onUpdated} onOrganize={organize} onNotify={notify} /></> : <div className="panel empty-state"><BookOpen size={30} /><h2>这条灵感不在当前灵感集中</h2><p>它可能已被删除，请检查登录账号或刷新灵感集。</p><button className="btn btn-secondary" onClick={() => navigate("library")}><ArrowLeft size={15} />返回灵感集</button></div>)}
+          {view === "note" && (selected ? <>{!cloudSelected && <p className="inline-notice error-notice" role="alert">这条记录已不在最新云端列表中，可能已在另一设备删除。当前输入仍保留，请先复制需要的内容。</p>}<NoteDetail key={selected.id} note={selected} onBack={() => navigate("library")} onUpdated={onUpdated} onOrganize={organize} onNotify={notify} /></> : <div className="panel empty-state"><BookOpen size={30} /><h2>这条记录不在当前回声屿中</h2><p>它可能已被删除，请检查登录账号或刷新资料库。</p><button className="btn btn-secondary" onClick={() => navigate("library")}><ArrowLeft size={15} />返回回声屿</button></div>)}
 
           {view === "settings" && <>
             <div className="page-heading"><h1>账号与设置</h1></div>
-            <CheckinPanel key={user.id} userId={user.id} accountPaused={paused} />
-            <section className="panel settings-panel"><div className="settings-heading"><div className="settings-icon"><ShieldCheck size={22} /></div><div><h2>你的私人云端灵感集</h2><p>当前灵感集共有 <strong>{notes.length}</strong> 条记录</p></div><span className="chip">云端保存</span></div><p className="settings-description">{storageMessage}</p><p className="small-note">打开页面时同步，此后每 15 秒检查更新。断网时不显示保存成功，请保留页面输入并重试。定期导出备份能多留一份保障。</p><div className="divider" /><div className="backup-actions"><button className="backup-action" disabled={settingsBusy} onClick={() => void exportData(false)}><FileJson size={25} /><span><strong>导出完整备份</strong><small>保留所有内容，可用于恢复灵感集</small></span><ArrowDownToLine size={18} /></button><button className="backup-action" disabled={settingsBusy} onClick={() => importRef.current?.click()}><Upload size={25} /><span><strong>从备份恢复</strong><small>先检查文件，重复记录会自动跳过</small></span><ArrowRight size={18} /></button><button className="backup-action" disabled={settingsBusy} onClick={() => void exportData(true)}><FileText size={25} /><span><strong>导出阅读版</strong><small>Markdown 文件，方便阅读和保存</small></span><ArrowDownToLine size={18} /></button></div><input ref={importRef} className="sr-only" tabIndex={-1} type="file" accept=".json,application/json" aria-label="选择 JSON 备份" onChange={e => void previewImport(e.target.files?.[0])} />
-              <button className="text-button" disabled={settingsBusy} onClick={() => void previewLegacy()}>检查此浏览器的旧版资料<ArrowRight size={14} /></button><p className="small-note">单次恢复最多 4 MB。较大的灵感集会分成多个独立备份文件，请逐个恢复。</p>
+            <section className="panel settings-panel settings-storage">
+              <div className="settings-heading"><div className="settings-icon"><ShieldCheck size={22} /></div><div><h2>你的资料，安心保存</h2><p>云端已有 <strong>{notes.length}</strong> 条记录</p></div><span className="chip">已同步</span></div>
+              <p className="settings-description">{storageMessage}</p>
+              <button className="backup-action backup-primary" disabled={settingsBusy} onClick={() => void exportData(false)}><FileJson size={25} /><span><strong>导出完整备份</strong><small>下载一份可以恢复的完整资料</small></span><ArrowDownToLine size={18} /></button>
+              <details className="backup-more"><summary>更多资料管理 <ChevronDown size={15} /></summary><div className="backup-actions"><button className="backup-action" disabled={settingsBusy} onClick={() => importRef.current?.click()}><Upload size={22} /><span><strong>从备份恢复</strong><small>先检查文件，不会覆盖已有记录</small></span><ArrowRight size={16} /></button><button className="backup-action" disabled={settingsBusy} onClick={() => void exportData(true)}><FileText size={22} /><span><strong>导出阅读版</strong><small>生成便于阅读的 Markdown 文件</small></span><ArrowDownToLine size={16} /></button></div><button className="text-button" disabled={settingsBusy} onClick={() => void previewLegacy()}>检查此浏览器的旧版资料<ArrowRight size={14} /></button><p className="small-note">单次恢复最多 4 MB；较大的资料库会自动拆分。</p></details>
+              <input ref={importRef} className="sr-only" tabIndex={-1} type="file" accept=".json,application/json" aria-label="选择 JSON 备份" onChange={e => void previewImport(e.target.files?.[0])} />
               {backupParts.length > 0 && <div className="import-preview"><h3>完整备份共 {backupParts.length} 份</h3><p>请逐个下载并保留全部文件；每份都可以独立恢复。</p><div className="actions">{backupParts.map((part, index) => <button className="btn btn-secondary" key={index} onClick={() => downloadFile(`拾念-${part.exportedAt.slice(0, 10)}-${index + 1}共${backupParts.length}份.json`, JSON.stringify(part), "application/json;charset=utf-8")}>下载第 {index + 1} 份（{part.notes.length} 条）</button>)}</div></div>}
               {importError && <div className="inline-notice error-notice" role="alert"><strong>备份未导入</strong><p>{importError}</p><small>无效记录：{invalidCount} 条。已有资料未修改。</small></div>}
               {importPreview && previewCounts && <div className="import-preview"><h3>备份检查完成</h3><p>新增 <strong>{previewCounts.added}</strong> 条 · 重复 <strong>{previewCounts.duplicates}</strong> 条 · 无效 <strong>{previewCounts.invalid}</strong> 条</p><p className="small-note">同一编号的记录默认跳过，已有资料会保留。</p><div className="actions"><button className="btn btn-secondary" onClick={() => setImportPreview(null)} disabled={settingsBusy}>取消</button><button className="btn btn-primary" onClick={() => void confirmImport()} disabled={settingsBusy}>{settingsBusy && <LoaderCircle size={15} className="spin" />}确认恢复</button></div></div>}

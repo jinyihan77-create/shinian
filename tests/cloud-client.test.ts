@@ -4,6 +4,7 @@ import { createExamples } from "../src/lib/examples";
 import { repository } from "../src/lib/repository";
 import { taskTags, taskStatus } from "../src/lib/task-tickets";
 import { emptyCapture, type CaptureInput, type EchoNote } from "../src/lib/types";
+import { captureContextTags } from "../src/lib/note-context";
 
 const fetchMock = vi.fn<typeof fetch>();
 const input = { ...emptyCapture("书籍"), userText: "今天听完再用自己的话说一遍。" };
@@ -152,6 +153,18 @@ describe("分页读取完整资料库", () => {
 });
 
 describe("真实保存与失败重试", () => {
+  it("把今日片刻和关系去向与正文一起提交，服务器确认后才视为保存", async () => {
+    const tags = captureContextTags("relationship");
+    fetchMock.mockImplementationOnce(async (_url, options) => {
+      const body = JSON.parse(options?.body as string) as { id: string; input: CaptureInput; tags: string[] };
+      expect(body.tags).toEqual(tags);
+      return json({ note: { ...remoteNote(body.id, body.input), tags: body.tags } });
+    });
+    const saved = await repository.create(input, tags);
+    expect(saved.tags).toEqual(tags);
+    await expect(repository.getDraft()).resolves.toBeNull();
+  });
+
   it("断网不宣布成功，保留草稿，重试使用同一UUID而且收到服务器确认后才清草稿", async () => {
     await repository.saveDraft(input);
     fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));

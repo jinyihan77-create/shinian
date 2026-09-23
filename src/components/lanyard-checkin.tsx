@@ -72,9 +72,9 @@ export default function LanyardCheckin({ frontImage, backImage, theme = 0, flipp
     <LanyardErrorBoundary onUnavailable={reportUnavailable}>
       <Canvas
         camera={{ position: [0, 0, compact ? 11.3 : 11.6], fov: 22 }}
-        dpr={[1, compact ? 1.25 : 1.5]}
+        dpr={[compact ? 1.5 : 1.75, 2]}
         frameloop={paused ? "demand" : "always"}
-        gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
+        gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
         fallback={<span>立体吊牌暂时无法显示，可使用下方翻面按钮。</span>}
         onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.05; }}
       >
@@ -210,7 +210,7 @@ function Band({ frontImage, backImage, theme, flipped, paused, compact, onHover,
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
       texture.generateMipmaps = false;
-      texture.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
+      texture.anisotropy = Math.min(16, gl.capabilities.getMaxAnisotropy());
       texture.needsUpdate = true;
     });
   }, [frontTexture, backTexture, gl]);

@@ -25,9 +25,9 @@ const saved: CheckinSummary = { ...base, totalDays: 4, currentStreak: 3,
   entry: { day: base.today, mood: "好奇", quote: "留住今天的一点光。", createdAt: "2026-09-21T01:00:00.000Z" } };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
 const mood = () => screen.getByRole("textbox", { name: "此刻的心情" }) as HTMLInputElement;
-const quote = () => screen.getByRole("textbox", { name: /想挂在牌上的一句话/ }) as HTMLTextAreaElement;
+const quote = () => screen.getByRole("textbox", { name: /挂在牌上的一句话/ }) as HTMLTextAreaElement;
 const stats = () => document.querySelector('[aria-live="polite"]')!.textContent;
-const submit = () => screen.getByRole("button", { name: "点亮今天" }) as HTMLButtonElement;
+const submit = () => screen.getByRole("button", { name: "收下今天的星" }) as HTMLButtonElement;
 const pickStar = () => fireEvent.click(screen.getByRole("button", { name: "摘下第 1 颗星星" }));
 function openCard() {
   fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
@@ -60,7 +60,7 @@ async function openReal() {
 }
 
 describe("check-in panel confirmed-save behavior", () => {
-  it("opens on star selection and picking alone neither saves nor adds a day", async () => {
+  it("reveals the generated card before the automatic save changes any counts", async () => {
     fetchMock.mockResolvedValueOnce(json(base));
     render(<CheckinPanel userId="owner-1" />);
     fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
@@ -75,6 +75,17 @@ describe("check-in panel confirmed-save behavior", () => {
     expect(fetchMock.mock.calls[0][1]?.method).toBe("GET");
     expect(screen.queryByRole("status")).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: /给今天，\s*留一颗星。/ }));
+  });
+
+  it("saves once automatically after a star is picked", async () => {
+    fetchMock.mockResolvedValueOnce(json(base)).mockResolvedValueOnce(json(saved));
+    render(<CheckinPanel userId="owner-1" />);
+    openCard();
+
+    expect(await screen.findByRole("button", { name: "今天已收好" }, { timeout: 3000 })).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][1]?.method).toBe("POST");
+    expect(stats()).toContain("累计 4 天");
   });
 
   it("keeps the unsaved mood, quote and counts when choosing another star", async () => {
@@ -109,7 +120,7 @@ describe("check-in panel confirmed-save behavior", () => {
     render(<CheckinPanel preview />);
     openCard();
     expect(stats()).toContain("累计 0 天");
-    fireEvent.click(await screen.findByRole("button", { name: "体验一次打卡" }));
+    fireEvent.click(await screen.findByRole("button", { name: "体验收下这颗星" }));
     expect(await screen.findByRole("button", { name: "演示已体验 · 未保存" })).toBeTruthy();
     expect(screen.getByRole("status").textContent).toContain("不会保存");
     expect(screen.getByText("演示天数")).toBeTruthy();
@@ -135,12 +146,12 @@ describe("check-in panel confirmed-save behavior", () => {
     expect((screen.getByRole("button", { name: "关闭打卡牌" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText("今天的打卡已保存到你的私人账号。")).toBeNull();
     await act(async () => { acknowledge(json(saved)); });
-    expect(screen.getByRole("button", { name: "今天已点亮" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "今天已收好" })).toBeTruthy();
     expect(stats()).toContain("累计 4 天");
     expect(screen.getByRole("status").textContent).toContain("已保存到你的私人账号");
     fireEvent.click(screen.getByRole("button", { name: "再摘一颗" }));
     pickStar();
-    expect((screen.getByRole("button", { name: "今天已点亮" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "今天已收好" }) as HTMLButtonElement).disabled).toBe(true);
     expect(stats()).toContain("累计 4 天");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -175,20 +186,20 @@ describe("check-in panel confirmed-save behavior", () => {
     fireEvent.click(submit());
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("尚未确认有效"));
     expect(stats()).toContain("累计 3 天"); expect(quote().value).toBe("留住今天的一点光。");
-    expect(screen.queryByRole("button", { name: "今天已点亮" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "今天已收好" })).toBeNull();
   });
 
   it("never reuses an old confirmed entry as today's success when a new read fails", async () => {
     fetchMock.mockResolvedValueOnce(json(saved));
     render(<CheckinPanel userId="owner-1" />);
     openCard();
-    expect(await screen.findByRole("button", { name: "今天已点亮" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "今天已收好" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "关闭打卡牌" }));
     fetchMock.mockRejectedValueOnce(new TypeError("offline"));
     openCard();
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("尚未确认打卡"));
-    expect(screen.queryByRole("button", { name: "今天已点亮" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "今天已收好" })).toBeNull();
     expect(screen.queryByText("今天的心情已经收好。明天再挂上一句新的话。")).toBeNull();
-    expect(quote().value).toBe("留住今天的一点光。");
+    expect(quote().value).toBe("把一点微光，留给明天的自己。");
   });
 });

@@ -65,7 +65,7 @@ function safeText(text: string): string {
 }
 
 export function toMarkdown(notes: EchoNote[]): string {
-  const lines = ["# 拾念 · 我的灵感集", "", `导出时间：${new Date().toISOString()}`, "", "此文件用于阅读；恢复资料请使用 JSON 完整备份。", ""];
+  const lines = ["# 拾念 · 回声屿", "", `导出时间：${new Date().toISOString()}`, "", "此文件用于阅读；恢复资料请使用 JSON 完整备份。", ""];
   for (const note of notes) {
     lines.push(`## ${safeText(note.title)}`, "");
     if (note.isExample) lines.push("**演示资料**", "");

@@ -29,8 +29,8 @@ export async function POST(request: Request) {
     let saved: EchoNote;
     try { saved = await cloudNotes.get(client, note.id); }
     catch (error) {
-      if (error instanceof ApiError && error.status === 404) throw new ApiError(409, "CONTENT_CHANGED", "记录已在其他设备删除，请刷新灵感集。");
-      throw new ApiError(503, "AI_SAVED_REFRESH_FAILED", "整理结果已提交到云端，但暂时无法读取最新记录。请刷新灵感集确认，不必立即重复整理。");
+      if (error instanceof ApiError && error.status === 404) throw new ApiError(409, "CONTENT_CHANGED", "记录已在其他设备删除，请刷新回声屿。");
+      throw new ApiError(503, "AI_SAVED_REFRESH_FAILED", "整理结果已提交到云端，但暂时无法读取最新记录。请刷新回声屿确认，不必立即重复整理。");
     }
     if (saved.revision !== parsed.data.revision || saved.aiInputRevision !== parsed.data.revision || saved.aiStatus !== "done") {
       throw new ApiError(409, "CONTENT_CHANGED", "记录在整理完成后又有变化，请刷新后核对最新内容。");

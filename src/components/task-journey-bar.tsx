@@ -22,8 +22,8 @@ export function TaskJourneyBar({ note, onTransition, blockedReason, preview = fa
     finally { lock.current = false; setBusy(false); }
   }
   return <section className={styles.journeyBar} data-completed={completed || undefined} aria-label="事项进度">
-    <div className={styles.journeyCopy}><strong>{completed ? <Flag size={16} /> : <Ticket size={16} />}{completed ? "终点票 · 已完成" : status === "active" ? "启程票 · 进行中" : "启程票 · 待开始"}</strong><p>{blockedReason || (preview ? "演示进度仅在本次预览中有效，不会保存到账号。" : completed ? "这件事已经完成，可以回看，也可以重新启程。" : status === "active" ? "做完后亲手确认，收下属于这件事的终点票。" : "准备好时再启程。整理内容、写下理解都不会自动完成事项。")}</p></div>
-    <button className="btn btn-secondary" disabled={busy || Boolean(blockedReason)} onClick={() => void transition()}>{busy ? <LoaderCircle size={15} className="spin" /> : completed ? <RotateCcw size={15} /> : status === "active" ? <Check size={15} /> : <ArrowRight size={15} />}{busy ? "正在确认…" : completed ? "重新启程" : status === "active" ? "完成，收下终点票" : "启程 · 开始做"}</button>
+    <div className={styles.journeyCopy}><strong>{completed ? <Flag size={16} /> : <Ticket size={16} />}{completed ? "已完成" : status === "active" ? "进行中" : "待开始"}</strong><p>{blockedReason || (preview ? "演示进度仅在本次预览中有效，不会保存到账号。" : completed ? "这件事已经完成，可以回看，也可以重新列入待办。" : status === "active" ? "做完后由你亲手标记完成，系统不会替你判断。" : "点击开始后会保留进度，同时打开这条记录。")}</p></div>
+    <button className="btn btn-secondary" disabled={busy || Boolean(blockedReason)} onClick={() => void transition()}>{busy ? <LoaderCircle size={15} className="spin" /> : completed ? <RotateCcw size={15} /> : status === "active" ? <Check size={15} /> : <ArrowRight size={15} />}{busy ? "正在确认…" : completed ? "重新列入待办" : status === "active" ? "标记完成" : "开始这件事"}</button>
     {error && <p className={styles.error} role="alert">{error}</p>}
   </section>;
 }

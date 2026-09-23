@@ -5,16 +5,17 @@
 .intro p { margin: 0; color: #a99bb6; font-size: 12px; line-height: 1.8; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 30px 32px; }
 .entry { min-width: 0; width: 100%; max-width: 660px; position: relative; }
-.body { display: flex; flex-direction: column; height: 100%; padding: 21px 23px 22px; overflow: hidden; background: radial-gradient(ellipse at 0% 100%, color-mix(in srgb, var(--ticket-accent) 10%, transparent), transparent 68%); }
-.meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; color: #bbaeC6; font-size: 10px; margin-bottom: 18px; }
+.body { display: flex; flex-direction: column; height: 100%; padding: 18px 21px 19px; overflow: hidden; background: radial-gradient(ellipse at 0% 100%, color-mix(in srgb, var(--ticket-accent) 14%, transparent), transparent 68%); }
+.meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; color: #bbaeC6; font-size: 9px; margin-bottom: 10px; }
 .demo { color: var(--ticket-accent); white-space: nowrap; }
-.ticketHeading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; color: var(--ticket-accent); }
-.ticketHeading > span:first-child { font-size: 14px; letter-spacing: .12em; }
+.ticketHeading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; color: var(--ticket-accent); }
+.ticketHeading > span:first-child { font-size: 11px; letter-spacing: .08em; }
 .ticketHeading > small { font-size: 8px; letter-spacing: .16em; opacity: .66; }
 .stamp { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; padding: 3px 6px; border: 1px solid #b7d7cd55; border-radius: 4px; font-size: 9px; transform: rotate(-7deg); }
-.title { font-size: 23px; font-weight: 500; line-height: 1.5; color: #f5edf9; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 0 0 10px; }
+.title { font-size: 21px; font-weight: 520; line-height: 1.45; color: #fff4fa; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 0 0 8px; }
 .excerpt { margin: 0 0 14px; font-size: 12px; line-height: 1.8; color: #bbaec6; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.route { display: flex; align-items: center; gap: 7px; margin-top: auto; color: var(--ticket-accent); }
+.question { margin: 0; color: #d6c5d1; font-family: var(--display-font); font-size: 13px; line-height: 1.7; }
+.route { display: flex; align-items: center; gap: 7px; margin-top: auto; color: var(--ticket-accent); opacity: .68; }
 .route > span { flex: 1; border-top: 1px dashed color-mix(in srgb, var(--ticket-accent) 36%, transparent); }
 .route i { width: 5px; height: 5px; border: 1px solid var(--ticket-accent); border-radius: 50%; }
 .route i:first-child,.route i[data-arrived] { background: var(--ticket-accent); }
@@ -25,16 +26,18 @@
 .stubAction strong { font-size: 14px; font-weight: 550; letter-spacing: .08em; }
 .stubAction > span { font-size: 11px; opacity: .78; }
 .serial { font-size: 9px; letter-spacing: .1em; font-variant-numeric: tabular-nums; }
-.stub[data-vertical] { flex-direction: row; padding: 14px 22px; gap: 12px; }
-.stub[data-vertical] .stubAction { display: grid; grid-template-columns: 25px auto; gap: 2px 8px; }
-.stub[data-vertical] .stubAction > svg { grid-row: span 2; }
-.stub[data-vertical] .stubAction strong { font-size: 13px; }
-.stub[data-vertical] .serial { writing-mode: vertical-rl; }
-.actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; padding: 9px 2px 0; }
+.stub[data-compact] { padding: 15px 7px; }
+.stub[data-compact] .stubStatus { font-size: 9px; }
+.stub[data-compact] .stubAction { gap: 6px; text-align: center; }
+.stub[data-compact] .stubAction strong { font-size: 11px; letter-spacing: 0; }
+.stub[data-compact] .stubAction > span { font-size: 9px; }
+.stub[data-compact] .serial { font-size: 7px; letter-spacing: .04em; }
+.actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding: 10px 2px 0; }
 .actions > span { color: #a99ab6; font-size: 10px; }
 .actions > div { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 4px; border: 0; color: var(--ticket-accent); background: transparent; font-size: 12px; border-radius: 8px; }
-.actions button.complete { padding: 8px 12px; background: #b7d7cd10; color: #b7d7cd; border: 1px solid #b7d7cd33; }
+.actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--ticket-accent) 38%, transparent); color: #e8d9e3; background: linear-gradient(145deg, #ffffff0e, color-mix(in srgb, var(--ticket-accent) 12%, transparent)); font-size: 11px; border-radius: 12px; box-shadow: inset 0 1px 0 #ffffff17; }
+.actions button.openAction { color: #fff6fb; background: linear-gradient(135deg, color-mix(in srgb, var(--ticket-accent) 28%, transparent), #ffffff0d); }
+.actions button.complete { background: linear-gradient(135deg, #a8c8bb24, #ffffff0b); color: #cce4da; border-color: #b7d7cd4d; }
 .actions button:hover:not(:disabled) { color: #fbf5ff; }
 .actions button:disabled { opacity: .55; cursor: wait; }
 .actions button:focus-visible { outline: 2px solid var(--ticket-accent); outline-offset: 3px; }
@@ -48,7 +51,16 @@
 .journeyBar .error { width: 100%; margin: 0; }
 @media (max-width: 760px) {
   .intro { margin-bottom: 22px; }
-  .grid { gap: 24px; }
-  .body { padding: 18px; }
-  .title { font-size: 21px; }
+  .grid { display: flex; gap: 18px; overflow-x: auto; padding: 2px 2px 12px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+  .entry { flex: 0 0 min(100%, 430px); scroll-snap-align: start; }
+  .body { padding: 15px 14px 16px; }
+  .meta { margin-bottom: 10px; font-size: 9px; }
+  .ticketHeading { margin-bottom: 7px; gap: 5px; }
+  .ticketHeading > span:first-child { font-size: 12px; }
+  .title { margin-bottom: 6px; font-size: 17px; line-height: 1.4; }
+  .excerpt { margin-bottom: 8px; font-size: 10px; line-height: 1.6; -webkit-line-clamp: 2; }
+  .routeLabels { font-size: 8px; }
+  .actions { padding-top: 6px; }
+  .actions > span { display: none; }
+  .actions button { font-size: 11px; }
 }

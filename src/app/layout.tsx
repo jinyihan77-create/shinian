@@ -7,7 +7,7 @@ import "./aero-theme.css";
 
 export const metadata: Metadata = {
   title: "拾念 · 收好每一个念头",
-  description: "记录一闪而过的想法，用自己的话理解，再在需要时找回来。你的私人灵感集。",
+  description: "记录一闪而过的想法，用自己的话理解，再在需要时找回来。七七的私人回声屿。",
   icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "拾念", statusBarStyle: "default" },

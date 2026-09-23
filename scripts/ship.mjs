@@ -18,6 +18,8 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { acquirePublishLock } from "./publish-lock.mjs";
+import { appendHistory, loadState, saveState, writeLog } from "./publish-state.mjs";
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -71,7 +73,60 @@ console.log(`
 ╔══════════════════════════════════════════════════════════╗
 ║  安全发布闸门 · 检查通过才会发布                          ║
 ║  任何一步失败 → 线上网站保持原样，不会被覆盖              ║
-╚══════════════════════════════════════════════════════════╝`);
+╚══════════════════════════════════════════════════════════╝
+
+这个过程通常需要 3 到 8 分钟，请耐心等待，不要关闭窗口。`);
+
+// ── 步骤 0：取得发布锁 ───────────────────────────────────────
+// 自动发布（每 5 分钟一次）也可能在跑。两个发布同时上传、同时切流量会互相干扰，
+// 所以这里先抢锁；抢不到就直接退出，绝不并发发布。
+// ECHO_PUBLISH_LOCK_HELD=1 由自动发布引擎设置：锁已经在它手里，别自己锁自己。
+const automationDriven = process.env.ECHO_PUBLISH_AUTOMATION === "1";
+const lockHeldExternally = automationDriven || process.env.ECHO_PUBLISH_LOCK_HELD === "1";
+const publishLock = lockHeldExternally ? null : await acquirePublishLock({ owner: "手动发布" });
+if (publishLock && !publishLock.ok) {
+  console.log(`
+╔══════════════════════════════════════════════════════════╗
+║  ⏳ 此刻已有发布在进行，本次不再重复发布                  ║
+╚══════════════════════════════════════════════════════════╝
+
+正在进行的发布：${publishLock.heldBy}
+
+线上网站不受影响。请等它结束后再试，或查看状态：
+  node scripts/auto-publish.mjs --status
+`);
+  process.exit(2);
+}
+
+/**
+ * 收尾：记账 + 释放锁 + 退出。
+ *
+ * 自动发布引擎会在自己那边记账（它还要做发布后健康检查和回滚），
+ * 所以被它调用时不重复写，免得两边互相覆盖。
+ */
+async function finish(code, { result, detail, summary, commit } = {}) {
+  if (!automationDriven && result) {
+    const state = await loadState();
+    const next = {
+      ...state,
+      lastAttemptAt: new Date().toISOString(),
+      lastAttemptResult: result,
+      lastAttemptDetail: detail || "",
+      history: summary ? await appendHistory(state, summary) : state.history,
+    };
+    if (result === "success") {
+      next.lastPublishedAt = new Date().toISOString();
+      next.lastPublishedCommit = commit || state.lastPublishedCommit;
+      next.lastFailedFingerprint = "";
+    }
+    // 手动发布失败后，也让自动发布别在冷却期内立刻重试同一批内容。
+    if (result !== "success" && result !== "lock-busy") next.lastFailedFingerprint = state.lastFailedFingerprint;
+    await saveState(next);
+    await writeLog(`手动发布结果：${result}${detail ? `（${detail}）` : ""}`);
+  }
+  if (publishLock?.ok) await publishLock.release();
+  process.exit(code);
+}
 
 // ── 步骤 1：自动存档 ─────────────────────────────────────────
 // 先存档再检查。这样即使后面的检查发现改动有问题，也能用 git 回到上一个可用版本。
@@ -142,7 +197,11 @@ ${failures.map(f => `  • ${f.label}：${f.detail}`).join("\n")}
      或看所有存档点再挑一个：
        git log --oneline
 `);
-  process.exit(1);
+  await finish(1, {
+    result: "checks-failed",
+    detail: `未通过：${failures.map(f => f.label).join("、")}`,
+    summary: `❌ 手动发布被拦下（${failures.map(f => f.label).join("、")}），线上未变动`,
+  });
 }
 
 if (checkOnly) {
@@ -151,7 +210,7 @@ if (checkOnly) {
 ║  ✓ 全部检查通过（--check-only，未发布）                  ║
 ╚══════════════════════════════════════════════════════════╝
 `);
-  process.exit(0);
+  await finish(0);
 }
 
 console.log(`
@@ -175,8 +234,21 @@ if (!deploy.ok) {
   3. 用验收脚本确认线上到底是不是好的：
      npx tsx scripts/verify-live-deployment.mjs --origin https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com
 `);
-  process.exit(1);
+  await finish(1, {
+    result: "deploy-failed",
+    detail: "发布命令未成功（构建已通过，多半是网络或云端问题）",
+    summary: "❌ 手动发布命令失败，线上未变动",
+  });
 }
+
+// 记录这次发布对应的提交，供自动发布判断"还有没有新东西要上线"。
+const headAfter = await new Promise(resolve => {
+  const child = spawn("git", ["rev-parse", "HEAD"], { cwd: project, windowsHide: true });
+  let out = "";
+  child.stdout.on("data", chunk => { out += chunk; });
+  child.once("error", () => resolve(""));
+  child.once("close", () => resolve(out.trim()));
+});
 
 console.log(`
 ╔══════════════════════════════════════════════════════════╗
@@ -191,3 +263,8 @@ console.log(`
   git reset --hard HEAD~1
   npm run ship -- --skip-build
 `);
+await finish(0, {
+  result: "success",
+  summary: "✅ 手动发布成功",
+  commit: headAfter,
+});

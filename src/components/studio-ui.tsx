@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, BookOpen, Check, ChevronDown, FileText, Headphones, Leaf, Link2, LoaderCircle, MoreHorizontal, Plus, Settings2, Video } from "lucide-react";
+import { ArrowUpRight, AudioLines, BookOpen, Check, ChevronDown, FileText, Headphones, Heart, Leaf, Lightbulb, Link2, LoaderCircle, MoonStar, MoreHorizontal, Plus, Settings2, Star, Video } from "lucide-react";
 import type { CaptureInput } from "@/lib/types";
+import type { CaptureKind } from "@/lib/note-context";
 import { composeSpeechInput, type SpeechResultLike } from "@/lib/speech-input";
 import { AeroScene } from "./aero-scene";
 import { EchoHeading } from "./echo-heading";
@@ -41,10 +42,10 @@ export function SpaceHeader({ view, onNavigate, status }: { view: NavigationView
     <button className="brand" onClick={() => onNavigate("capture")} aria-label="拾念首页"><EchoSymbol /><strong>拾念</strong></button>
     <nav className="space-nav" aria-label="主导航">
       <button aria-current={view === "capture" ? "page" : undefined} onClick={() => onNavigate("capture")}>记录</button>
-      <button aria-current={view === "library" || view === "note" ? "page" : undefined} onClick={() => onNavigate("library")}>星图</button>
+      <button aria-current={view === "library" || view === "note" ? "page" : undefined} onClick={() => onNavigate("library")}>回声屿</button>
     </nav>
     <div className="space-account">{status}<button className="account-button" aria-label="账号与设置" aria-current={view === "settings" ? "page" : undefined} onClick={() => onNavigate("settings")}><Settings2 size={18} /></button></div>
-    <LineSidebar className={sidebarStyles.desktopRail} items={["记录", "星图", "设置"]} activeIndex={pages.indexOf(view === "note" ? "library" : view)}
+    <LineSidebar className={sidebarStyles.desktopRail} items={["记录", "回声屿", "设置"]} activeIndex={pages.indexOf(view === "note" ? "library" : view)}
       accentColor="#c084fc" textColor="#c4c4c4" markerColor="#6c6c6c" showIndex showMarker
       proximityRadius={100} maxShift={30} falloff="smooth" markerLength={60} markerGap={0}
       tickScale={0.5} scaleTick itemGap={20} fontSize={1.1} smoothing={100}
@@ -55,13 +56,28 @@ export function SpaceHeader({ view, onNavigate, status }: { view: NavigationView
 export function MobileNav({ view, onNavigate }: { view: NavigationView | "note"; onNavigate: (view: NavigationView) => void }) {
   return <nav className="mobile-nav" aria-label="移动端主导航">
     <button className={view === "capture" ? "active" : ""} aria-current={view === "capture" ? "page" : undefined} onClick={() => onNavigate("capture")}><span aria-hidden="true">＋</span><span>记录</span></button>
-    <button className={view === "library" || view === "note" ? "active" : ""} aria-current={view === "library" || view === "note" ? "page" : undefined} onClick={() => onNavigate("library")}><span aria-hidden="true">⌕</span><span>星图</span></button>
+    <button className={view === "library" || view === "note" ? "active" : ""} aria-current={view === "library" || view === "note" ? "page" : undefined} onClick={() => onNavigate("library")}><span aria-hidden="true">⌕</span><span>回声屿</span></button>
     <button className={view === "settings" ? "active" : ""} aria-current={view === "settings" ? "page" : undefined} onClick={() => onNavigate("settings")}><span aria-hidden="true">⋯</span><span>设置</span></button>
   </nav>;
 }
 
-export function CaptureHeading() {
-  return <div className="capture-heading"><p className="capture-focus-kicker"><TrueFocusLine>一闪，便有回响</TrueFocusLine></p><h1 className="kinetic-heading"><EchoHeading>此刻，想记下什么？</EchoHeading></h1></div>;
+const CAPTURE_PROMPTS = [
+  "此刻，想记下什么？",
+  "七七，今晚想留下什么？",
+  "哪句话，还在心里发光？",
+  "今天，什么让你停了一下？",
+  "说吧，刚刚想到了什么？",
+];
+
+export function CaptureHeading({ paused = false }: { paused?: boolean }) {
+  const [promptIndex, setPromptIndex] = useState(0);
+  useEffect(() => {
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (paused || motion.matches) return;
+    const timer = window.setInterval(() => setPromptIndex(value => (value + 1) % CAPTURE_PROMPTS.length), 7000);
+    return () => window.clearInterval(timer);
+  }, [paused]);
+  return <div className="capture-heading"><p className="capture-focus-kicker"><TrueFocusLine>一闪，便有回响</TrueFocusLine></p><h1 className="kinetic-heading"><span className="sr-only">此刻，想记下什么？</span><span className="capture-prompt-window" aria-hidden="true"><span className="capture-prompt-line" key={promptIndex}><EchoHeading>{CAPTURE_PROMPTS[promptIndex]}</EchoHeading></span></span></h1></div>;
 }
 
 export function CaptureSpace({ children }: { children: ReactNode }) {
@@ -72,8 +88,28 @@ export function CaptureSpace({ children }: { children: ReactNode }) {
       if (event.target.matches("input, textarea, select")) setFocused(true);
     }} onBlurCapture={event => {
       if (!(event.relatedTarget instanceof Element && event.currentTarget.contains(event.relatedTarget) && event.relatedTarget.matches("input, textarea, select"))) setFocused(false);
-    }}><CaptureHeading />{children}</div>
+    }}><CaptureHeading paused={focused} />{children}</div>
   </section>;
+}
+
+export function SaveStrokeMoment({ sequence, children = "已接住这一念" }: { sequence: number; children?: string }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!sequence) return;
+    setVisible(true);
+    const timer = window.setTimeout(() => setVisible(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, [sequence]);
+  if (!visible) return null;
+  return <div className="save-stroke-moment" key={sequence} role="status">
+    <span className="sr-only">{children}</span>
+    <svg viewBox="0 0 760 112" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
+      <defs><linearGradient id={`save-stroke-${sequence}`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#ff9fc5" /><stop offset=".52" stopColor="#d8c5f0" /><stop offset="1" stopColor="#bfe5ef" /></linearGradient></defs>
+      <text className="save-stroke-glow" x="380" y="75" textAnchor="middle">{children}</text>
+      <text className="save-stroke-line" x="380" y="75" textAnchor="middle" stroke={`url(#save-stroke-${sequence})`}>{children}</text>
+      <text className="save-stroke-fill" x="380" y="75" textAnchor="middle">{children}</text>
+    </svg>
+  </div>;
 }
 
 export function EchoAura({ className = "" }: { className?: string }) {
@@ -88,6 +124,9 @@ type ComposerProps = {
   saving: boolean;
   draftState: "idle" | "saving" | "saved" | "error";
   onSave: (organize: boolean) => void;
+  captureKind?: CaptureKind;
+  onCaptureKind?: (kind: CaptureKind) => void;
+  onOpenCheckin?: () => void;
   preview?: boolean;
 };
 
@@ -104,7 +143,6 @@ function VoiceInput({ value, onChange, disabled, preview }: { value: string; onC
   }, []);
 
   function toggle() {
-    if (preview) { setMessage("预览不会启用麦克风"); return; }
     if (recognitionRef.current) { recognitionRef.current.stop(); return; }
     const Constructor = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Constructor) { setMessage("当前浏览器不支持语音输入，请直接输入"); return; }
@@ -120,7 +158,7 @@ function VoiceInput({ value, onChange, disabled, preview }: { value: string; onC
     recognition.onerror = event => { setRecording(false); setMessage(event.error === "not-allowed" ? "麦克风权限未开启，请允许后重试" : "没有识别到清晰语音，请重试"); };
     recognition.onend = () => { setRecording(false); recognitionRef.current = null; };
     recognitionRef.current = recognition;
-    setMessage("");
+    setMessage(preview ? "语音只填写本次预览，不会保存" : "");
     try { recognition.start(); setRecording(true); } catch { recognitionRef.current = null; setRecording(false); setMessage("语音输入启动失败，请直接输入"); }
   }
 
@@ -129,11 +167,12 @@ function VoiceInput({ value, onChange, disabled, preview }: { value: string; onC
       <span className="voice-bars" aria-hidden="true"><i /><i /><i /><i /><i /></span>
       <span>{recording ? "正在听" : "语音"}</span>
     </button>
+    {recording && <div className="voice-live" role="status"><span className="voice-live-orb" aria-hidden="true"><AudioLines size={19} /><i /><i /><i /></span><span><strong>我在听</strong><small>说完停一下，文字会自然落下来</small></span></div>}
     {message && <span className="voice-message" role="status">{message}</span>}
   </div>;
 }
 
-export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle, saving, draftState, onSave, preview = false }: ComposerProps) {
+export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle, saving, draftState, onSave, captureKind = "thought", onCaptureKind = () => {}, onOpenCheckin = () => {}, preview = false }: ComposerProps) {
   const hasContent = [capture.userText, capture.sourceName, capture.sourceUrl, capture.sourceTimestamp, capture.sourceExcerpt].some(value => value.trim());
   const sourceOptions = [
     { value: "播客", icon: Headphones },
@@ -148,8 +187,15 @@ export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle,
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !event.nativeEvent.isComposing && !saving && hasContent) { event.preventDefault(); onSave(false); }
   }}>
     <div className="writing-surface">
+      <button type="button" className="capture-star-shortcut capture-star-primary" onClick={onOpenCheckin} disabled={saving} title="摘下今天的星" aria-label="摘下今天的星"><Star size={16} /><span>摘星</span></button>
       <label className="sr-only" htmlFor="capture-thought">我的想法</label>
       <textarea id="capture-thought" className="capture-textarea" placeholder="一句想法，一段听后感……" value={capture.userText} maxLength={20000} onChange={event => onChange({ userText: event.target.value })} disabled={saving} />
+      <div className="capture-kind" role="radiogroup" aria-label="这条记录放在哪里">
+        <span>放在哪里</span>
+        <button type="button" role="radio" aria-checked={captureKind === "thought"} onClick={() => onCaptureKind("thought")} disabled={saving}><Lightbulb size={14} />普通念头</button>
+        <button type="button" role="radio" aria-checked={captureKind === "moment"} onClick={() => onCaptureKind("moment")} disabled={saving}><MoonStar size={14} />今日片刻</button>
+        <button type="button" role="radio" aria-checked={captureKind === "relationship"} onClick={() => onCaptureKind("relationship")} disabled={saving}><Heart size={14} />和 TA</button>
+      </div>
       <div className="composer-toolbar">
         <button type="button" className="source-toggle" onClick={onSourceToggle} disabled={saving} aria-expanded={sourceOpen} aria-controls="capture-source-details"><Plus size={16} className={sourceOpen ? "rotated" : ""} />{sourceOpen ? "收起来源" : "添加来源"}{!sourceOpen && (capture.sourceUrl || capture.sourceName || capture.sourceExcerpt || capture.sourceTimestamp) ? <span className="source-dot" aria-label="已有来源" /> : null}</button>
         <span className="character-count">{capture.userText.length > 0 && capture.userText.length.toLocaleString() + " 字"}</span>
@@ -164,7 +210,7 @@ export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle,
       </div>
     </div>
     <div className="capture-footer">
-      <div className="capture-footer-left"><VoiceInput value={capture.userText} onChange={value => onChange({ userText: value })} disabled={saving} preview={preview} /><span className={"draft-state " + (draftState === "error" ? "danger-text" : "")} aria-live="polite">{preview ? "预览输入不会保存" : draftState === "saving" ? "正在保存本机草稿…" : draftState === "saved" ? <><Check size={13} />草稿已留在此设备</> : draftState === "error" ? "草稿保存失败，请先复制文字" : "保存后才会进入私人灵感集"}</span></div>
+      <div className="capture-footer-left"><VoiceInput value={capture.userText} onChange={value => onChange({ userText: value })} disabled={saving} preview={preview} /><span className={"draft-state " + (draftState === "error" ? "danger-text" : "")} aria-live="polite">{preview ? "预览输入不会保存" : draftState === "saving" ? "正在保存本机草稿…" : draftState === "saved" ? <><Check size={13} />草稿已留在此设备</> : draftState === "error" ? "草稿保存失败，请先复制文字" : "保存后会进入你的回声屿"}</span></div>
       <button type="button" className="btn btn-primary capture-submit" disabled={saving || !hasContent} onClick={() => onSave(false)}>{saving ? <LoaderCircle className="spin" size={16} /> : null}{saving ? "正在保存…" : "记下"}{!saving && <ArrowUpRight size={17} />}</button>
     </div>
   </section>;

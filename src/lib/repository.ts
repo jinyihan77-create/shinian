@@ -4,7 +4,7 @@ import type { AiResult, CaptureInput, EchoNote } from "./types";
 import { taskStatus, taskTags, type TaskAction } from "./task-tickets";
 
 interface Setting { key: string; value: unknown }
-interface Submission { id: string; input: CaptureInput }
+interface Submission { id: string; input: CaptureInput; tags?: string[] }
 class AccountDraftDatabase extends Dexie {
   settings!: Table<Setting, string>;
   constructor() {
@@ -35,7 +35,7 @@ function requireUser(): string {
 }
 
 function assertUser(expected: string): void {
-  if (userId !== expected) throw new RepositoryError("登录账号已变化，请重新进入灵感集。", "SESSION_CHANGED", 401);
+  if (userId !== expected) throw new RepositoryError("登录账号已变化，请重新进入回声屿。", "SESSION_CHANGED", 401);
 }
 
 function scopedKey(scope: string, key: string): string { return `${scope}:${key}`; }
@@ -111,6 +111,18 @@ function sameInput(first: CaptureInput, second: CaptureInput): boolean {
   return captureKeys.every(key => first[key].trim() === second[key].trim());
 }
 
+function cleanInitialTags(tags: string[]): string[] {
+  const cleaned = [...new Set(tags.map(tag => tag.trim()).filter(Boolean))];
+  if (cleaned.length > 2 || cleaned.some(tag => !tag.startsWith("__shinian_context:"))) {
+    throw new RepositoryError("记录去向不正确，请重新选择后保存。", "INVALID_INPUT");
+  }
+  return cleaned;
+}
+
+function sameTags(first: readonly string[] = [], second: readonly string[] = []): boolean {
+  return first.length === second.length && first.every((tag, index) => tag === second[index]);
+}
+
 function createId(): string {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -139,30 +151,31 @@ async function patch(id: string, action: string, input: unknown, version?: numbe
   return note;
 }
 
-async function create(scope: string, input: CaptureInput): Promise<EchoNote> {
+async function create(scope: string, input: CaptureInput, initialTags: string[] = []): Promise<EchoNote> {
   const content = cleanInput(input);
+  const tags = cleanInitialTags(initialTags);
   const submissionKey = scopedKey(scope, "draftSubmissionId");
   const draftKey = scopedKey(scope, "draft");
   const submission = await local(() => drafts.transaction("rw", drafts.settings, async () => {
     const stored = (await drafts.settings.get(submissionKey))?.value as Submission | undefined;
-    if (stored && (stored.id !== confirmedSubmissions.get(scope) || sameInput(stored.input, content))) return stored;
-    const next: Submission = { id: createId(), input: content };
+    if (stored && (stored.id !== confirmedSubmissions.get(scope) || (sameInput(stored.input, content) && sameTags(stored.tags, tags)))) return stored;
+    const next: Submission = { id: createId(), input: content, tags };
     await drafts.settings.put({ key: submissionKey, value: next });
     // Ensure a caller without an autosaved draft also keeps their input on failure.
     await drafts.settings.put({ key: draftKey, value: { ...input } });
     return next;
   }));
   assertUser(scope);
-  if (!sameInput(submission.input, content)) {
+  if (!sameInput(submission.input, content) || !sameTags(submission.tags, tags)) {
     // A previous timed-out request may have committed. Resolve it before assigning a new UUID.
-    const previous = await request(scope, "/api/notes", { method: "POST", body: { id: submission.id, input: submission.input } });
+    const previous = await request(scope, "/api/notes", { method: "POST", body: { id: submission.id, input: submission.input, tags: submission.tags ?? [] } });
     const resolved = readNote(previous.note);
     if (resolved.id !== submission.id) throw new RepositoryError("服务器返回的记录不一致，请重试。", "INVALID_RESPONSE");
     confirmedSubmissions.set(scope, submission.id);
     await local(() => drafts.settings.delete(submissionKey)).catch(() => {});
-    throw new RepositoryError("上一次提交已确认保存在灵感集。当前草稿已有修改，请再次保存为新记录，或打开原记录继续编辑。", "PREVIOUS_SUBMISSION_SAVED");
+    throw new RepositoryError("上一次提交已确认保存在回声屿。当前草稿已有修改，请再次保存为新记录，或打开原记录继续编辑。", "PREVIOUS_SUBMISSION_SAVED");
   }
-  const body = await request(scope, "/api/notes", { method: "POST", body: { id: submission.id, input: content } });
+  const body = await request(scope, "/api/notes", { method: "POST", body: { id: submission.id, input: content, tags } });
   const note = readNote(body.note);
   if (note.id !== submission.id) throw new RepositoryError("服务器返回的记录不一致，请重试。", "INVALID_RESPONSE");
   confirmedSubmissions.set(scope, submission.id);
@@ -207,7 +220,7 @@ export const repository = {
         seenIds.add(id); previousId = id; notes.push(note);
       }
       if (notes.length > 10_000 || (notes.length === 10_000 && body.nextCursor !== null)) {
-        throw new RepositoryError("灵感集超过当前一次读取的 10,000 条上限，未返回不完整资料。请联系维护者扩充读取容量。", "LIBRARY_TOO_LARGE");
+        throw new RepositoryError("资料库超过当前一次读取的 10,000 条上限，未返回不完整资料。请联系维护者扩充读取容量。", "LIBRARY_TOO_LARGE");
       }
       if (body.nextCursor === null) break;
       const next = body.nextCursor as string;
@@ -234,11 +247,11 @@ export const repository = {
       throw error;
     }
   },
-  create(input: CaptureInput): Promise<EchoNote> {
+  create(input: CaptureInput, initialTags: string[] = []): Promise<EchoNote> {
     const scope = requireUser();
     const existing = createInFlight.get(scope);
     if (existing) return existing;
-    const pending = create(scope, input).finally(() => { createInFlight.delete(scope); });
+    const pending = create(scope, input, initialTags).finally(() => { createInFlight.delete(scope); });
     createInFlight.set(scope, pending);
     return pending;
   },

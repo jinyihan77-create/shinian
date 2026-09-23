@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import styles from "./star-curtain.module.css";
 import { STAR_POINTS, starMaterial } from "@/lib/star-materials";
+import { StarCrystalField, type CrystalStarMotion } from "./star-crystal-field";
 
 export type StarCurtainProps = {
   theme: number;
@@ -118,7 +119,7 @@ function StarFace({ id, seed, material, prominent }: { id: string; seed: number;
   </svg>;
 }
 
-type Pendulum = { x: number; y: number; vx: number; vy: number; targetX: number; targetY: number };
+type Pendulum = CrystalStarMotion & { vx: number; vy: number; targetX: number; targetY: number };
 type Gesture = { index: number; pointerId: number; startX: number; startY: number; moved: boolean };
 
 export function StarCurtain({ theme, onPick, paused = false, reduceMotion = false }: StarCurtainProps) {
@@ -126,7 +127,7 @@ export function StarCurtain({ theme, onPick, paused = false, reduceMotion = fals
   const stage = useRef<HTMLDivElement>(null);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const cords = useRef<(SVGPathElement | null)[]>([]);
-  const bodies = useRef<Pendulum[]>(STARS.map(() => ({ x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: 0 })));
+  const bodies = useRef<Pendulum[]>(STARS.map(() => ({ x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: 0, angle: 0, yaw: 0, scale: 1, opacity: 1 })));
   const gesture = useRef<Gesture | null>(null);
   const picked = useRef<number | null>(null);
   const pickTime = useRef(0);
@@ -138,9 +139,12 @@ export function StarCurtain({ theme, onPick, paused = false, reduceMotion = fals
   const [selection, setSelection] = useState<number | null>(null);
   const [pulling, setPulling] = useState(false);
   const [readyToPick, setReadyToPick] = useState(false);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [webgl, setWebgl] = useState(false);
 
   useEffect(() => { onPickRef.current = onPick; }, [onPick]);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  useEffect(() => { setWebgl(typeof window.WebGLRenderingContext !== "undefined"); }, []);
 
   function pick(index: number) {
     if (picked.current !== null || paused) return;
@@ -218,6 +222,10 @@ export function StarCurtain({ theme, onPick, paused = false, reduceMotion = fals
           if (active) yaw = Math.max(-19, Math.min(19, body.x * 0.23));
         }
         const angle = isPicked ? 0 : Math.max(-17, Math.min(17, body.x * 0.28 - body.vx * 0.012));
+        body.angle = angle;
+        body.yaw = yaw;
+        body.scale = scale;
+        body.opacity = opacity;
         button.style.transform = `translate3d(calc(-50% + ${body.x.toFixed(2)}px), ${body.y.toFixed(2)}px, 0) rotateZ(${angle.toFixed(2)}deg) rotateY(${yaw.toFixed(2)}deg) scale(${scale.toFixed(3)})`;
         button.style.setProperty("--pick-opacity", String(opacity));
         const anchorX = button.offsetLeft;
@@ -259,6 +267,7 @@ export function StarCurtain({ theme, onPick, paused = false, reduceMotion = fals
     </header>
     <div ref={stage} className={styles.stage}>
       <div className={styles.horizon} aria-hidden="true" />
+      {webgl && <StarCrystalField theme={theme} stars={STARS} motion={bodies} stage={stage} hovered={hovered} selected={selection} paused={paused || reduceMotion} />}
       <svg className={styles.cords} aria-hidden="true">
         <defs><linearGradient id={`${uniqueId}-cord`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="220"><stop stopColor="#c8b4dc" stopOpacity="0" /><stop offset=".35" stopColor="#bca8cd" stopOpacity=".24" /><stop offset="1" stopColor="#e7d5ee" stopOpacity=".55" /></linearGradient></defs>
         {STARS.map((star, index) => <path key={index} ref={(node) => { cords.current[index] = node; }} className={index === 0 || index === 6 ? styles.outerStar : undefined} d={`M 0 0 L 0 0`} fill="none" stroke={`url(#${uniqueId}-cord)`} strokeWidth={star.depth > 0.8 ? 1.15 : 0.7} />)}
@@ -297,10 +306,15 @@ export function StarCurtain({ theme, onPick, paused = false, reduceMotion = fals
         onPointerUp={(event) => release(event)}
         onPointerCancel={(event) => release(event, true)}
         onLostPointerCapture={(event) => release(event, true)}
+        onMouseEnter={() => setHovered(index)}
+        onMouseLeave={() => setHovered(current => current === index ? null : current)}
+        onFocus={() => setHovered(index)}
+        onBlur={() => setHovered(current => current === index ? null : current)}
         onClick={() => { if (performance.now() >= suppressClickUntil.current) pick(index); }}
       >
         <span className={styles.starHalo} />
-        <StarFace id={`${uniqueId}-star-${index}`} seed={theme * 31 + index * 718 + 1} material={starMaterial(theme + index)} prominent={index === 3} />
+        {!webgl && <StarFace id={`${uniqueId}-star-${index}`} seed={theme * 31 + index * 718 + 1} material={starMaterial(theme + index)} prominent={index === 3} />}
+        {webgl && <span className={styles.crystalHitGlint} aria-hidden="true" />}
       </button>)}
     </div>
     <div className={styles.footer}>

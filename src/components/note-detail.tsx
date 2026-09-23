@@ -11,6 +11,7 @@ import { FLASHCARD_TAG, withFlashcardFavorite } from "@/lib/art-flashcards";
 import flashcardStyles from "./art-flashcard.module.css";
 import { preserveTaskTags, visibleTags, type TaskAction } from "@/lib/task-tickets";
 import { TaskJourneyBar } from "./task-journey-bar";
+import { captureKindFromTags } from "@/lib/note-context";
 
 export interface NoteDetailProps {
   note: EchoNote;
@@ -75,6 +76,7 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
   const unsaved = contentDirty || metaDirty || reflectionDirty || promptDirty || aiDirty;
   const processing = organizing || note.aiStatus === "processing";
   const stale = Boolean(note.aiResult && note.aiInputRevision !== note.revision);
+  const captureKind = captureKindFromTags(note.tags);
   const canOrganize = Boolean(note.userText.trim() || note.sourceExcerpt.trim());
   const questions = note.aiResult?.reflectionQuestions.slice(0, 2) ?? [DEFAULT_QUESTION];
   const currentQuestion = reflectionDraft?.prompt ?? questionOf(note);
@@ -194,7 +196,7 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
     try {
       const saved = await repository.updateTask(current, action);
       await onUpdated(saved); setSyncError("");
-      onNotify(action === "complete" ? "这件事已完成，终点票已保存。" : "已启程，事项进度已保存。");
+      onNotify(action === "complete" ? "这件事已标记完成。" : "这件事已开始，进度已经保存。");
     } finally { operation.current = false; setBusy(null); }
   }
 
@@ -207,7 +209,7 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
         title: note.title, tags: withFlashcardFavorite(note.tags, nextFavorite),
       }, versionAtStart(note.storageVersion));
       await onUpdated(saved); setSyncError("");
-      onNotify(nextFavorite ? "闪卡已收藏，可以在灵感集的「闪卡收藏」里重温。" : "已取消收藏，原笔记和你的理解仍然保留。");
+      onNotify(nextFavorite ? "闪卡已收藏，可以在回声屿的「闪卡」里重温。" : "已取消收藏，原笔记和你的理解仍然保留。");
     } catch (error) { reportError(error); }
     finally { operation.current = false; setBusy(null); }
   }
@@ -237,11 +239,11 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
   }
 
   return <div className="detail-page">
-    <button className="btn btn-ghost" onClick={back}><ArrowLeft size={17} />返回灵感集</button>
+    <button className="btn btn-ghost" onClick={back}><ArrowLeft size={17} />返回回声屿</button>
     <header className="detail-header">
       <p className="eyebrow">一条想法，慢慢生长</p>
       <h1>{note.title}</h1>
-      <div className="detail-meta"><span>{note.sourceType}</span><span>{formatDate(note.createdAt)}</span>{note.isExample && <span className="tag">演示资料</span>}<span className="chip">{processing ? "整理中" : stale ? "待更新" : note.aiStatus === "done" ? "已整理" : "待整理"}</span><span className="chip">{note.reflectionText.trim() ? "已有输出" : "待输出"}</span></div>
+      <div className="detail-meta"><span>{note.sourceType}</span><span>{formatDate(note.createdAt)}</span>{captureKind !== "thought" && <span className="tag">{captureKind === "relationship" ? "和 TA" : "今日片刻"}</span>}{note.isExample && <span className="tag">演示资料</span>}<span className="chip">{processing ? "整理中" : stale ? "待更新" : note.aiStatus === "done" ? "已整理" : "待整理"}</span><span className="chip">{note.reflectionText.trim() ? "已有输出" : "待输出"}</span></div>
       {visibleTags(note.tags).length > 0 && <div className="detail-tags">{visibleTags(note.tags).map(tag => <span className="tag" key={tag}>#{tag}</span>)}</div>}
       {(syncError || editedVersionChanged) && <div className={`inline-notice ${syncError ? "error" : ""}`} role={syncError ? "alert" : "status"}><p>{syncError || "云端记录已有更新，当前编辑中的文字仍保留。保存时会核对版本；如需重新打开编辑，请先复制要保留的输入。"}</p><button className="btn btn-ghost" disabled={Boolean(busy)} onClick={() => void onUpdated()}>刷新云端记录</button></div>}
       {!editingMeta && <button className="btn btn-ghost" onClick={beginMeta} disabled={Boolean(busy)}><Pencil size={15} />编辑标题和标签</button>}
@@ -277,7 +279,7 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
       </form>
 
       <section className="panel detail-section">
-        <SectionTitle number="03" title="AI 帮我整理" hint="理清线索，留一点继续思考的空间。" action={<button className="btn btn-secondary" onClick={() => void organize()} disabled={processing || !canOrganize || contentDirty || editingAi || Boolean(busy)}>{processing ? <LoaderCircle className="spin" size={16} /> : <Sparkles size={16} />}{processing ? "正在整理…" : note.aiResult || note.aiStatus === "error" ? "重新整理" : "整理一下"}</button>} />
+        <SectionTitle number="03" title="AI 帮我整理" hint="理清线索，留一点继续思考的空间。" action={<button className="btn ai-organize-button" onClick={() => void organize()} disabled={processing || !canOrganize || contentDirty || editingAi || Boolean(busy)}>{processing ? <LoaderCircle className="spin" size={16} /> : <Sparkles size={16} />}{processing ? "正在整理…" : note.aiResult || note.aiStatus === "error" ? "重新整理" : "整理一下"}</button>} />
         {contentDirty && <p className="inline-notice">请先保存想法和来源的修改，再重新整理。</p>}
         {stale && <p className="inline-notice">内容已修改，建议重新整理。以下保留的是上一次的结果。</p>}
         {note.aiError && <p className="inline-notice error" role="alert">{note.aiError}</p>}
