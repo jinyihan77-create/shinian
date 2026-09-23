@@ -458,7 +458,10 @@ input:focus, textarea:focus, select:focus {
   .space-header .brand strong { font-size: 16px; }
   .space-nav { display: none; }
   .space-account .sync-indicator span:last-child { display: none; }
-  .main-content, .main-content.capture-page { width: calc(100% - 24px); padding-bottom: 28px; }
+  .main-content, .main-content.capture-page {
+    width: calc(100% - 24px);
+    padding-bottom: calc(112px + env(safe-area-inset-bottom));
+  }
   .main-content.capture-page { margin-top: -64px; padding-top: 64px; }
   .capture-space { min-height: calc(100svh - 78px); border-radius: 21px; }
   .capture-space .capture-heading h1 { font-size: clamp(31px, 9vw, 44px); }
@@ -512,7 +515,7 @@ input:focus, textarea:focus, select:focus {
   .mobile-nav button span:first-child { font-size: 21px; line-height: 1; color: #c8b8d7; }
   .mobile-nav button.active { background: #ffffff12; color: #f8f2fa; }
   .mobile-nav button.active span:first-child { color: #f8f2fa; }
-  .main-content { padding-bottom: 100px; }
+  .capture-space .preview-recent { scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
