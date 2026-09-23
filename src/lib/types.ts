@@ -28,6 +28,14 @@ export interface SourceIntakeResult {
   sourceTimestamp: string | null;
   sourceExcerpt: string | null;
 }
+export interface DeletePlanMatch {
+  id: string;
+  reason: string;
+}
+export interface DeletePlan {
+  interpretation: string;
+  matches: DeletePlanMatch[];
+}
 export interface EchoNote extends CaptureInput {
   id: string;
   title: string;

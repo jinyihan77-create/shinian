@@ -43,6 +43,18 @@ export const sourceIntakeResultSchema = z.object({
   sourceExcerpt: z.string().trim().min(1).max(CAPTURE_LIMITS.sourceExcerpt).nullable(),
 }).strict();
 
+export const deletePlanRequestSchema = z.object({
+  command: z.string().trim().min(2, "请说清楚想删除哪类记录。").max(500, "这句话太长，请只说要清理的范围。"),
+}).strict();
+
+export const deletePlanResultSchema = z.object({
+  interpretation: z.string().trim().min(1).max(300),
+  matches: z.array(z.object({
+    id: z.string().uuid(),
+    reason: z.string().trim().min(1).max(200),
+  }).strict()).max(30),
+}).strict();
+
 export const aiResultSchema = z.object({
   title: z.string().trim().min(1).max(CAPTURE_LIMITS.title),
   thoughtSummary: z.string().max(6_000),

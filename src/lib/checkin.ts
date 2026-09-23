@@ -111,6 +111,31 @@ export function checkinSourceNoteIds(notes: readonly EchoNote[], today = getChec
     .slice(0, 20);
 }
 
+/** Short, traceable words used by the journey. Nothing is invented when notes are sparse. */
+export function checkinKeywordsFromNotes(notes: readonly EchoNote[], today = getCheckinDay()): string[] {
+  const todayNotes = notes
+    .filter(note => dayInShanghai(note.updatedAt || note.createdAt) === today)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const candidates = todayNotes.flatMap(note => [
+    ...note.tags,
+    ...(note.aiResult?.tags ?? []),
+    note.title,
+  ]);
+  const seen = new Set<string>();
+  const keywords: string[] = [];
+  for (const candidate of candidates) {
+    const clean = candidate.replace(/^[#\s]+|[。！？!?，,；;：:\s]+$/g, "").replace(/\s+/g, " ").trim();
+    if (!clean) continue;
+    const short = Array.from(clean).slice(0, 10).join("");
+    const key = short.toLocaleLowerCase("zh-CN");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    keywords.push(short);
+    if (keywords.length === 6) break;
+  }
+  return keywords;
+}
+
 function firstThought(value: string) {
   const clean = value.replace(/\s+/g, " ").trim();
   if (!clean) return "";

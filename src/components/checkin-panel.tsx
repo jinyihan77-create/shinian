@@ -3,11 +3,11 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowLeft, ArrowUpRight, Check, LoaderCircle, Moon, RotateCw, Sparkles, X } from "lucide-react";
-import { CHECKIN_EXPERIENCE_VERSION, CHECKIN_LIMITS, checkinSourceNoteIds, checkinSummarySchema, getCheckinDay, stableStarTheme, stableVisualSeed, suggestCheckinFromNotes, type CheckinSummary } from "@/lib/checkin";
+import { CHECKIN_EXPERIENCE_VERSION, CHECKIN_LIMITS, checkinKeywordsFromNotes, checkinSourceNoteIds, checkinSummarySchema, getCheckinDay, stableStarTheme, stableVisualSeed, suggestCheckinFromNotes, type CheckinSummary } from "@/lib/checkin";
 import { SEVEN_STAR_POINTS, STAR_MATERIALS, starMaterial, starPath } from "@/lib/star-materials";
 import type { EchoNote } from "@/lib/types";
 import styles from "./checkin-panel.module.css";
-import { StarCurtain } from "./star-curtain";
+import { DailyOrbit } from "./daily-orbit";
 import { SevenStarCard } from "./seven-star-card";
 const defaultQuote = "把一点微光，留给明天的自己。";
 const ENTRY_STAR_PATH = starPath(SEVEN_STAR_POINTS, 50, 46);
@@ -28,6 +28,10 @@ const JOURNEY_STREAKS = Array.from({ length: 22 }, (_, index) => ({
   radius: 22 + (index % 6) * 8,
   length: 34 + (index % 5) * 13,
 }));
+const JOURNEY_WORD_POSITIONS = [
+  { left: 18, top: 27, drift: -32 }, { left: 76, top: 34, drift: 28 }, { left: 23, top: 66, drift: -24 },
+  { left: 71, top: 72, drift: 35 }, { left: 34, top: 18, drift: -18 }, { left: 82, top: 57, drift: 22 },
+];
 
 function clampJourneyDepth(value: number) {
   return Math.max(0, Math.min(1, value));
@@ -82,6 +86,7 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
   const customizedRef = useRef(false);
   const lastTheme = useRef(-1);
   const currentSuggestion = suggestCheckinFromNotes(notes);
+  const currentKeywords = checkinKeywordsFromNotes(notes);
 
   function show() {
     const suggestion = currentSuggestion;
@@ -169,7 +174,7 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
     </button>
     {open && createPortal(<CheckinDialog
       theme={theme} mood={mood} quote={quote} summary={summary} preview={preview} busy={busy} selectedVariant={selectedVariant}
-      suggestionCount={currentSuggestion.sourceCount}
+      suggestionCount={currentSuggestion.sourceCount} keywords={currentKeywords}
       loading={loading} error={error} notice={notice} flipped={flipped}
       disabled={accountPaused || !userId} onClose={close}
       onSelectTheme={(value, variant) => { lastTheme.current = value % STAR_MATERIALS.length; setTheme(value); setSelectedVariant(variant); setFlipped(false); }}
@@ -181,7 +186,7 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
 
 interface DialogProps {
   theme: number; mood: string; quote: string; summary: CheckinSummary | null; selectedVariant: number;
-  suggestionCount: number;
+  suggestionCount: number; keywords: readonly string[];
   preview: boolean; busy: boolean; loading: boolean; disabled: boolean; flipped: boolean;
   error: string; notice: string;
   onClose: () => void; onMood: (value: string) => void; onQuote: (value: string) => void;
@@ -189,7 +194,7 @@ interface DialogProps {
   onFlip: () => void; onRetry: () => void; onSubmit: () => void;
 }
 
-function StarJourney({ day, reduced, onArrive }: { day: string; reduced: boolean; onArrive: () => void }) {
+function StarJourney({ day, reduced, keywords, onArrive }: { day: string; reduced: boolean; keywords: readonly string[]; onArrive: () => void }) {
   const [depth, setDepth] = useState(0);
   const [gestureSettled, setGestureSettled] = useState(0);
   const depthRef = useRef(0);
@@ -267,7 +272,13 @@ function StarJourney({ day, reduced, onArrive }: { day: string; reduced: boolean
       <span className={styles.journeyStreaks}>{JOURNEY_STREAKS.map((streak, index) => <i key={index} style={{ "--streak-angle": `${streak.angle}deg`, "--streak-radius": `${streak.radius}px`, "--streak-length": `${streak.length}px` } as CSSProperties} />)}</span>
       <span className={styles.thoughtLight} />
     </div>
-    <div className={styles.journeyCopy} key={step}><span>{scene.label}</span><h2>{scene.title}</h2><p>{step < 2 ? "滚轮向下，或用手指上滑，朝这点光靠近" : "再向前一点，就能看见今晚的三颗星。"}</p></div>
+    {keywords.length > 0 && <div className={styles.journeyWords} aria-label="今天沿途闪过的关键词">{keywords.slice(0, 6).map((word, index) => {
+      const position = JOURNEY_WORD_POSITIONS[index];
+      const appears = Math.max(0, Math.min(1, (depth - .08 - index * .045) * 5));
+      const fades = Math.max(0, Math.min(1, (depth - .76 - index * .02) * 5));
+      return <span key={`${word}-${index}`} style={{ left: `${position.left}%`, top: `${position.top}%`, opacity: appears * (1 - fades), transform: `translate3d(${position.drift * depth}px,${(depth - .5) * position.drift * .35}px,0) scale(${.72 + depth * .54})` }}>{word}</span>;
+    })}</div>}
+    <div className={styles.journeyCopy} key={step}><span>{scene.label}</span><h2>{scene.title}</h2><p>{step < 2 ? "滚轮向下，或用手指上滑，朝这点光靠近" : "再向前一点，就能抵达今天的星球。"}</p></div>
     <div className={styles.journeyProgress} role="progressbar" aria-label="前往星海的距离" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>{Array.from({ length: 7 }, (_, index) => <i key={index} data-active={depth >= index / 7} />)}</div>
     <div className={styles.journeyActions}><button type="button" onClick={advance}>{step === 2 ? "穿过这束光" : "往前"}<ArrowUpRight size={15} /></button><button type="button" onClick={onArrive}>直接到星海</button></div>
     <small>{day.replaceAll("-", ".")} · Q7</small>
@@ -275,25 +286,25 @@ function StarJourney({ day, reduced, onArrive }: { day: string; reduced: boolean
 }
 
 function CheckinDialog(props: DialogProps) {
-  const { theme, mood, quote, summary, preview, busy, loading, error, notice, flipped, suggestionCount, disabled, onSubmit, selectedVariant } = props;
+  const { theme, mood, quote, summary, preview, busy, loading, error, notice, flipped, suggestionCount, keywords, disabled, onSubmit, selectedVariant } = props;
   const dialog = useRef<HTMLDialogElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const [picked, setPicked] = useState<number | null>(null);
   const [stage, setStage] = useState<"journey" | "star-sea" | "revealing">("journey");
-  const [curtainTheme, setCurtainTheme] = useState(theme);
+  const [orbitTheme, setOrbitTheme] = useState(theme);
   const [reduced, setReduced] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [editing, setEditing] = useState(false);
   const autoSaveAttempted = useRef(false);
   const material = starMaterial(theme);
   const confirmed = Boolean(summary?.entry);
-  function pickStar(index: number) {
-    props.onSelectTheme(curtainTheme + index, index);
-    setPicked(index);
+  function claimCore() {
+    props.onSelectTheme(orbitTheme, 0);
+    setPicked(0);
     setStage("revealing");
   }
   function pickAgain() {
-    setCurtainTheme(theme + 3); setPicked(null);
+    setOrbitTheme(theme); setPicked(null);
     dialog.current?.scrollTo?.({ top: 0, behavior: "instant" });
   }
   useEffect(() => {
@@ -337,27 +348,27 @@ function CheckinDialog(props: DialogProps) {
     }, 420);
     return () => window.clearTimeout(timer);
   }, [picked, editing, busy, loading, summary, error, preview, disabled, onSubmit]);
-  return <dialog ref={dialog} className={styles.dialog} style={{ "--star-glow": material.glow, "--star-secondary": material.secondary, "--star-accent": material.accent } as CSSProperties} aria-labelledby={picked === null ? undefined : "checkin-title"} aria-label={picked === null ? "给今天，摘一颗星" : undefined}
+  return <dialog ref={dialog} className={styles.dialog} style={{ "--star-glow": material.glow, "--star-secondary": material.secondary, "--star-accent": material.accent } as CSSProperties} aria-labelledby={picked === null ? undefined : "checkin-title"} aria-label={picked === null ? "今夜跃迁" : undefined}
     onCancel={event => { event.preventDefault(); props.onClose(); }}
     onClick={event => { if (event.target === event.currentTarget) props.onClose(); }}>
     <div className={styles.modal}>
-      <header className={styles.modalHeader}><span><Moon size={16} />拾念<span className={styles.headerDivider}>/</span>一念入星河</span><div className={styles.headerActions}>{picked !== null && !confirmed && <button className={styles.pickAgain} onClick={pickAgain} disabled={busy}><ArrowLeft size={13} />再摘一颗</button>}<button aria-label="关闭打卡牌" onClick={props.onClose} disabled={busy}><X size={20} /></button></div></header>
-      {stage === "journey" ? <StarJourney day={summary?.today ?? getCheckinDay()} reduced={reduced} onArrive={() => {
+      <header className={styles.modalHeader}><span><Moon size={16} />拾念<span className={styles.headerDivider}>/</span>今夜跃迁</span><div className={styles.headerActions}>{picked !== null && !confirmed && <button className={styles.pickAgain} onClick={pickAgain} disabled={busy}><ArrowLeft size={13} />重看星球</button>}<button aria-label="关闭打卡牌" onClick={props.onClose} disabled={busy}><X size={20} /></button></div></header>
+      {stage === "journey" ? <StarJourney day={summary?.today ?? getCheckinDay()} reduced={reduced} keywords={keywords} onArrive={() => {
         setStage("star-sea");
       }} /> : picked === null ? <div className={styles.picker}>
-        <StarCurtain key={curtainTheme} theme={curtainTheme} onPick={pickStar} paused={hidden} reduceMotion={reduced} />
-        <p className={styles.pickerNote}>{preview ? "体验预览 · 摘星不会保存或增加打卡天数" : "今晚的星，在这里 · 轻触或向自己方向带走"}</p>
+        <DailyOrbit key={orbitTheme} theme={orbitTheme} keywords={keywords} onClaim={claimCore} paused={hidden} reduceMotion={reduced} />
+        <p className={styles.pickerNote}>{preview ? "体验预览 · 收下星核不会保存或增加打卡天数" : "这颗星核由今天的记录聚成 · 带回身边后自动保存"}</p>
       </div> : <div className={styles.layout}>
         <section className={styles.visual} aria-label="今日星笺">
           <div className={styles.scene}>
             <div className={styles.halo} aria-hidden="true" />
             {summary && <SevenStarCard theme={theme} mood={mood} quote={quote} date={summary.today} totalDays={summary.totalDays} currentStreak={summary.currentStreak} sourceCount={suggestionCount} flipped={flipped} preview={preview} syncing={busy} />}
           </div>
-          <p className={styles.sceneCaption}>{flipped ? "最近七天的星轨，留给回看" : "这一颗星，沿着刚才的光展开"}</p>
+          <p className={styles.sceneCaption}>{flipped ? "最近七天的星轨，留给回看" : "今日星核，沿着刚才的轨道展开"}</p>
           <div className={styles.cardControls}>
             <button onClick={props.onFlip} disabled={!summary || loading}><RotateCw size={15} />{flipped ? "看看心情" : "看看天数"}</button>
           </div>
-          <p className={styles.material}>{material.name}<span>·</span>属于今天的固定质感</p>
+          <p className={styles.material}>{material.name}<span>·</span>今日回响晶片</p>
           {reduced && <p className={styles.fallbackNotice}>已按减少动态效果显示，星笺仍可翻面和保存。</p>}
         </section>
         <form className={styles.form} onSubmit={event => { event.preventDefault(); props.onSubmit(); }}>

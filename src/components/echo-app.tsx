@@ -110,6 +110,28 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
     setFilter(action === "complete" ? "arrival" : "departure");
     notify(action === "complete" ? "这件事已标记完成。" : action === "reopen" ? "已重新列入待办。" : "这件事已开始，进度已经保存。");
   }
+  const deleteNotes = useCallback(async (targets: EchoNote[]) => {
+    if (paused) throw new Error("账号当前暂停写入，请稍后再试。");
+    const deletedIds: string[] = [];
+    const failed: { id: string; message: string }[] = [];
+    for (const note of targets) {
+      try {
+        await repository.remove(note.id, note.storageVersion);
+        deletedIds.push(note.id);
+      } catch (error) {
+        failed.push({ id: note.id, message: errorMessage(error) });
+      }
+    }
+    if (deletedIds.length) {
+      const deleted = new Set(deletedIds);
+      ++syncSequence.current;
+      setNotes(current => current.filter(note => !deleted.has(note.id)));
+      if (selectedSnapshot.current && deleted.has(selectedSnapshot.current.id)) selectedSnapshot.current = null;
+      void reload().catch(() => notify("删除已由云端确认，但列表暂未刷新。请稍后点击同步。", "info"));
+      notify(failed.length ? `已删除 ${deletedIds.length} 条，另有 ${failed.length} 条被保留。` : `已删除 ${deletedIds.length} 条记录。`);
+    }
+    return { deletedIds, failed };
+  }, [paused, reload, notify]);
   const bootstrap = useCallback(async () => {
     if (booting.current) return;
     booting.current = true;
@@ -356,6 +378,7 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
             notes={notes} query={query} filter={filter} tag={tag} sort={sort}
             onQuery={setQuery} onFilter={setFilter} onTag={setTag} onSort={setSort}
             onCreate={() => navigate("capture")} onOpen={note => navigate("note", note.id)} onTransition={transitionTask}
+            onDeletePlan={command => repository.planDeletion(command)} onBulkDelete={deleteNotes} deleteDisabled={paused}
           />}
 
           {view === "note" && (selected ? <>{!cloudSelected && <p className="inline-notice error-notice" role="alert">这条记录已不在最新云端列表中，可能已在另一设备删除。当前输入仍保留，请先复制需要的内容。</p>}<NoteDetail key={selected.id} note={selected} onBack={() => navigate("library")} onUpdated={onUpdated} onOrganize={organize} onNotify={notify} /></> : <div className="panel empty-state"><BookOpen size={30} /><h2>这条记录不在当前回声屿中</h2><p>它可能已被删除，请检查登录账号或刷新资料库。</p><button className="btn btn-secondary" onClick={() => navigate("library")}><ArrowLeft size={15} />返回回声屿</button></div>)}

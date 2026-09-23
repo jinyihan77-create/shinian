@@ -1,9 +1,9 @@
 // Mocked CloudBase Node SDK boundary. These checks do not prove a real Tencent
 // environment, credentials, billing quota or model has been connected.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { organizeSourceWithAi, organizeWithAi } from "../src/lib/server/organize";
+import { planDeletionWithAi, organizeSourceWithAi, organizeWithAi } from "../src/lib/server/organize";
 import { serviceStatus } from "../src/lib/server/access";
-import { emptyCapture, type AiRequest, type AiResult, type SourceIntakeRequest, type SourceIntakeResult } from "../src/lib/types";
+import { emptyCapture, type AiRequest, type AiResult, type DeletePlan, type EchoNote, type SourceIntakeRequest, type SourceIntakeResult } from "../src/lib/types";
 
 const sdk = vi.hoisted(() => ({ init: vi.fn(), ai: vi.fn(), createModel: vi.fn(), generateText: vi.fn() }));
 vi.mock("@cloudbase/node-sdk", () => ({ init: sdk.init }));
@@ -12,6 +12,11 @@ const result: AiResult = { title: "用复述留下想法", thoughtSummary: "听�
   keyPoints: [{ text: "听完之后复述。", origin: "用户记录" }], tags: ["复述"], reflectionQuestions: ["你想先解释哪一点？"], possibleApplication: null };
 const sourceInput: SourceIntakeRequest = { transcript: "这是播客得意忘形，十八分二十秒，原话是不要急着给答案。", currentSourceType: "文章" };
 const sourceResult: SourceIntakeResult = { sourceType: "播客", sourceName: "得意忘形", sourceTimestamp: "18:20", sourceExcerpt: "不要急着给答案。" };
+const deleteNote: EchoNote = { ...emptyCapture(), id: "b34dba25-574f-4aa8-80f7-b32774687ce2", title: "把开始的门槛放低一点", tags: ["行动门槛"],
+  aiStatus: "not_started", aiResult: null, aiInputRevision: null, aiError: null, reflectionPrompt: "", reflectionText: "", revision: 1,
+  createdAt: "2026-09-20T08:00:00.000Z", updatedAt: "2026-09-20T08:00:00.000Z", isExample: false, storageVersion: 1,
+  sourceType: "文章", userText: "先做一个很小的版本，别再因为拖延停在原地。" };
+const deletePlan: DeletePlan = { interpretation: "清理与拖延有关的记录。", matches: [{ id: deleteNote.id, reason: "正文明确提到拖延。" }] };
 function completion(text = JSON.stringify(result), finish = "stop") {
   return { text, rawResponses: [{ choices: [{ finish_reason: finish, message: { role: "assistant", content: text } }] }], messages: [], usage: {} };
 }
@@ -107,5 +112,20 @@ describe("腾讯云AI适配（模拟SDK边界，不是真实服务验证）", ()
     sdk.generateText.mockResolvedValueOnce(completion(JSON.stringify(sourceResult), "length"));
     await expect(organizeSourceWithAi(sourceInput)).rejects.toMatchObject({ code: "INCOMPLETE_SOURCE_INTAKE" });
     await expect(organizeSourceWithAi({ ...sourceInput, transcript: " " })).rejects.toMatchObject({ code: "SOURCE_SPEECH_REQUIRED" });
+  });
+
+  it("AI 只返回可核对的删除候选，不执行删除也不接受目录之外的 id", async () => {
+    sdk.generateText.mockResolvedValueOnce(completion(JSON.stringify(deletePlan)));
+    await expect(planDeletionWithAi("删掉关于拖延的记录", [deleteNote])).resolves.toEqual(deletePlan);
+    const [request] = sdk.generateText.mock.calls[0];
+    expect(request.temperature).toBe(0.1);
+    expect(request.messages[0].content).toContain("你不能执行删除");
+    const material = JSON.parse(request.messages[1].content);
+    expect(material.command).toBe("删掉关于拖延的记录");
+    expect(material.records).toHaveLength(1);
+    expect(material.records[0]).toMatchObject({ id: deleteNote.id, title: deleteNote.title });
+
+    sdk.generateText.mockResolvedValueOnce(completion(JSON.stringify({ ...deletePlan, matches: [{ ...deletePlan.matches[0], id: crypto.randomUUID() }] })));
+    await expect(planDeletionWithAi("删掉关于拖延的记录", [deleteNote])).rejects.toMatchObject({ code: "INVALID_DELETE_PLAN" });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkinSourceNoteIds, suggestCheckinFromNotes } from "../src/lib/checkin";
+import { checkinKeywordsFromNotes, checkinSourceNoteIds, suggestCheckinFromNotes } from "../src/lib/checkin";
 import { createExamples } from "../src/lib/examples";
 
 describe("suggestCheckinFromNotes", () => {
@@ -26,5 +26,21 @@ describe("suggestCheckinFromNotes", () => {
       { ...examples[1], id: "before-midnight", createdAt: "2026-09-22T15:30:00.000Z", updatedAt: "2026-09-22T15:30:00.000Z" },
     ];
     expect(checkinSourceNoteIds(notes, "2026-09-23")).toEqual(["after-midnight"]);
+  });
+
+  it("uses only traceable note labels for the journey and removes duplicates", () => {
+    const example = createExamples()[0];
+    const note = {
+      ...example,
+      title: "重新理解主动表达",
+      tags: ["主动表达", "播客笔记", "主动表达"],
+      aiResult: example.aiResult ? { ...example.aiResult, tags: ["播客笔记", "行动门槛"] } : {
+        title: "", thoughtSummary: "", sourceSummary: null, keyPoints: [], tags: ["播客笔记", "行动门槛"], reflectionQuestions: [], possibleApplication: null,
+      },
+      createdAt: "2026-09-23T08:00:00.000Z",
+      updatedAt: "2026-09-23T08:00:00.000Z",
+    };
+    expect(checkinKeywordsFromNotes([note], "2026-09-23")).toEqual(["主动表达", "播客笔记", "行动门槛", "重新理解主动表达"]);
+    expect(checkinKeywordsFromNotes([], "2026-09-23")).toEqual([]);
   });
 });

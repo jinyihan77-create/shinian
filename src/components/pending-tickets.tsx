@@ -10,13 +10,22 @@ import styles from "./pending-tickets.module.css";
 export type TicketKind = "departure" | "arrival";
 export type TaskTransition = (note: EchoNote, action: TaskAction) => Promise<void>;
 
+export function orderTicketsByProgress(notes: EchoNote[], kind: TicketKind): EchoNote[] {
+  if (kind === "arrival") return notes;
+  return notes
+    .map((note, index) => ({ note, index, rank: taskStatus(note) === "pending" ? 0 : 1 }))
+    .sort((first, second) => first.rank - second.rank || first.index - second.index)
+    .map(({ note }) => note);
+}
+
 export function PendingTickets({ notes, kind, preview, paused, onOpen, onTransition }: {
   notes: EchoNote[]; kind: TicketKind; preview: boolean; paused: boolean; onOpen: (note: EchoNote) => void; onTransition: TaskTransition;
 }) {
   const completed = kind === "arrival";
+  const orderedNotes = orderTicketsByProgress(notes, kind);
   return <div className={styles.section}>
     <div className={styles.intro}><Ticket size={18} aria-hidden="true" /><div><h2>{completed ? "哪些事情，已经被你做到了？" : "今晚，想先推进哪一件？"}</h2><p>{completed ? "完成的事留在这里，想回看时再打开。" : "点开一张票，从今天愿意完成的一小步开始。"}</p></div></div>
-    <div className={styles.grid}>{notes.map(note => <PendingTicket key={`${kind}:${note.id}`} note={note} preview={preview} paused={paused} onOpen={() => onOpen(note)} onTransition={onTransition} />)}</div>
+    <div className={styles.grid}>{orderedNotes.map(note => <PendingTicket key={`${kind}:${note.id}`} note={note} preview={preview} paused={paused} onOpen={() => onOpen(note)} onTransition={onTransition} />)}</div>
     <p className={styles.footnote}>{preview ? "演示票根 · 状态仅在本次预览中变化，刷新后恢复。" : "只有你明确点击“标记完成”，这件事才会进入已完成。"}</p>
   </div>;
 }

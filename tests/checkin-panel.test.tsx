@@ -10,9 +10,9 @@ import type { CheckinSummary } from "../src/lib/checkin";
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 // Exercise the real stage transition and persistence guards separately from
 // the curtain's pointer animation and rendering, which are checked in-browser.
-vi.mock("../src/components/star-curtain", () => ({
-  StarCurtain: ({ onPick }: { onPick: (index: number) => void }) =>
-    <button aria-label="摘下第 1 颗星星" onClick={() => onPick(0)}>摘星</button>,
+vi.mock("../src/components/daily-orbit", () => ({
+  DailyOrbit: ({ onClaim }: { onClaim: () => void }) =>
+    <button aria-label="把今日星核带到身边" onClick={onClaim}>收下星核</button>,
 }));
 vi.mock("../src/lib/checkin-art", () => ({
   CHECKIN_ART_THEMES: Array.from({ length: 4 }, (_, i) => ({ name: `测试材质${i}` })),
@@ -28,7 +28,7 @@ const mood = () => screen.getByRole("textbox", { name: "此刻的心情" }) as H
 const quote = () => screen.getByRole("textbox", { name: /挂在牌上的一句话/ }) as HTMLTextAreaElement;
 const stats = () => document.querySelector('[aria-live="polite"]')!.textContent;
 const syncStatus = () => screen.getByRole("status", { name: "星笺同步状态" });
-const pickStar = () => fireEvent.click(screen.getByRole("button", { name: "摘下第 1 颗星星" }));
+const pickStar = () => fireEvent.click(screen.getByRole("button", { name: "把今日星核带到身边" }));
 function openCard() {
   fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
   pickStar();
@@ -122,7 +122,7 @@ describe("check-in panel confirmed-save behavior", () => {
       expect(screen.getByRole("region", { name: "进入星海的手势旅程" })).toBeTruthy();
       fireEvent.pointerUp(journey, { pointerId: 9, pointerType: "touch", clientY: 100 });
       act(() => vi.advanceTimersByTime(530));
-      expect(screen.getByRole("button", { name: "摘下第 1 颗星星" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "把今日星核带到身边" })).toBeTruthy();
     } finally {
       vi.useRealTimers();
     }
@@ -132,8 +132,8 @@ describe("check-in panel confirmed-save behavior", () => {
     fetchMock.mockResolvedValueOnce(json(base));
     render(<CheckinPanel userId="owner-1" />);
     fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
-    expect(screen.getByRole("dialog", { name: "给今天，摘一颗星" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "摘下第 1 颗星星" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "今夜跃迁" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "把今日星核带到身边" })).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "此刻的心情" })).toBeNull();
     pickStar();
     await waitFor(() => expect(syncStatus().textContent).toContain("正在把这颗星"));
@@ -158,7 +158,7 @@ describe("check-in panel confirmed-save behavior", () => {
 
   it("keeps the unsaved mood, quote and counts when choosing another star", async () => {
     await openReal();
-    fireEvent.click(screen.getByRole("button", { name: "再摘一颗" }));
+    fireEvent.click(screen.getByRole("button", { name: "重看星球" }));
     expect(screen.queryByRole("textbox", { name: "此刻的心情" })).toBeNull();
     pickStar();
     expect(mood().value).toBe("好奇");
@@ -174,7 +174,7 @@ describe("check-in panel confirmed-save behavior", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     fetchMock.mockResolvedValueOnce(json(base));
     fireEvent.click(screen.getByRole("button", { name: "打开星空打卡牌" }));
-    expect(screen.getByRole("button", { name: "摘下第 1 颗星星" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "把今日星核带到身边" })).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "此刻的心情" })).toBeNull();
     pickStar();
     await waitFor(() => expect(syncStatus().textContent).toContain("正在把这颗星"));
@@ -192,7 +192,7 @@ describe("check-in panel confirmed-save behavior", () => {
     expect(screen.getAllByText(/不会保存/).length).toBeGreaterThan(0);
     expect(screen.getByText("演示天数")).toBeTruthy();
     expect(stats()).toContain("累计 1 天");
-    expect(screen.queryByRole("button", { name: "再摘一颗" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "重看星球" })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -209,14 +209,14 @@ describe("check-in panel confirmed-save behavior", () => {
       starVariant: 0, experienceVersion: 2, sourceNoteIds: [],
     });
     expect(stats()).toContain("累计 3 天");
-    expect((screen.getByRole("button", { name: "再摘一颗" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "重看星球" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "关闭打卡牌" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText("今天的打卡已保存到你的私人账号。")).toBeNull();
     await act(async () => { acknowledge(json(saved)); });
     expect(syncStatus().textContent).toContain("已留在今天");
     expect(stats()).toContain("累计 4 天");
     expect(screen.getByText("今天的打卡已保存到你的私人账号。")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "再摘一颗" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "重看星球" })).toBeNull();
     expect(stats()).toContain("累计 4 天");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });

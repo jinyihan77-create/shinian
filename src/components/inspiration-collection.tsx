@@ -4,7 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState, type CSSPropert
 import { ArrowUpRight, AudioLines, BookOpen, Headphones, Heart, Leaf, MessageCircle, MoonStar, Pause, Play, Plus, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { searchNotes, type LibraryFilter } from "@/lib/search";
 import { composeSpeechInput } from "@/lib/speech-input";
-import type { EchoNote } from "@/lib/types";
+import type { DeletePlan, EchoNote } from "@/lib/types";
 import BorderGlow from "./border-glow";
 import DecayBackground from "./decay-background";
 import styles from "./inspiration-collection.module.css";
@@ -14,6 +14,7 @@ import { PendingTickets, type TaskTransition } from "./pending-tickets";
 import { taskStatus, visibleTags } from "@/lib/task-tickets";
 import { DesktopScrollMemory } from "./desktop-scroll-memory";
 import { captureKindFromTags } from "@/lib/note-context";
+import { AiDeleteAssistant, type DeleteOutcome } from "./ai-delete-assistant";
 
 interface CollectionProps {
   notes: EchoNote[];
@@ -28,11 +29,14 @@ interface CollectionProps {
   onCreate: () => void;
   onOpen: (note: EchoNote) => void;
   onTransition?: TaskTransition;
+  onDeletePlan?: (command: string) => Promise<DeletePlan>;
+  onBulkDelete?: (notes: EchoNote[]) => Promise<DeleteOutcome>;
+  deleteDisabled?: boolean;
   preview?: boolean;
 }
 
 /** Shared by the private workspace and the explicitly labelled visual preview. */
-export function InspirationCollection({ notes, query, filter, tag, sort, onQuery, onFilter, onTag, onSort, onCreate, onOpen, onTransition = async () => {}, preview = false }: CollectionProps) {
+export function InspirationCollection({ notes, query, filter, tag, sort, onQuery, onFilter, onTag, onSort, onCreate, onOpen, onTransition = async () => {}, onDeletePlan, onBulkDelete, deleteDisabled = false, preview = false }: CollectionProps) {
   const [motionPaused, setMotionPaused] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [searchListening, setSearchListening] = useState(false);
@@ -99,6 +103,7 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
         {query && <button aria-label="清空搜索" onClick={() => onQuery("")}><X size={17} /></button>}
         <button className={styles.voiceSearch} aria-label={searchListening ? "停止语音搜索" : "用语音搜索"} aria-pressed={searchListening} onClick={toggleSearchVoice}><AudioLines size={18} /></button>
       </div>
+      <AiDeleteAssistant notes={notes} disabled={deleteDisabled} preview={preview} onPlan={onDeletePlan} onDelete={onBulkDelete} />
       <button className={styles.filterTrigger} aria-expanded={filterOpen} onClick={() => setFilterOpen(value => !value)}><SlidersHorizontal size={16} /><span>筛选</span>{filterCount > 0 && <b>{filterCount}</b>}</button>
     </div>
     <div className={styles.filterRow}>

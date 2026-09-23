@@ -3,7 +3,7 @@ import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TearTicket from "../src/components/tear-ticket";
-import { PendingTickets } from "../src/components/pending-tickets";
+import { orderTicketsByProgress, PendingTickets } from "../src/components/pending-tickets";
 import { createExamples } from "../src/lib/examples";
 import { taskTags } from "../src/lib/task-tickets";
 import { TaskJourneyBar } from "../src/components/task-journey-bar";
@@ -63,6 +63,18 @@ describe("撕票行为", () => {
 });
 
 describe("待办票据", () => {
+  it("待开始自动排在进行中之前，同一状态保留原有顺序", () => {
+    const [first, second, third] = createExamples();
+    const activeFirst = { ...first, tags: taskTags(first, "start") };
+    const activeThird = { ...third, tags: taskTags(third, "start") };
+    expect(orderTicketsByProgress([activeFirst, second, activeThird], "departure").map(note => note.id)).toEqual([
+      second.id, activeFirst.id, activeThird.id,
+    ]);
+    expect(orderTicketsByProgress([activeFirst, second, activeThird], "arrival").map(note => note.id)).toEqual([
+      activeFirst.id, second.id, activeThird.id,
+    ]);
+  });
+
   it("开始事项需等待保存确认，连点不重复提交，也不生成图片", async () => {
     const note = createExamples()[0];
     const before = structuredClone(note);

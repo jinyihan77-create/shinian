@@ -97,8 +97,9 @@
   .heading p { max-width: 220px; font-size: 13px; }
   .heading .create { font-size: 12px; padding: 10px 11px; margin-top: 29px; border-radius: 13px; }
   .kicker { font-size: 10px; letter-spacing: .06em; }
-  .tools { gap: 8px; margin-bottom: 12px; }
-  .search { padding: 0 10px; gap: 8px; }
+  .tools { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .search { flex: 1 0 100%; padding: 0 10px; gap: 8px; }
+  .tools > button { flex: 1 1 calc(50% - 4px); min-width: 0; }
   .filterTrigger { min-width: 76px; min-height: 48px; padding-inline: 12px; border-radius: 14px; }
   .filterRow { flex-wrap: wrap; gap: 4px; }
   .filters { gap: 23px; }

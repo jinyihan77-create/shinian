@@ -1,6 +1,6 @@
 import Dexie, { type Table } from "dexie";
-import { aiResultSchema, backupSchema, CAPTURE_LIMITS, captureInputSchema, noteSchema, sourceIntakeRequestSchema, sourceIntakeResultSchema } from "./schema";
-import type { AiResult, CaptureInput, EchoNote, SourceIntakeRequest, SourceIntakeResult } from "./types";
+import { aiResultSchema, backupSchema, CAPTURE_LIMITS, captureInputSchema, deletePlanRequestSchema, deletePlanResultSchema, noteSchema, sourceIntakeRequestSchema, sourceIntakeResultSchema } from "./schema";
+import type { AiResult, CaptureInput, DeletePlan, EchoNote, SourceIntakeRequest, SourceIntakeResult } from "./types";
 import { taskStatus, taskTags, type TaskAction } from "./task-tickets";
 
 interface Setting { key: string; value: unknown }
@@ -327,6 +327,14 @@ export const repository = {
     const body = await request(requireUser(), "/api/source-intake", { method: "POST", body: parsedInput.data, timeout: 60_000 });
     const parsedResult = sourceIntakeResultSchema.safeParse(body.source);
     if (!parsedResult.success) throw new RepositoryError("AI 返回的来源信息不完整，原有内容没有改变，请重试。", "INVALID_RESPONSE");
+    return parsedResult.data;
+  },
+  async planDeletion(command: string): Promise<DeletePlan> {
+    const parsedInput = deletePlanRequestSchema.safeParse({ command });
+    if (!parsedInput.success) throw new RepositoryError(parsedInput.error.issues[0]?.message || "请说清楚想删除哪类记录。", "INVALID_INPUT");
+    const body = await request(requireUser(), "/api/delete-plan", { method: "POST", body: parsedInput.data, timeout: 60_000 });
+    const parsedResult = deletePlanResultSchema.safeParse(body.plan);
+    if (!parsedResult.success) throw new RepositoryError("AI 没有返回可核对的清理清单，没有删除任何内容。", "INVALID_RESPONSE");
     return parsedResult.data;
   },
   async importNotes(notes: EchoNote[]): Promise<number> {
