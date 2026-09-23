@@ -195,7 +195,7 @@ function VoiceInput({ value, onChange, onCommit, disabled, preview }: { value: s
       setVoiceState("idle");
       if (heardRef.current && !failedRef.current && !preview) {
         setMessage("已经听见，正在替你收好…");
-        window.setTimeout(() => commitRef.current(), 180);
+        queueMicrotask(() => commitRef.current());
       }
     };
     recognitionRef.current = recognition;

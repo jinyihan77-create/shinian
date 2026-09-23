@@ -20,6 +20,8 @@ const PORT = 9350;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function loadCredentials() {
+  const originIndex = process.argv.indexOf("--origin");
+  const overrideOrigin = originIndex >= 0 ? process.argv[originIndex + 1] : null;
   const values = {};
   for (const file of [".env.local", ".env.tencent-owner.local"]) {
     let text;
@@ -37,7 +39,8 @@ async function loadCredentials() {
   return {
     email: values.OWNER_EMAIL,
     password: values.OWNER_PASSWORD || values.OWNER_INITIAL_PASSWORD,
-    origin: (values.APP_ORIGIN || "https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com").replace(/\/+$/, ""),
+    // 支持 --origin 覆盖，用于在发布前先验证本地改动（本地库用的是同一套账号）
+    origin: (overrideOrigin || values.APP_ORIGIN || "https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com").replace(/\/+$/, ""),
   };
 }
 
@@ -85,6 +88,21 @@ const evaluate = async (call, expr) => {
   if (r.exceptionDetails) throw new Error("页面异常: " + (r.exceptionDetails.exception?.description ?? JSON.stringify(r.exceptionDetails)));
   return r.result?.value;
 };
+
+/** 带重试的导航：CDP 的 Page.navigate 偶发超时（冷启动/动效卡顿），重试一次再放弃。 */
+async function navigate(call, url, attempts = 2) {
+  let lastError;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      await call("Page.navigate", { url });
+      return;
+    } catch (error) {
+      lastError = error;
+      await sleep(2000);
+    }
+  }
+  throw new Error(`导航失败（重试 ${attempts} 次）：${url} — ${lastError?.message ?? lastError}`);
+}
 
 /** 页面内几何检测 */
 const PROBE = `(() => {
@@ -161,11 +179,11 @@ try {
     await call("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
 
     // 过访问提示 + 登录（同一 profile 会复用 cookie）
-    await call("Page.navigate", { url: `${origin}/` });
+    await navigate(call, `${origin}/`);
     await sleep(3500);
     await evaluate(call, `(() => { const b = Array.from(document.querySelectorAll("button")).find(x => x.textContent && x.textContent.includes("确定访问")); if (b) b.click(); return "ok"; })()`);
     await sleep(3500);
-    await call("Page.navigate", { url: `${origin}/workspace` });
+    await navigate(call, `${origin}/workspace`);
     await sleep(4000);
     const loginState = await evaluate(call, `(async () => {
       const inputs = Array.from(document.querySelectorAll("input"));
@@ -183,13 +201,34 @@ try {
       const label = route === "" ? "landing" : "workspace";
       const name = `auto-${round.label}-${label}.png`;
       if (route) {
-        await call("Page.navigate", { url: `${origin}${route}` });
+        await navigate(call, `${origin}${route}`);
         await sleep(5000);
       }
+      // 确认页面真的载入了本应用，否则这张"截图"毫无意义，直接记为失败
+      const title = await evaluate(call, `document.title || ""`);
+      if (!title || !/拾念|echo/i.test(title + (await evaluate(call, `location.pathname`)))) {
+        throw new Error(`页面标题不对：${route || "/"}（title="${title}"）`);
+      }
+      // 等应用真正就绪：出现捕捉输入框（记录页）或资料库/加载完成标志。
+      // 本地 dev 连云端数据库较慢，会先显示"正在打开你的空间"，此时截图会拍到一个空壳。
+      let ready = false;
+      for (let i = 0; i < 30; i += 1) {
+        ready = await evaluate(call, `(() => {
+          if (document.querySelector("textarea")) return true;
+          const t = document.body.innerText || "";
+          if (/回声屿|上一次记下|此刻，想记下什么/.test(t)) return true;
+          return false;
+        })()`);
+        if (ready) break;
+        await sleep(1500);
+      }
+      if (!ready) throw new Error(`应用未就绪（仍停在加载态）：${route || "/"}`);
+
       const s = await call("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
       await writeFile(path.join(OUT_DIR, name), Buffer.from(s.data, "base64"));
       // 同时留一份带时间戳的存档，便于做视频时间线
-      await writeFile(path.join(OUT_DIR, "archive", `${stamp}-${round.label}-${label}.png`).replace(/\\archive\\/, "\\archive\\"), Buffer.from(s.data, "base64")).catch(() => {});
+      await mkdir(path.join(OUT_DIR, "archive"), { recursive: true });
+      await writeFile(path.join(OUT_DIR, "archive", `${stamp}-${round.label}-${label}.png`), Buffer.from(s.data, "base64")).catch(() => {});
       const probe = await evaluate(call, PROBE);
       run.screens.push({ round: round.label, screen: name, login: loginState, ...(probe ?? {}) });
     }
@@ -202,32 +241,39 @@ try {
 }
 
 // ---------- 与上次对比，只报新增 ----------
+// 重要：如果这一轮压根没截到图（导航失败、登录失败等），绝不能宣布"问题已修复"——
+// 那只是没测到，不是修好了。下面用一个"本次是否真的测了"的门槛挡住这类假阳性。
+const testedScreens = run.screens.filter((s) => s && s.viewport);
+const didTest = testedScreens.length > 0 && run.errors.length === 0;
+
 let previous = null;
 try {
   const history = JSON.parse(await readFile(HISTORY, "utf8"));
   previous = history.at(-1) ?? null;
 } catch { /* 首次运行 */ }
 
-const flatten = (issues) => new Set((issues ?? []).map((i) => i.key || i.kind));
 const current = new Set();
-for (const screen of run.screens) for (const i of screen.issues ?? []) current.add(i.key || i.kind);
+for (const screen of testedScreens) for (const i of screen.issues ?? []) current.add(i.key || i.kind);
 const previousKeys = previous ? new Set(previous.keys) : new Set();
-const added = [...current].filter((k) => !previousKeys.has(k));
-const resolved = [...previousKeys].filter((k) => !current.has(k));
+const added = didTest ? [...current].filter((k) => !previousKeys.has(k)) : [];
+const resolved = didTest ? [...previousKeys].filter((k) => !current.has(k)) : [];
 
 const allIssues = [];
-for (const screen of run.screens) for (const i of screen.issues ?? []) allIssues.push({ screen: screen.screen, ...i });
+for (const screen of testedScreens) for (const i of screen.issues ?? []) allIssues.push({ screen: screen.screen, ...i });
 
+run.didTest = didTest;
 run.newIssues = added;
 run.resolvedIssues = resolved;
 run.allIssues = allIssues;
 
-// 写入历史
+// 写入历史：只在真的测到时才记，否则会污染基线
 let history = [];
 try { history = JSON.parse(await readFile(HISTORY, "utf8")); } catch { /* 首次 */ }
-history.push({ at: run.at, keys: [...current], counts: { high: allIssues.filter(i=>i.severity==="high").length, medium: allIssues.filter(i=>i.severity==="medium").length } });
-if (history.length > 60) history = history.slice(-60);
-await writeFile(HISTORY, JSON.stringify(history, null, 2));
+if (didTest) {
+  history.push({ at: run.at, keys: [...current], counts: { high: allIssues.filter(i=>i.severity==="high").length, medium: allIssues.filter(i=>i.severity==="medium").length } });
+  if (history.length > 60) history = history.slice(-60);
+  await writeFile(HISTORY, JSON.stringify(history, null, 2));
+}
 
 await writeFile(path.join(OUT_DIR, "auto-run.json"), JSON.stringify(run, null, 2));
 
@@ -237,11 +283,16 @@ const medium = allIssues.filter((i) => i.severity === "medium");
 const lines = [];
 lines.push(`# 夜间监工自动巡检（${run.at}）`, "");
 if (run.errors.length) { lines.push("## 运行异常"); lines.push(...run.errors.map(e => `- ${e}`), ""); }
-lines.push(`## 当前问题：严重 ${high.length} / 中等 ${medium.length}`, "");
-if (added.length) { lines.push("### 🆕 本次新增"); lines.push(...added.map(k => `- ${k}`), ""); }
-if (resolved.length) { lines.push("### ✅ 本次已修复"); lines.push(...resolved.map(k => `- ${k}`), ""); }
-if (high.length) { lines.push("### 严重"); lines.push(...high.map(i => `- [${i.screen}] ${i.detail}`), ""); }
-if (medium.length) { lines.push("### 中等"); lines.push(...medium.map(i => `- [${i.screen}] ${i.detail}`), ""); }
+if (!didTest) {
+  lines.push("## ⚠️ 本轮没有取到有效截图，无法判断问题状态", "");
+  lines.push("上面的「已修复 / 新增」在本次**不成立**（没测到 ≠ 修好了）。请先解决运行异常再重跑。", "");
+} else {
+  lines.push(`## 当前问题：严重 ${high.length} / 中等 ${medium.length}`, "");
+  if (added.length) { lines.push("### 🆕 本次新增"); lines.push(...added.map(k => `- ${k}`), ""); }
+  if (resolved.length) { lines.push("### ✅ 本次已修复"); lines.push(...resolved.map(k => `- ${k}`), ""); }
+  if (high.length) { lines.push("### 严重"); lines.push(...high.map(i => `- [${i.screen}] ${i.detail}`), ""); }
+  if (medium.length) { lines.push("### 中等"); lines.push(...medium.map(i => `- [${i.screen}] ${i.detail}`), ""); }
+}
 await mkdir(path.join(OUT_DIR, "archive"), { recursive: true });
 await writeFile(path.join(OUT_DIR, "auto-report.md"), lines.join("\n"));
 

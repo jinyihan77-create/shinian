@@ -102,6 +102,13 @@ input:focus, textarea:focus, select:focus {
 .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #a89cb1; }
 .sync-dot.synced { background: #d8c6e6; box-shadow: 0 0 12px #d8c6e699; }
 .sync-dot.error { background: #ff9fae; }
+.sync-indicator.danger-text {
+  border-color: #ff9fae6e;
+  background: #ff9fae14;
+  color: #ffd2d5;
+  box-shadow: 0 0 14px #ff9fae18;
+}
+.sync-indicator.danger-text .sync-dot { background: #ff9fae; box-shadow: 0 0 12px #ff9fae; }
 .mobile-nav { display: none; }
 
 .main-wrap { margin-left: 0; }
@@ -245,6 +252,56 @@ input:focus, textarea:focus, select:focus {
   backdrop-filter: blur(15px) saturate(1.18);
 }
 .capture-space .capture-textarea { padding-right: 112px; }
+.last-thought {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px 16px;
+  width: min(680px, 100%);
+  min-height: 58px;
+  padding: 12px 16px 12px 18px;
+  border: 1px solid #ffffff1f;
+  border-radius: 15px;
+  background: linear-gradient(105deg, #ffffff0d, #e6c9ef0a 48%, #b9d9e712);
+  color: #e9d8ef;
+  text-align: left;
+  box-shadow: inset 0 1px 0 #ffffff15, 0 8px 24px #0503081c;
+  backdrop-filter: blur(16px) saturate(1.1);
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+.last-thought:hover {
+  border-color: #d9b4e07a;
+  background: linear-gradient(105deg, #ffffff14, #e6c9ef12 48%, #b9d9e718);
+  transform: translateY(-2px);
+}
+.last-thought > span:first-child {
+  grid-column: 1;
+  grid-row: 1;
+  color: #c8baca;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: .62;
+}
+.last-thought > span:nth-child(2) {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  overflow: hidden;
+  color: #f5ecf8;
+  font-size: 13px;
+  font-weight: 520;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.last-thought > svg {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  flex: 0 0 auto;
+  color: #cda9dc;
+}
+.last-thought:focus-visible { outline: 1px solid #ffd8e9b8; outline-offset: 3px; }
 .voice-input-wrap { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .voice-pill {
   position: relative;
@@ -1031,6 +1088,47 @@ input:focus, textarea:focus, select:focus {
   background: linear-gradient(105deg, #f2bad821, #d8c3ed1e 47%, #b8dfed20);
   box-shadow: inset 0 1px 0 #ffffff2b, 0 12px 32px #05030832, 0 0 26px #f2b9d62e;
 }
+.voice-siri-dock.is-requesting {
+  border-color: #ead39b9c;
+  background: linear-gradient(105deg, #f2d99b24, #d8c3ed1e 47%, #c9d8ed1d);
+  box-shadow: inset 0 1px 0 #ffffff30, 0 12px 32px #05030832, 0 0 28px #eacb7d3d;
+}
+.voice-siri-dock.is-requesting:disabled { opacity: .94; }
+.voice-siri-dock.is-requesting::before {
+  background: radial-gradient(circle at 10% 10%, #ffe3a84a, transparent 34%), radial-gradient(circle at 90% 90%, #c8d8f029, transparent 38%);
+  opacity: .96;
+  animation: voice-requesting-glow 1.7s ease-in-out infinite;
+}
+.voice-siri-dock.is-requesting .voice-siri-orb {
+  filter: saturate(.82) sepia(.14);
+  box-shadow: inset 0 0 0 5px #ffffff5c, inset 0 1px 0 #ffffffc8, 0 0 25px #edce7a78;
+}
+.voice-siri-dock.is-requesting .voice-siri-orb i {
+  border-color: #ffe3a66e;
+  opacity: .42;
+  animation: voice-siri-ring 1.7s ease-out infinite;
+}
+.voice-siri-dock.is-requesting .voice-siri-orb i:nth-of-type(2) { animation-delay: -.56s; }
+.voice-siri-dock.is-requesting .voice-siri-orb i:nth-of-type(3) { animation-delay: -1.12s; }
+.voice-siri-dock.is-error {
+  border-color: #ff9fae9c;
+  background: linear-gradient(105deg, #ff9fae24, #e6c9ef12 48%, #e7a77d20);
+  color: #ffe5e7;
+  box-shadow: inset 0 1px 0 #ffffff2a, 0 12px 32px #05030832, 0 0 28px #ff9fae35;
+}
+.voice-siri-dock.is-error::before {
+  background: radial-gradient(circle at 10% 10%, #ffb1bb4a, transparent 35%), radial-gradient(circle at 90% 90%, #f1b27c2c, transparent 40%);
+  opacity: 1;
+}
+.voice-siri-dock.is-error .voice-siri-orb {
+  background: conic-gradient(from 205deg, #ffd0d1, #f5c5b4, #f0d1c1, #ffd0d1);
+  color: #713b47;
+  box-shadow: inset 0 0 0 5px #ffffff52, inset 0 1px 0 #ffffffb0, 0 0 25px #ff9fae70;
+}
+.voice-siri-dock.is-error .voice-siri-copy strong { color: #ffdbe0; }
+.voice-siri-dock.is-error .voice-siri-copy small { color: #f2b9b3; }
+.voice-input-wrap.has-error .voice-message,
+.voice-message.is-error { color: #ffc0c7; }
 .voice-siri-orb {
   position: relative;
   display: grid;
@@ -1095,8 +1193,16 @@ input:focus, textarea:focus, select:focus {
 .voice-message { display: block; max-width: none; margin: 7px 3px 0; color: #ffced3; font-size: 10px; line-height: 1.4; }
 @keyframes voice-strand-drift { from { transform: rotate(var(--strand-angle, 0deg)) translateX(-5%); } to { transform: rotate(var(--strand-angle, 0deg)) translateX(5%); } }
 @keyframes voice-siri-ring { 0% { opacity: .58; transform: scale(.86); } 100% { opacity: 0; transform: scale(1.52); } }
+@keyframes voice-requesting-glow { 0%, 100% { opacity: .62; } 50% { opacity: 1; } }
 
 @media (max-width: 760px) {
+  .space-account .sync-indicator {
+    min-width: 88px;
+    padding-inline: 9px;
+    justify-content: center;
+  }
+  .space-account .sync-indicator span:last-child { display: inline; white-space: nowrap; }
+  .last-thought { width: 100%; padding-inline: 14px; }
   .capture-space .writing-surface > .voice-input-wrap { margin-inline: 14px; }
   .voice-siri-dock { min-height: 58px; grid-template-columns: 38px minmax(0, 1fr) minmax(75px, 27%); gap: 10px; padding: 8px 11px 8px 8px; }
   .voice-siri-orb { width: 38px; height: 38px; }
@@ -1113,7 +1219,11 @@ input:focus, textarea:focus, select:focus {
   .voice-siri-orb { transition: none; }
   .voice-siri-dock:hover .voice-strands i,
   .voice-siri-dock.is-recording .voice-siri-orb i,
-  .voice-siri-dock.is-recording .voice-strands i { animation: none; }
+  .voice-siri-dock.is-recording .voice-strands i,
+  .voice-siri-dock.is-requesting::before,
+  .voice-siri-dock.is-requesting .voice-siri-orb i { animation: none; }
+  .voice-siri-dock.is-requesting::before { opacity: .96; }
+  .voice-siri-dock.is-requesting .voice-siri-orb { box-shadow: inset 0 0 0 5px #ffffff5c, inset 0 1px 0 #ffffffc8, 0 0 25px #edce7a78; }
 }
 
 .save-stroke-moment {

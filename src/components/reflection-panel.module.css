@@ -94,6 +94,39 @@
 }
 
 .standard strong { display: block; margin-bottom: 5px; color: #d9c5e8; font-size: 12px; font-weight: 550; }
+.refineRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 11px;
+  border: 1px solid rgb(242 180 209 / 20%);
+  border-radius: 15px 6px 15px 6px;
+  background: linear-gradient(118deg, rgb(239 149 190 / 11%), rgb(173 139 209 / 9%) 58%, rgb(116 190 205 / 5%));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+.refineButton, .restoreButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  border: 1px solid rgb(250 196 220 / 28%);
+  border-radius: 12px 5px 12px 5px;
+  padding: 7px 12px;
+  color: #fff2f8;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.refineButton { background: linear-gradient(135deg, rgb(226 126 171 / 28%), rgb(148 119 190 / 25%)); box-shadow: 0 7px 20px rgb(205 102 153 / 9%); }
+.restoreButton { background: rgb(26 21 32 / 48%); color: #d9c5d2; }
+.refineButton:hover:not(:disabled), .restoreButton:hover:not(:disabled) { border-color: rgb(255 211 230 / 58%); background-color: rgb(230 153 190 / 17%); box-shadow: 0 0 20px rgb(229 139 180 / 14%); transform: translateY(-1px); }
+.refineButton:focus-visible, .restoreButton:focus-visible { outline: 2px solid #efbbd2; outline-offset: 2px; }
+.refineButton:disabled, .restoreButton:disabled { cursor: default; opacity: .48; transform: none; }
+.refineNote { color: #aa98a6; font-size: 10px; line-height: 1.5; }
 .actions { margin-top: 14px; }
 .status { display: inline-block; margin-left: 10px; color: #ad9db8; font-size: 11px; }
 
@@ -108,9 +141,12 @@
   .guidingQuestion { font-size: 12px; }
   .lineShell textarea { min-height: 58px; font-size: 16px; }
   .textarea { min-height: 145px; padding: 14px; }
+  .refineRow { align-items: stretch; padding: 9px; }
+  .refineButton, .restoreButton { min-height: 40px; flex: 1 1 auto; }
+  .refineNote { flex-basis: 100%; padding: 0 2px; }
   .standard { margin-top: 13px; padding: 11px 0 0 13px; border-top: 1px solid rgb(255 255 255 / 6%); border-left: 1px solid rgb(192 132 252 / 24%); }
 }
 
 @media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
 @keyframes reflection-listen { from { transform: scale(.88); filter: drop-shadow(0 0 2px #f0a9c8); } to { transform: scale(1.08); filter: drop-shadow(0 0 8px #f0a9c8); } }
-@media (prefers-reduced-motion: reduce) { .reflectionField, .lineVoice[aria-pressed="true"] svg { transition: none; animation: none; } }
+@media (prefers-reduced-motion: reduce) { .reflectionField, .refineButton, .restoreButton, .lineVoice[aria-pressed="true"] svg { transition: none; animation: none; } }

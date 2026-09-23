@@ -11,7 +11,7 @@ import type { EchoNote } from "../src/lib/types";
 
 vi.mock("../src/lib/repository", async importOriginal => {
   const original = await importOriginal<typeof import("../src/lib/repository")>();
-  return { ...original, repository: { saveReflection: vi.fn(), remove: vi.fn(), updateMeta: vi.fn() } };
+  return { ...original, repository: { saveReflection: vi.fn(), refineReflection: vi.fn(), remove: vi.fn(), updateMeta: vi.fn() } };
 });
 
 beforeEach(() => {
@@ -33,6 +33,24 @@ function fixture() {
 }
 
 describe("详情同步保护（模拟repository边界的实际组件交互）", () => {
+  it("AI提炼后即时更新三句话但不自动保存，并可恢复原话", async () => {
+    const { note, reflection, handlers } = fixture();
+    const original = "我说了很多，但核心是收藏并不等于理解。";
+    fireEvent.change(reflection(), { target: { value: original } });
+    vi.mocked(repository.refineReflection).mockResolvedValueOnce({ lines: ["收藏不等于真正理解。", "能复述出来，才算变成自己的。", "以后先说一遍，再决定是否收藏。"] });
+    fireEvent.click(screen.getByRole("button", { name: "AI 提炼成三句" }));
+    await waitFor(() => expect((screen.getByRole("textbox", { name: "我自己的理解" }) as HTMLTextAreaElement).value).toBe("收藏不等于真正理解。"));
+    expect((screen.getByRole("textbox", { name: "我的理解第 2 句" }) as HTMLTextAreaElement).value).toBe("能复述出来，才算变成自己的。");
+    expect((screen.getByRole("textbox", { name: "我的理解第 3 句" }) as HTMLTextAreaElement).value).toBe("以后先说一遍，再决定是否收藏。");
+    expect(repository.refineReflection).toHaveBeenCalledWith(note.id, expect.stringContaining(original), 7);
+    expect(repository.saveReflection).not.toHaveBeenCalled();
+    expect(screen.getByText("AI 精炼 · 待你确认")).toBeTruthy();
+    expect(handlers.onNotify).toHaveBeenCalledWith("AI 已提炼成三句。先看闪卡，满意后再保存。");
+    fireEvent.click(screen.getByRole("button", { name: "恢复提炼前原话" }));
+    expect(reflection().value).toBe(original);
+    expect(screen.queryByText("AI 精炼 · 待你确认")).toBeNull();
+  });
+
   it("少于三句话时显示半色调显影态并阻止提前收藏", () => {
     const { note, rerender } = fixture();
     rerender({ ...note, reflectionText: "我只写下了第一句。" });

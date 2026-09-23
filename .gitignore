@@ -9,4 +9,7 @@ coverage/
 test-results/
 *.log
 
+# 监工截图与视频素材是生成物，不进版本库
+视频素材/
+
 private-data/

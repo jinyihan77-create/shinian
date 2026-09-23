@@ -45,7 +45,8 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
   const [aiBaseline, setAiBaseline] = useState<AiEditBaseline | null>(null);
   const [aiDirty, setAiDirty] = useState(false);
   const [reflectionDraft, setReflectionDraft] = useState<ReflectionDraft | null>(null);
-  const [busy, setBusy] = useState<"content" | "meta" | "reflection" | "ai" | "delete" | "favorite" | "task" | null>(null);
+  const [preRefineText, setPreRefineText] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"content" | "meta" | "reflection" | "refine" | "ai" | "delete" | "favorite" | "task" | null>(null);
   const [organizing, setOrganizing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [contentError, setContentError] = useState("");
@@ -61,7 +62,7 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
   // Drafts compare with the version that was opened for editing, never with a
   // newly synchronized row. Untouched reflection fields read directly from it.
   useEffect(() => {
-    setContent(captureOf(note)); setReflectionDraft(null);
+    setContent(captureOf(note)); setReflectionDraft(null); setPreRefineText(null);
     setTitle(note.title); setTags(visibleTags(note.tags).join("，"));
     contentBaseline.current = { input: captureOf(note), version: note.storageVersion };
     metaBaseline.current = { title: note.title, tags: visibleTags(note.tags).join("，"), version: note.storageVersion };
@@ -190,10 +191,25 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
     operation.current = true; setBusy("reflection");
     try {
       const saved = await repository.saveReflection(note.id, reflection, currentQuestion, versionAtStart(reflectionDraft.version));
-      await onUpdated(saved); setReflectionDraft(null); setSyncError(""); onNotify("你的理解已保存，一点点让想法长成自己的东西。");
+      await onUpdated(saved); setReflectionDraft(null); setPreRefineText(null); setSyncError(""); onNotify("你的理解已保存，一点点让想法长成自己的东西。");
     }
     catch (error) { reportError(error); }
     finally { operation.current = false; setBusy(null); }
+  }
+
+  async function refineReflection() {
+    if (operation.current || !reflection.trim()) return;
+    operation.current = true; setBusy("refine"); setSyncError("");
+    try {
+      const original = reflection;
+      const result = await repository.refineReflection(note.id, reflection, versionAtStart(reflectionDraft?.version ?? note.storageVersion));
+      setPreRefineText(original);
+      updateReflection({ text: result.lines.join("\n") });
+      onNotify("AI 已提炼成三句。先看闪卡，满意后再保存。");
+    } catch (error) {
+      const message = messageOf(error);
+      setSyncError(message); onNotify(message, "error");
+    } finally { operation.current = false; setBusy(null); }
   }
 
   async function transitionTask(current: EchoNote, action: TaskAction) {
@@ -310,14 +326,19 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
             <summary className={reflectionStyles.summary}><span className={reflectionStyles.index}>04</span><span className={reflectionStyles.summaryCopy}><strong>写下自己的理解</strong><span>{note.reflectionText.trim() ? "已经留下一段自己的话，随时续写。" : "不必完整，从一句自己的话开始。"}</span></span><ChevronDown className={reflectionStyles.chevron} size={18} /></summary>
             <div className={reflectionStyles.body}>
               <div className={reflectionStyles.editor}>
-                <ReflectionTriptych idPrefix={`reflection-${note.id}`} value={reflection} questions={questions} onChange={text => updateReflection({ text })} disabled={busy === "reflection"} />
-                <div className={`actions ${reflectionStyles.actions}`}><button className="btn btn-primary" disabled={Boolean(busy) || (!reflectionDirty && !promptDirty)}>{busy === "reflection" ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}保存我的理解</button>{reflectionDraft && <button type="button" className="btn btn-ghost" disabled={Boolean(busy)} onClick={() => { setReflectionDraft(null); setSyncError(""); }}>取消本次修改</button>}<span className={reflectionStyles.status}>{reflectionDirty || promptDirty ? "有尚未保存的修改" : note.reflectionText.trim() ? "已保存，随时可以继续写。" : "不必完整，也不需要标准答案。"}</span></div>
+                <ReflectionTriptych idPrefix={`reflection-${note.id}`} value={reflection} questions={questions} onChange={text => updateReflection({ text })} disabled={busy === "reflection" || busy === "refine"} />
+                <div className={reflectionStyles.refineRow}>
+                  <button type="button" className={reflectionStyles.refineButton} disabled={Boolean(busy) || !reflection.trim()} onClick={() => void refineReflection()}>{busy === "refine" ? <LoaderCircle className="spin" size={15} /> : <Sparkles size={15} />}{busy === "refine" ? "正在提炼…" : "AI 提炼成三句"}</button>
+                  {preRefineText !== null && <button type="button" className={reflectionStyles.restoreButton} disabled={Boolean(busy)} onClick={() => { updateReflection({ text: preRefineText }); setPreRefineText(null); setSyncError(""); }}>恢复提炼前原话</button>}
+                  <span className={reflectionStyles.refineNote}>{preRefineText !== null ? "卡面已更新，保存前仍可修改。" : "只生成预览，满意后再保存。"}</span>
+                </div>
+                <div className={`actions ${reflectionStyles.actions}`}><button className="btn btn-primary" disabled={Boolean(busy) || (!reflectionDirty && !promptDirty)}>{busy === "reflection" ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}保存我的理解</button>{reflectionDraft && <button type="button" className="btn btn-ghost" disabled={Boolean(busy)} onClick={() => { setReflectionDraft(null); setPreRefineText(null); setSyncError(""); }}>取消本次修改</button>}<span className={reflectionStyles.status}>{reflectionDirty || promptDirty ? "有尚未保存的修改" : note.reflectionText.trim() ? "已保存，随时可以继续写。" : "不必完整，也不需要标准答案。"}</span></div>
               </div>
-              <aside className={reflectionStyles.standard}><strong>这是你的解释</strong>只写你此刻的理解。它会保存在这条灵感里，不覆盖原始记录，也不算作 AI 的内容。</aside>
+              <aside className={reflectionStyles.standard}><strong>这是你的解释</strong>原话由你决定是否保存。AI 只负责压缩表达，不会自动覆盖这条记录。</aside>
             </div>
           </details>
         </form>
-        <ArtFlashcard key={note.id} noteId={note.id} title={note.title} text={reflection} favorite={note.tags.includes(FLASHCARD_TAG)} onFavorite={() => void toggleFlashcardFavorite()} pending={busy === "favorite"} blockedReason={unsaved ? "卡面正在预览你的修改，请先保存理解，再收藏。" : editingMeta ? "请先完成标题和标签的编辑。" : busy ? "请等待当前保存完成。" : undefined} />
+        <ArtFlashcard key={note.id} noteId={note.id} title={note.title} text={reflection} refined={preRefineText !== null} favorite={note.tags.includes(FLASHCARD_TAG)} onFavorite={() => void toggleFlashcardFavorite()} pending={busy === "favorite"} blockedReason={unsaved ? "卡面正在预览你的修改，请先保存理解，再收藏。" : editingMeta ? "请先完成标题和标签的编辑。" : busy ? "请等待当前保存完成。" : undefined} />
         </div>
       </section>
 

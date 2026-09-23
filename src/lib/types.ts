@@ -32,6 +32,14 @@ export interface SourceIntakeResult {
   sourceTimestamp: string | null;
   sourceExcerpt: string | null;
 }
+export interface ReflectionRefineRequest {
+  id: string;
+  version: number;
+  text: string;
+}
+export interface ReflectionRefineResult {
+  lines: [string, string, string];
+}
 export interface DeletePlanMatch {
   id: string;
   reason: string;

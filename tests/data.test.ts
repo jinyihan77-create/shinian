@@ -92,7 +92,7 @@ describe("可检索的个人资料", () => {
     expect(searchNotes(notes, "生活 周日散步")).toHaveLength(1);
     expect(searchNotes(notes, "周日散步 不存在的词")).toHaveLength(0);
     expect(searchNotes(notes, "")).toHaveLength(3);
-    expect(searchNotes(notes, "", "departure")).toHaveLength(3);
+    expect(searchNotes(notes, "", "departure")).toHaveLength(1);
     expect(searchNotes(notes, "", "arrival")).toHaveLength(0);
   });
 

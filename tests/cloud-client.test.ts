@@ -286,7 +286,8 @@ describe("真实保存与失败重试", () => {
 
 describe("跨设备并发与服务端操作结果", () => {
   it("事项只有收到相符的云端状态后才成功，旧版本和断网不改动原记录", async () => {
-    const note = remoteNote();
+    const plain = remoteNote();
+    const note = { ...plain, tags: taskTags(plain, "queue") };
     const active = { ...note, tags: taskTags(note, "start"), storageVersion: 2 };
     fetchMock.mockResolvedValueOnce(json({ note: active }));
     expect(taskStatus(await repository.updateTask(note, "start"))).toBe("active");

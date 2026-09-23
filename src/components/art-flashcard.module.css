@@ -60,7 +60,7 @@
 .favorite[aria-pressed=true] { color: #d2e4c6; border-color: #a8c69950; background: #a8c6990d; }
 .favorite:disabled { opacity: .45; cursor: not-allowed; }
 .hint { color: #a395ae; font-size: 10px; line-height: 1.8; min-height: 18px; margin: 10px 0 0; text-align: center; }
-.credit { display: flex; align-items: center; justify-content: center; gap: 4px; color: #a295ac; font-size: 9px; text-decoration: none; margin-top: 12px; }
+.credit { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; padding: 12px 8px; color: #a295ac; font-size: 9px; text-decoration: none; margin-top: 12px; }
 .credit:hover { color: #e2cbea; }
 .fullResolution { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; margin-top: 4px; color: #d4c4df; font-size: 11px; text-decoration: none; }
 .fullResolution:hover { color: #f5edfb; text-decoration: underline; text-underline-offset: 4px; }

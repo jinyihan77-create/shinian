@@ -16,10 +16,11 @@ interface Props {
   pending?: boolean;
   blockedReason?: string;
   preview?: boolean;
+  refined?: boolean;
   onOpen?: () => void;
 }
 
-export function ArtFlashcard({ noteId, title, text, favorite = false, onFavorite, pending = false, blockedReason, preview = false, onOpen }: Props) {
+export function ArtFlashcard({ noteId, title, text, favorite = false, onFavorite, pending = false, blockedReason, preview = false, refined = false, onOpen }: Props) {
   const [flipped, setFlipped] = useState(false);
   const [imageError, setImageError] = useState(false);
   const descriptionId = useId();
@@ -94,7 +95,7 @@ export function ArtFlashcard({ noteId, title, text, favorite = false, onFavorite
             ? <div key={index} className={styles.thought}><span>{String(index + 1).padStart(2, "0")}</span><p>{thought}</p></div>
             : <div key={index} className={`${styles.thought} ${styles.placeholder}`}><span>{String(index + 1).padStart(2, "0")}</span><p>{prompts[index]}<small>等你写下自己的话</small></p></div>)}
         </div>
-        <div className={styles.backFooter}><span>{preview ? "演示内容 · 未保存到账号" : "我的理解 · 自己写下"}</span><span>↻</span></div>
+        <div className={styles.backFooter}><span>{preview ? "演示内容 · 未保存到账号" : refined ? "AI 精炼 · 待你确认" : "我的理解 · 已由我确认"}</span><span>↻</span></div>
       </div>}
     />
     <p className="sr-only" id={descriptionId}>{text.trim() || "还没有写下自己的理解。"}</p>

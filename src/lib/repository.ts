@@ -1,6 +1,6 @@
 import Dexie, { type Table } from "dexie";
-import { aiResultSchema, backupSchema, CAPTURE_LIMITS, captureInputSchema, deletePlanRequestSchema, deletePlanResultSchema, noteSchema, sourceIntakeRequestSchema, sourceIntakeResultSchema } from "./schema";
-import type { AiResult, CaptureInput, DeletePlan, EchoNote, SourceIntakeRequest, SourceIntakeResult } from "./types";
+import { aiResultSchema, backupSchema, CAPTURE_LIMITS, captureInputSchema, deletePlanRequestSchema, deletePlanResultSchema, noteSchema, reflectionRefineRequestSchema, reflectionRefineResultSchema, sourceIntakeRequestSchema, sourceIntakeResultSchema } from "./schema";
+import type { AiResult, CaptureInput, DeletePlan, EchoNote, ReflectionRefineResult, SourceIntakeRequest, SourceIntakeResult } from "./types";
 import { taskStatus, taskTags, type TaskAction } from "./task-tickets";
 
 interface Setting { key: string; value: unknown }
@@ -328,6 +328,14 @@ export const repository = {
     const parsedResult = sourceIntakeResultSchema.safeParse(body.source);
     if (!parsedResult.success) throw new RepositoryError("AI 返回的来源信息不完整，原有内容没有改变，请重试。", "INVALID_RESPONSE");
     return parsedResult.data;
+  },
+  async refineReflection(id: string, text: string, version?: number): Promise<ReflectionRefineResult> {
+    const input = reflectionRefineRequestSchema.safeParse({ id, text, version: expectedVersion(id, version) });
+    if (!input.success) throw new RepositoryError(input.error.issues[0]?.message || "请先写下自己的理解。", "INVALID_INPUT");
+    const body = await request(requireUser(), "/api/refine-reflection", { method: "POST", body: input.data, timeout: 60_000 });
+    const parsed = reflectionRefineResultSchema.safeParse(body.reflection);
+    if (!parsed.success) throw new RepositoryError("AI 没有返回三句可用的闪卡文案，你的原话没有改变。", "INVALID_RESPONSE");
+    return parsed.data;
   },
   async planDeletion(command: string): Promise<DeletePlan> {
     const parsedInput = deletePlanRequestSchema.safeParse({ command });

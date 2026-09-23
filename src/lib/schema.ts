@@ -43,6 +43,22 @@ export const sourceIntakeResultSchema = z.object({
   sourceExcerpt: z.string().trim().min(1).max(CAPTURE_LIMITS.sourceExcerpt).nullable(),
 }).strict();
 
+const reflectionCardLineSchema = z.string().trim().min(2).max(32);
+
+export const reflectionRefineRequestSchema = z.object({
+  id: z.string().uuid(),
+  version: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  text: z.string().trim().min(1, "先写下或说出一点自己的理解。").max(CAPTURE_LIMITS.reflectionText),
+}).strict();
+
+export const reflectionRefineResultSchema = z.object({
+  lines: z.tuple([reflectionCardLineSchema, reflectionCardLineSchema, reflectionCardLineSchema]),
+}).strict().superRefine((result, ctx) => {
+  if (new Set(result.lines).size !== result.lines.length) {
+    ctx.addIssue({ code: "custom", message: "三句话不能重复。", path: ["lines"] });
+  }
+});
+
 export const deletePlanRequestSchema = z.object({
   command: z.string().trim().min(2, "请说清楚想删除哪类记录。").max(500, "这句话太长，请只说要清理的范围。"),
 }).strict();
