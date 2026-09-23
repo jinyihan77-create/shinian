@@ -5,7 +5,7 @@
  *   npm run verify:live -- --check-config
  * Credentials come from .env.tencent-owner.local / environment variables;
  * OWNER_PASSWORD overrides OWNER_INITIAL_PASSWORD after a password change.
- * A live run invokes AI three times (source extraction, deletion planning and note organization) and
+ * A live run invokes AI four times (source extraction, deletion planning, note organization and reflection refinement) and
  * deletes only its own uniquely marked record.
  */
 import { randomUUID } from "node:crypto";
@@ -17,8 +17,8 @@ import { searchNotes } from "../src/lib/search.ts";
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const reportPath = path.join(project, "test-results/live-acceptance.json");
-const stepNames = ["configuration", "anonymous_access", "login", "session", "source_intake", "create", "mark_test_title", "list", "delete_plan", "second_login", "cross_session_read", "ai", "reflection", "search", "delete", "second_logout", "logout", "logout_verified"];
-const labels = { configuration: "配置", anonymous_access: "未登录访问保护", login: "登录", session: "会话", source_intake: "语音来源 AI 整理", create: "保存测试记录", mark_test_title: "标注验收记录", list: "资料库读取", delete_plan: "AI 清理候选", second_login: "独立会话登录", cross_session_read: "跨会话读取", ai: "真实 AI 整理", reflection: "保存自己的理解", search: "检索云端内容", delete: "清理测试记录", second_logout: "退出独立会话", logout: "退出登录", logout_verified: "退出后访问保护" };
+const stepNames = ["configuration", "anonymous_access", "login", "session", "source_intake", "create", "mark_test_title", "list", "delete_plan", "second_login", "cross_session_read", "ai", "reflection_refine", "reflection", "search", "delete", "second_logout", "logout", "logout_verified"];
+const labels = { configuration: "配置", anonymous_access: "未登录访问保护", login: "登录", session: "会话", source_intake: "语音来源 AI 整理", create: "保存测试记录", mark_test_title: "标注验收记录", list: "资料库读取", delete_plan: "AI 清理候选", second_login: "独立会话登录", cross_session_read: "跨会话读取", ai: "真实 AI 整理", reflection_refine: "AI 提炼闪卡三句话", reflection: "保存自己的理解", search: "检索云端内容", delete: "清理测试记录", second_logout: "退出独立会话", logout: "退出登录", logout_verified: "退出后访问保护" };
 
 class CheckFailure extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -202,6 +202,16 @@ export async function verifyLiveDeployment({ env = process.env, origin, readLoca
       report.ai = "real-result-persisted";
     });
     if (!aiPassed) report.ai = "failed-or-unconfirmed";
+    await step("reflection_refine", async () => {
+      const before = checkedNote(await primary.request(`/api/notes/${testId}`), testId);
+      requireValue(owns(before), "TEST_RECORD_OWNERSHIP_MISMATCH");
+      const body = await primary.request("/api/refine-reflection", { method: "POST", body: { id: testId, version: before.storageVersion, text: reflection }, timeout: 75_000 });
+      const lines = body?.reflection?.lines;
+      requireValue(Array.isArray(lines) && lines.length === 3 && new Set(lines).size === 3
+        && lines.every(line => typeof line === "string" && line.trim().length >= 2 && line.length <= 32), "REFLECTION_REFINEMENT_NOT_CONFIRMED");
+      const stored = checkedNote(await secondary.request(`/api/notes/${testId}`), testId);
+      requireValue(stored.storageVersion === before.storageVersion && stored.reflectionText === before.reflectionText, "REFLECTION_REFINEMENT_CHANGED_RECORD");
+    });
     // A provider failure should not hide whether original text/reflections work.
     const reflectionPassed = await step("reflection", async () => {
       note = checkedNote(await primary.request(`/api/notes/${testId}`), testId);

@@ -373,11 +373,12 @@ describe("Tencent CloudBase PostgreSQL migration with text account IDs", () => {
   it("persists the ticket journey through Tencent metadata writes and AI completion without losing progress", async () => {
     await asUser(uid);
     await tencent.query("select public.echo_create_note($1::uuid,$2::jsonb,$3::jsonb)", [id, JSON.stringify(note), JSON.stringify(capture)]);
-    async function transition(current: Pick<EchoNote, "tags" | "title">, version: number, action: "start" | "complete" | "reopen") {
+    async function transition(current: Pick<EchoNote, "tags" | "title">, version: number, action: "queue" | "start" | "complete" | "reopen") {
       const saved = await tencent.query<{ value: EchoNote }>("select public.echo_update_note($1::uuid,$2,'meta',$3::jsonb) as value", [id, version, JSON.stringify({ title: current.title, tags: taskTags(current, action) })]);
       return saved.rows[0].value;
     }
-    const active = await transition(note, 1, "start");
+    const pending = await transition(note, 1, "queue");
+    const active = await transition(pending, pending.storageVersion!, "start");
     expect(taskStatus(active)).toBe("active");
     const started = await tencent.query<{ value: { token: string } }>("select public.echo_begin_ai($1::uuid,1) as value", [id]);
     await tencent.query("select public.echo_finish_ai($1::uuid,$2::uuid,1,$3::jsonb,$4)", [id, started.rows[0].value.token, JSON.stringify(result), capture.userText]);
