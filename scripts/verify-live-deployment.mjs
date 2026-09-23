@@ -5,7 +5,8 @@
  *   npm run verify:live -- --check-config
  * Credentials come from .env.tencent-owner.local / environment variables;
  * OWNER_PASSWORD overrides OWNER_INITIAL_PASSWORD after a password change.
- * A live run invokes AI once and deletes only its own uniquely marked record.
+ * A live run invokes AI twice (source extraction and note organization) and
+ * deletes only its own uniquely marked record.
  */
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -16,8 +17,8 @@ import { searchNotes } from "../src/lib/search.ts";
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const reportPath = path.join(project, "test-results/live-acceptance.json");
-const stepNames = ["configuration", "anonymous_access", "login", "session", "create", "mark_test_title", "list", "second_login", "cross_session_read", "ai", "reflection", "search", "delete", "second_logout", "logout", "logout_verified"];
-const labels = { configuration: "配置", anonymous_access: "未登录访问保护", login: "登录", session: "会话", create: "保存测试记录", mark_test_title: "标注验收记录", list: "资料库读取", second_login: "独立会话登录", cross_session_read: "跨会话读取", ai: "真实 AI 整理", reflection: "保存自己的理解", search: "检索云端内容", delete: "清理测试记录", second_logout: "退出独立会话", logout: "退出登录", logout_verified: "退出后访问保护" };
+const stepNames = ["configuration", "anonymous_access", "login", "session", "source_intake", "create", "mark_test_title", "list", "second_login", "cross_session_read", "ai", "reflection", "search", "delete", "second_logout", "logout", "logout_verified"];
+const labels = { configuration: "配置", anonymous_access: "未登录访问保护", login: "登录", session: "会话", source_intake: "语音来源 AI 整理", create: "保存测试记录", mark_test_title: "标注验收记录", list: "资料库读取", second_login: "独立会话登录", cross_session_read: "跨会话读取", ai: "真实 AI 整理", reflection: "保存自己的理解", search: "检索云端内容", delete: "清理测试记录", second_logout: "退出独立会话", logout: "退出登录", logout_verified: "退出后访问保护" };
 
 class CheckFailure extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -153,6 +154,15 @@ export async function verifyLiveDeployment({ env = process.env, origin, readLoca
     if (!await step("session", async () => {
       const body = await primary.request("/api/auth/session");
       requireValue(body.authenticated === true && body.user?.id === primary.userId, "SESSION_NOT_CONFIRMED");
+    })) return report;
+    if (!await step("source_intake", async () => {
+      const marker = `来源验收${testId}`;
+      const body = await primary.request("/api/source-intake", { method: "POST", body: {
+        transcript: `这是播客，节目名叫${marker}，时间点十八分二十秒，原话是${marker}原文。`, currentSourceType: "文章",
+      }, timeout: 75_000 });
+      const source = body?.source;
+      requireValue(source?.sourceType === "播客" && source.sourceName?.includes(testId)
+        && /18\D*20/.test(source.sourceTimestamp ?? "") && source.sourceExcerpt?.includes(testId), "SOURCE_INTAKE_NOT_CONFIRMED");
     })) return report;
     if (!await step("create", async () => {
       // Record the unique ID before the request: a timeout may still commit.

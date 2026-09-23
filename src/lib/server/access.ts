@@ -46,7 +46,7 @@ export function serviceStatus(): AiServiceStatus {
   return {
     configured, available: configured, requiresUnlock: false,
     message: configured
-      ? `${provider === "cloudbase" ? "腾讯云 AI" : "AI"} 整理已配置，实际权限、额度和调用结果以每次整理为准。点击整理后，会发送当前记录的想法、来源片段及名称、链接等来源信息。`
+      ? `${provider === "cloudbase" ? "腾讯云 AI" : "AI"} 整理已配置，实际权限、额度和调用结果以每次整理为准。只有主动使用来源语音或整理记录时，才会发送对应文字；不会读取链接正文。`
       : "AI 服务尚未配置，暂时不能整理。你仍可保存记录、搜索并写下自己的理解。",
   };
 }
