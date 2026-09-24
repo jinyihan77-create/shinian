@@ -154,7 +154,58 @@
 .open[data-visible="true"] { opacity: 1; pointer-events: auto; }
 .open:hover { border-color: #ffe1ed9c; background: #352031d6; transform: translateY(-2px); }
 
-@media (max-width: 1023px) { .root { display: none; } }
+@media (max-width: 1023px) {
+  .root {
+    height: 158svh;
+    margin-top: 52px;
+  }
+
+  .stage {
+    height: 100svh;
+  }
+
+  .frame {
+    clip-path: inset(10% 7% 10% 7% round 20px);
+  }
+
+  .opening strong {
+    width: 100%;
+    max-width: 8ch;
+    margin-top: 13px;
+    font-size: clamp(26px, 7vw, 38px);
+    line-height: 1.28;
+    overflow-wrap: anywhere;
+  }
+
+  .memory {
+    padding: 12% 9% 14%;
+  }
+
+  .memory h2 {
+    max-width: 9ch;
+    margin: 10px 0 9px;
+    font-size: clamp(27px, 8vw, 44px);
+  }
+
+  .memory p {
+    max-width: 33ch;
+    font-size: 14px;
+    line-height: 1.72;
+  }
+
+  .open {
+    right: 9%;
+    bottom: 8%;
+    min-height: 42px;
+    padding: 9px 13px;
+    font-size: 11px;
+  }
+
+  .hint {
+    bottom: max(20px, env(safe-area-inset-bottom));
+    font-size: 9px;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .root { height: 82vh; }

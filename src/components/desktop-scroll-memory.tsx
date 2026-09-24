@@ -20,7 +20,6 @@ export function DesktopScrollMemory({ note, onOpen }: { note: EchoNote; onOpen: 
   const opening = useRef<HTMLDivElement>(null);
   const memory = useRef<HTMLDivElement>(null);
   const hint = useRef<HTMLSpanElement>(null);
-  const [desktop, setDesktop] = useState(false);
   const [actionVisible, setActionVisible] = useState(false);
   const painting = paintingForNote(note.id);
   const excerpt = note.reflectionText.trim() || note.userText.trim() || note.sourceExcerpt.trim() || "这条念头还在等你补上一句自己的理解。";
@@ -53,24 +52,28 @@ export function DesktopScrollMemory({ note, onOpen }: { note: EchoNote; onOpen: 
   }, []);
 
   useEffect(() => {
-    const media = window.matchMedia("(min-width: 1024px)");
-    const sync = () => setDesktop(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
-
-  useEffect(() => {
-    if (!desktop || !root.current) return;
+    if (!root.current) return;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduceMotion) { applyProgress(1); return; }
+    const containerCandidate = root.current.closest<HTMLElement>(".main-wrap");
+    const containerStyle = containerCandidate ? window.getComputedStyle(containerCandidate) : null;
+    const containerCanScroll = Boolean(
+      containerCandidate &&
+      containerStyle &&
+      ["auto", "scroll", "overlay"].includes(containerStyle.overflowY) &&
+      containerCandidate.scrollHeight > containerCandidate.clientHeight + 1,
+    );
+    const scrollContainer = containerCanScroll ? containerCandidate : null;
+    const scrollTarget = scrollContainer ?? window;
+    const viewportHeight = () => scrollContainer?.clientHeight ?? window.innerHeight;
     let frameId = 0;
     let current = 0;
     let target = 0;
     const read = () => {
       const bounds = root.current!.getBoundingClientRect();
-      const distance = Math.max(1, root.current!.offsetHeight - window.innerHeight);
-      return clamp(-bounds.top / distance);
+      const viewportTop = scrollContainer?.getBoundingClientRect().top ?? 0;
+      const distance = Math.max(1, root.current!.offsetHeight - viewportHeight());
+      return clamp((viewportTop - bounds.top) / distance);
     };
     const tick = () => {
       current += (target - current) * .12;
@@ -84,16 +87,15 @@ export function DesktopScrollMemory({ note, onOpen }: { note: EchoNote; onOpen: 
     };
     const onResize = () => { target = current = read(); applyProgress(current); };
     onResize();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    scrollTarget.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
     return () => {
       if (frameId) cancelAnimationFrame(frameId);
-      window.removeEventListener("scroll", onScroll);
+      scrollTarget.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
     };
-  }, [applyProgress, desktop]);
+  }, [applyProgress]);
 
-  if (!desktop) return null;
   return <section ref={root} className={styles.root} aria-label="从过去浮现的一条念头">
     <div className={styles.stage}>
       <div ref={frame} className={styles.frame}>
