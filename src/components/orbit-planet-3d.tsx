@@ -64,11 +64,17 @@ function textureCanvas(theme: number, base: string, accent: string, secondary: s
   context.globalCompositeOperation = "screen";
   for (let band = 0; band < 22; band += 1) {
     const y = (band / 22) * canvas.height + (random() - .5) * 26;
+    const cycles = 1 + Math.floor(random() * 4);
+    const amplitude = 12 + random() * 22;
+    const phase = random() * Math.PI * 2;
+    const detailPhase = random() * Math.PI * 2;
     context.beginPath();
-    context.moveTo(-80, y);
-    for (let x = -80; x <= canvas.width + 80; x += 64) {
-      const wave = Math.sin(x * .016 + band * .83) * (12 + random() * 22);
-      context.lineTo(x, y + wave);
+    for (let x = -canvas.width; x <= canvas.width * 2; x += 16) {
+      const turn = x / canvas.width;
+      const wave = Math.sin(turn * Math.PI * 2 * cycles + phase) * amplitude
+        + Math.sin(turn * Math.PI * 2 * (cycles + 1) + detailPhase) * amplitude * .24;
+      if (x === -canvas.width) context.moveTo(x, y + wave);
+      else context.lineTo(x, y + wave);
     }
     context.strokeStyle = band % 3 === 0 ? rgba(accent, .13) : rgba(secondary, .09);
     context.lineWidth = 8 + random() * 28;
@@ -81,11 +87,15 @@ function textureCanvas(theme: number, base: string, accent: string, secondary: s
     const x = random() * canvas.width;
     const y = random() * canvas.height;
     const radius = 18 + random() * 90;
-    const glow = context.createRadialGradient(x, y, 0, x, y, radius);
-    glow.addColorStop(0, random() > .45 ? "rgba(255,247,251,.22)" : rgba(secondary, .16));
-    glow.addColorStop(1, "#00000000");
-    context.fillStyle = glow;
-    context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    const color = random() > .45 ? "rgba(255,247,251,.22)" : rgba(secondary, .16);
+    for (const offset of [-canvas.width, 0, canvas.width]) {
+      const wrappedX = x + offset;
+      const glow = context.createRadialGradient(wrappedX, y, 0, wrappedX, y, radius);
+      glow.addColorStop(0, color);
+      glow.addColorStop(1, "#00000000");
+      context.fillStyle = glow;
+      context.fillRect(wrappedX - radius, y - radius, radius * 2, radius * 2);
+    }
   }
   return canvas;
 }
@@ -103,15 +113,19 @@ function cloudCanvas(theme: number, accent: string, secondary: string) {
     const y = random() * canvas.height;
     const width = 45 + random() * 170;
     const height = 4 + random() * 16;
-    const haze = context.createRadialGradient(x, y, 0, x, y, width);
-    haze.addColorStop(0, index % 3 ? rgba(accent, .14) : rgba(secondary, .12));
-    haze.addColorStop(1, "#00000000");
-    context.save();
-    context.translate(x, y);
-    context.scale(1, height / width);
-    context.fillStyle = haze;
-    context.fillRect(-width, -width, width * 2, width * 2);
-    context.restore();
+    const color = index % 3 ? rgba(accent, .14) : rgba(secondary, .12);
+    for (const offset of [-canvas.width, 0, canvas.width]) {
+      const wrappedX = x + offset;
+      const haze = context.createRadialGradient(wrappedX, y, 0, wrappedX, y, width);
+      haze.addColorStop(0, color);
+      haze.addColorStop(1, "#00000000");
+      context.save();
+      context.translate(wrappedX, y);
+      context.scale(1, height / width);
+      context.fillStyle = haze;
+      context.fillRect(-width, -width, width * 2, width * 2);
+      context.restore();
+    }
   }
   return canvas;
 }
@@ -175,7 +189,7 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
 
     const sphere = new THREE.Mesh(
       new THREE.SphereGeometry(2.18, 128, 96),
-      new THREE.MeshPhysicalMaterial({ color: material.base, map: surfaceTexture, bumpMap: surfaceTexture, bumpScale: .012,
+      new THREE.MeshPhysicalMaterial({ color: material.base, map: surfaceTexture,
         roughness: Math.max(.42, material.roughness), metalness: material.metalness * .22, clearcoat: .16, clearcoatRoughness: .72 }),
     );
     sphere.renderOrder = 1;
