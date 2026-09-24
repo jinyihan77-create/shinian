@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { starMaterial } from "@/lib/star-materials";
+import { OrbitPlanet3D } from "./orbit-planet-3d";
 import styles from "./daily-orbit.module.css";
 
 export type DailyOrbitProps = {
@@ -75,7 +76,7 @@ export function DailyOrbit({ theme, keywords, onClaim, paused = false, reduceMot
           {[[27,118],[73,91],[111,102],[152,63],[202,47],[244,66]].map(([cx,cy], index) => <g key={index}><circle cx={cx} cy={cy} r={index === 3 ? 3.8 : 2.2} /><circle className={styles.starAura} cx={cx} cy={cy} r={index === 3 ? 11 : 6} /></g>)}
         </svg>
       </div>
-      <div className={styles.planet} aria-hidden="true"><span className={styles.planetLight} /><span className={styles.planetClouds} /><span className={styles.planetRing} /></div>
+      <OrbitPlanet3D theme={theme} paused={paused} reduceMotion={reduceMotion} />
       <div className={styles.words} aria-label={keywords.length ? "今天的关键词" : "今天暂无关键词"}>{orbitWords.map((word, index) => <span key={`${word}-${index}`} style={{ "--word-index": index } as CSSProperties}>{word}</span>)}</div>
       <button type="button" className={styles.core} aria-label="把今日星核带到身边" disabled={paused || claimed} onPointerDown={event => {
         if (event.button !== 0 || gesture.current || paused || claimedRef.current) return;
