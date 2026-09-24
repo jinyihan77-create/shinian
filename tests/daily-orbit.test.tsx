@@ -43,6 +43,15 @@ describe("daily orbit core interaction", () => {
     expect(screen.getByLabelText("今天的关键词").textContent).toContain("行动门槛");
   });
 
+  it("opens a real thought from a landmark on the rotating planet", () => {
+    render(<DailyOrbit theme={2} keywords={["主动表达"]} thoughts={[{
+      id: "thought-1", title: "先说三句话", excerpt: "听完内容后，先用自己的语言讲三句话。", source: "播客",
+    }]} onClaim={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "回看念头：先说三句话" }));
+    expect(screen.getByText("听完内容后，先用自己的语言讲三句话。")).toBeTruthy();
+    expect(screen.getByText("播客")).toBeTruthy();
+  });
+
   it("returns a short pull without claiming the core", () => {
     const onClaim = vi.fn();
     render(<DailyOrbit theme={2} keywords={[]} onClaim={onClaim} />);

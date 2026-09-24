@@ -1,15 +1,17 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowLeft, ArrowUpRight, Check, LoaderCircle, Moon, RotateCw, Sparkles, X } from "lucide-react";
 import { CHECKIN_EXPERIENCE_VERSION, CHECKIN_LIMITS, checkinKeywordsFromNotes, checkinSourceNoteIds, checkinSummarySchema, getCheckinDay, stableStarTheme, stableVisualSeed, suggestCheckinFromNotes, type CheckinSummary } from "@/lib/checkin";
 import { SEVEN_STAR_POINTS, STAR_MATERIALS, starMaterial, starPath } from "@/lib/star-materials";
 import type { EchoNote } from "@/lib/types";
 import styles from "./checkin-panel.module.css";
 import { DailyOrbit } from "./daily-orbit";
+import type { PlanetThought } from "./orbit-planet-3d";
 import { SevenStarCard } from "./seven-star-card";
 const defaultQuote = "把一点微光，留给明天的自己。";
+const EMPTY_NOTES: readonly EchoNote[] = [];
 const ENTRY_STAR_PATH = starPath(SEVEN_STAR_POINTS, 50, 46);
 const JOURNEY_SCENES = [
   { label: "念头亮起", title: "跟着这一点光，往前走。" },
@@ -68,7 +70,7 @@ async function requestCheckin(userId: string, input?: CheckinSaveInput | Checkin
 }
 
 /** Preview deliberately keeps its state in memory and never calls the check-in API. */
-export function CheckinPanel({ userId, notes = [], preview = false, accountPaused = false, compact = false }: { userId?: string; notes?: readonly EchoNote[]; preview?: boolean; accountPaused?: boolean; compact?: boolean }) {
+export function CheckinPanel({ userId, notes = EMPTY_NOTES, preview = false, accountPaused = false, compact = false }: { userId?: string; notes?: readonly EchoNote[]; preview?: boolean; accountPaused?: boolean; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState(0);
   const [mood, setMood] = useState("平静");
@@ -87,6 +89,18 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
   const lastTheme = useRef(-1);
   const currentSuggestion = suggestCheckinFromNotes(notes);
   const currentKeywords = checkinKeywordsFromNotes(notes);
+  const currentThoughts = useMemo<PlanetThought[]>(() => {
+    const byId = new Map(notes.map(note => [note.id, note]));
+    const today = checkinSourceNoteIds(notes).map(id => byId.get(id)).filter((note): note is EchoNote => Boolean(note));
+    const source = today.length || !preview
+      ? today
+      : [...notes].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt)).slice(0, 6);
+    return source.slice(0, 6).map(note => {
+      const excerpt = note.aiResult?.thoughtSummary || note.reflectionText || note.userText || note.sourceExcerpt || note.title;
+      return { id: note.id, title: note.title || Array.from(excerpt).slice(0, 16).join(""), excerpt, source: note.sourceType };
+    });
+  }, [notes, preview]);
+  const visibleSuggestionCount = preview ? currentThoughts.length : currentSuggestion.sourceCount;
 
   function show() {
     const suggestion = currentSuggestion;
@@ -169,12 +183,12 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
   return <>
     <button id="daily-star-entry" className={`${styles.entry} ${compact ? styles.entryCompact : ""}`} onClick={show} aria-label="打开星空打卡牌">
       <span className={styles.entryArt} aria-hidden="true"><span className={styles.entryStar}><svg viewBox="0 0 100 100"><defs><linearGradient id="entry-star-light" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#fff4fa" /><stop offset=".42" stopColor="#eeb8d2" /><stop offset=".72" stopColor="#c9b7e6" /><stop offset="1" stopColor="#b8dbea" /></linearGradient></defs><path d={ENTRY_STAR_PATH} fill="url(#entry-star-light)" fillOpacity=".86" stroke="#fff9fc" strokeOpacity=".85" strokeWidth=".7" /><circle cx="50" cy="50" r="2" fill="#fff" /></svg></span></span>
-      <span className={styles.entryCopy}><span className={styles.eyebrow}>Q7 · 一念入星河</span><strong>{currentSuggestion.sourceCount > 0 ? "今晚的星海，已经亮起" : "给今天，留一颗星"}</strong><span>{currentSuggestion.sourceCount > 0 ? `今天的 ${currentSuggestion.sourceCount} 条记录正在远处发光。` : "还没有新的记录，也可以留一颗无字星。"}</span></span>
+      <span className={styles.entryCopy}><span className={styles.eyebrow}>Q7 · 一念入星河</span><strong>{visibleSuggestionCount > 0 ? "今晚的星海，已经亮起" : "给今天，留一颗星"}</strong><span>{visibleSuggestionCount > 0 ? `${preview ? "示例星球里" : "今天"}的 ${visibleSuggestionCount} 条记录正在远处发光。` : "还没有新的记录，也可以留一颗无字星。"}</span></span>
       <span className={styles.entryAction}>去摘星<ArrowUpRight size={18} /></span>
     </button>
     {open && createPortal(<CheckinDialog
       theme={theme} mood={mood} quote={quote} summary={summary} preview={preview} busy={busy} selectedVariant={selectedVariant}
-      suggestionCount={currentSuggestion.sourceCount} keywords={currentKeywords}
+      suggestionCount={visibleSuggestionCount} keywords={currentKeywords} thoughts={currentThoughts}
       loading={loading} error={error} notice={notice} flipped={flipped}
       disabled={accountPaused || !userId} onClose={close}
       onSelectTheme={(value, variant) => { lastTheme.current = value % STAR_MATERIALS.length; setTheme(value); setSelectedVariant(variant); setFlipped(false); }}
@@ -186,7 +200,7 @@ export function CheckinPanel({ userId, notes = [], preview = false, accountPause
 
 interface DialogProps {
   theme: number; mood: string; quote: string; summary: CheckinSummary | null; selectedVariant: number;
-  suggestionCount: number; keywords: readonly string[];
+  suggestionCount: number; keywords: readonly string[]; thoughts: readonly PlanetThought[];
   preview: boolean; busy: boolean; loading: boolean; disabled: boolean; flipped: boolean;
   error: string; notice: string;
   onClose: () => void; onMood: (value: string) => void; onQuote: (value: string) => void;
@@ -286,7 +300,7 @@ function StarJourney({ day, reduced, keywords, onArrive }: { day: string; reduce
 }
 
 function CheckinDialog(props: DialogProps) {
-  const { theme, mood, quote, summary, preview, busy, loading, error, notice, flipped, suggestionCount, keywords, disabled, onSubmit, selectedVariant } = props;
+  const { theme, mood, quote, summary, preview, busy, loading, error, notice, flipped, suggestionCount, keywords, thoughts, disabled, onSubmit, selectedVariant } = props;
   const dialog = useRef<HTMLDialogElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const [picked, setPicked] = useState<number | null>(null);
@@ -356,8 +370,8 @@ function CheckinDialog(props: DialogProps) {
       {stage === "journey" ? <StarJourney day={summary?.today ?? getCheckinDay()} reduced={reduced} keywords={keywords} onArrive={() => {
         setStage("star-sea");
       }} /> : picked === null ? <div className={styles.picker}>
-        <DailyOrbit key={orbitTheme} theme={orbitTheme} keywords={keywords} onClaim={claimCore} paused={hidden} reduceMotion={reduced} />
-        <p className={styles.pickerNote}>{preview ? "体验预览 · 收下星核不会保存或增加打卡天数" : "这颗星核由今天的记录聚成 · 带回身边后自动保存"}</p>
+        <DailyOrbit key={orbitTheme} theme={orbitTheme} keywords={keywords} thoughts={thoughts} onClaim={claimCore} paused={hidden} reduceMotion={reduced} />
+        <p className={styles.pickerNote}>{preview ? "体验预览 · 回顾和收好都不会保存" : "星球上的每处微光，都来自你今天真实留下的记录"}</p>
       </div> : <div className={styles.layout}>
         <section className={styles.visual} aria-label="今日星笺">
           <div className={styles.scene}>

@@ -102,15 +102,53 @@ async function navigate(call, url, attempts = 3) {
 
 // ───────────────────────────────────────────────────────────
 // 滚动辅助：返回实际位移，用来自检"画面是否真的变了"
+//
+// 关键：手机端 `.main-wrap` 是独立滚动容器（overflow-y:auto），
+// 而落地页靠 body 滚动。必须先把内容滚进那个真正能滚的容器，
+// 否则 scrollIntoView 只影响外层、位移为 0，就会截出重复画面。
 // ───────────────────────────────────────────────────────────
-/** 把某个元素滚到视口中间，返回位移量。找不到时返回 scroll:0。 */
+const SCROLL_HELPER = `
+const pickScroller = () => {
+  const candidates = [document.querySelector('.main-wrap'), document.scrollingElement, document.documentElement, document.body];
+  for (const el of candidates) {
+    if (!el) continue;
+    if (el.scrollHeight > el.clientHeight + 4) return el;
+  }
+  return document.scrollingElement;
+};
+const scrollTopOf = (el) => (el === document.body || el === document.documentElement ? window.scrollY : el.scrollTop);
+`;
+
+/** 把元素滚进视口并居中，返回实际位移量 */
 const scrollToEl = (finder) => `(() => {
+  ${SCROLL_HELPER}
   const el = ${finder};
   if (!el) return "scroll:0";
-  const before = document.scrollingElement.scrollTop + (document.querySelector('.main-wrap')?.scrollTop ?? 0);
+  const sc = pickScroller();
+  const before = scrollTopOf(sc);
   el.scrollIntoView({ block: "center", behavior: "instant" });
-  const after = document.scrollingElement.scrollTop + (document.querySelector('.main-wrap')?.scrollTop ?? 0);
+  let after = scrollTopOf(sc);
+  if (Math.abs(after - before) < 2) {
+    // scrollIntoView 没用上真正的滚动容器时，手动按元素位置滚
+    const target = el.getBoundingClientRect().top - sc.clientHeight / 2 + el.clientHeight / 2;
+    sc.scrollTop = scrollTopOf(sc) + target;
+    if (sc === document.body || sc === document.documentElement) window.scrollBy(0, target);
+    after = scrollTopOf(sc);
+  }
   return "scroll:" + Math.abs(after - before);
+})()`;
+
+/** 在当前滚动位置上再推一段，返回实际位移量 */
+const nudgeScroll = (finder, delta) => `(() => {
+  ${SCROLL_HELPER}
+  const el = ${finder};
+  if (!el) return "scroll:0";
+  const sc = pickScroller();
+  el.scrollIntoView({ block: "center", behavior: "instant" });
+  const before = scrollTopOf(sc);
+  sc.scrollTop = before + ${delta};
+  if (sc === document.body || sc === document.documentElement) window.scrollBy(0, ${delta});
+  return "scroll:" + Math.abs(scrollTopOf(sc) - before);
 })()`;
 
 // ───────────────────────────────────────────────────────────
@@ -123,11 +161,11 @@ const SCENES = [
     url: "/", wait: 6000,
   },
   {
-    n: "02", file: "02-落地页-卡片与入口",
-    desc: "向下滚一点，展示 SHINIAN/01 卡片与「进入拾念灵感空间」入口",
-    url: "/", wait: 6000,
-    act: `(() => { const before = window.scrollY; window.scrollTo(0, window.innerHeight * 0.55); return "scroll:" + Math.abs(window.scrollY - before); })()`,
-    after: 3000,
+    // 落地页在手机端基本一屏放得下（实测可滚空间极小），01 已经拍全整页，
+    // 所以不再单独截"滚下去"的重复画面；改用免登录预览页作为第二屏。
+    n: "02", file: "02-界面预览-入口与气质",
+    desc: "免登录界面预览入口：对外展示用的那一版，气质与正式页一致",
+    url: "/design-preview#capture", wait: 7000,
   },
   {
     n: "03", file: "03-记录页-此刻想记下什么",
@@ -152,7 +190,7 @@ const SCENES = [
     n: "06", file: "06-记录页-今日星河卡",
     desc: "Q7 · 一念入星河 卡片 + 摘星按钮，产品记忆点",
     url: "/workspace", wait: 8000, needReady: true,
-    act: scrollToEl(`Array.from(document.querySelectorAll('*')).find(e => /一念入星河/.test(e.textContent||'') && e.children.length < 4)`),
+    act: nudgeScroll(`Array.from(document.querySelectorAll('*')).find(e => /一念入星河/.test(e.textContent||'') && e.children.length < 4)`, 180),
     after: 3000,
   },
   {
@@ -180,16 +218,7 @@ const SCENES = [
     n: "10", file: "10-闪卡-画作细节",
     desc: "闪卡下半屏：画作信息与「查看 4K 画作」入口，靠近看清细节",
     url: "/design-preview#flashcard", wait: 7000,
-    act: `(() => {
-      // 先滚到闪卡，再继续往下推一段，露出底部信息层（与 09 画面不同）
-      const el = document.querySelector('[aria-label^="正在显影的闪卡"], [aria-label^="油画闪卡"]');
-      if (!el) return "scroll:0";
-      const wrap = document.querySelector('.main-wrap') || document.scrollingElement;
-      el.scrollIntoView({ block: "center", behavior: "instant" });
-      const before = wrap.scrollTop;
-      wrap.scrollTop = before + 320;
-      return "scroll:" + Math.abs(wrap.scrollTop - before);
-    })()`,
+    act: nudgeScroll(`document.querySelector('[aria-label^="正在显影的闪卡"], [aria-label^="油画闪卡"]')`, 340),
     after: 4000,
   },
   {

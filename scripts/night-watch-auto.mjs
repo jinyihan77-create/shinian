@@ -16,7 +16,8 @@ const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
 const OUT_DIR = path.resolve("test-results", "night-watch");
 const PROFILE = path.join(OUT_DIR, ".edge-profile-auto");
 const HISTORY = path.join(OUT_DIR, "history.json");
-const PORT = 9350;
+// 端口随机化：定时任务和手动运行可能同时开跑，固定端口会撞车（"Edge 端口未就绪"）。
+const PORT = 9400 + Math.floor(Math.random() * 200);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function loadCredentials() {
@@ -169,6 +170,13 @@ try {
   await call("Page.enable");
   await call("Runtime.enable");
 
+  // 先预热：免费体验版 MinNum=0，冷启动首次请求可能 20s 以上，
+  // 而 Page.navigate 的等待窗口有限，会直接判为"未就绪"。
+  // 先连续请求几次把容器唤醒，再开始正式巡检。
+  console.log(`[夜间监工] 预热 ${origin} …`);
+  const warm = await fetch(origin + "/", { signal: AbortSignal.timeout(90000) }).catch(() => null);
+  console.log(`[夜间监工] 预热返回 HTTP ${warm ? warm.status : "超时/失败"}`);
+
   for (const round of [
     { label: "mobile", width: 390, height: 844, mobile: true },
     { label: "desktop", width: 1440, height: 900, mobile: false },
@@ -210,16 +218,16 @@ try {
         throw new Error(`页面标题不对：${route || "/"}（title="${title}"）`);
       }
       // 等应用真正就绪：记录页看输入框，落地页看标题文案。
-      // 本地 dev / 冷启动会先显示"正在打开你的空间"，此时截图会拍到一个空壳。
+      // 冷启动（免费版 MinNum=0）首次请求可能 20s 以上，这里给足等待。
       let ready = false;
-      for (let i = 0; i < 30; i += 1) {
+      for (let i = 0; i < 40; i += 1) {
         ready = await evaluate(call, `(() => {
           if (document.querySelector("textarea")) return true;
           const t = document.body.innerText || "";
-          // 记录页 / 资料库
           if (/回声屿|上一次记下|此刻，想记下什么/.test(t)) return true;
-          // 落地页（/）：标题文案出现即为就绪
-          if (/给念头一点柔和的光|一闪，便有回响|私人灵感空间/.test(t)) return true;
+          if (/给念头一点柔和的光|一闪，便有回响|私人灵感空间|先看看界面预览/.test(t)) return true;
+          // 登录页也算就绪（未登录时看到的是它，同样值得巡检）
+          if (/回到你的灵感空间|进入我的空间/.test(t)) return true;
           return false;
         })()`);
         if (ready) break;
