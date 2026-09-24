@@ -578,7 +578,7 @@ input:focus, textarea:focus, select:focus {
   .main-wrap::-webkit-scrollbar-thumb { border-radius: 999px; background: #b9a5c966; }
   .main-content, .main-content.capture-page {
     width: calc(100% - 24px);
-    padding-bottom: 22px;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
   }
   .main-content.capture-page { margin-top: 0; padding-top: 0; }
   .capture-space { min-height: calc(100svh - 78px); border-radius: 21px; }
