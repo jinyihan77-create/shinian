@@ -170,7 +170,7 @@ export function AiDeleteAssistant({ notes, disabled = false, preview = false, on
                 <button type="button" className={styles.voice} aria-label={listening ? "停止语音输入" : "用语音告诉 AI"} aria-pressed={listening} onClick={toggleVoice} disabled={planning || deleting}>
                   <AudioLines size={19} /><span>{listening ? "正在听" : "直接说"}</span>
                 </button>
-                {!plan && <button className={styles.planButton} title="先找出候选记录，确认后才会删除" disabled={planning || deleting || command.trim().length < 2}>
+                {!plan && <button type="submit" className={styles.planButton} title="先找出候选记录，确认后才会删除" disabled={planning || deleting || command.trim().length < 2}>
                   {planning ? <LoaderCircle className={styles.spin} size={17} /> : <Sparkles size={16} />}{planning ? "正在查找…" : "开始清理"}
                 </button>}
               </div>

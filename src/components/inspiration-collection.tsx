@@ -102,7 +102,9 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
         {query && <button aria-label="清空搜索" onClick={() => onQuery("")}><X size={17} /></button>}
         <button className={styles.voiceSearch} aria-label={searchListening ? "停止语音搜索" : "用语音搜索"} aria-pressed={searchListening} onClick={toggleSearchVoice}><AudioLines size={18} /></button>
       </div>
-      <AiDeleteAssistant notes={notes} disabled={deleteDisabled} preview={preview} onPlan={onDeletePlan} onDelete={onBulkDelete} />
+      <div className={styles.cleanupAction}>
+        <AiDeleteAssistant notes={notes} disabled={deleteDisabled} preview={preview} onPlan={onDeletePlan} onDelete={onBulkDelete} />
+      </div>
       <button className={styles.filterTrigger} aria-expanded={filterOpen} onClick={() => setFilterOpen(value => !value)}><SlidersHorizontal size={16} /><span>筛选</span>{filterCount > 0 && <b>{filterCount}</b>}</button>
     </div>
     <div className={styles.filterRow}>
