@@ -209,14 +209,17 @@ try {
       if (!title || !/拾念|echo/i.test(title + (await evaluate(call, `location.pathname`)))) {
         throw new Error(`页面标题不对：${route || "/"}（title="${title}"）`);
       }
-      // 等应用真正就绪：出现捕捉输入框（记录页）或资料库/加载完成标志。
-      // 本地 dev 连云端数据库较慢，会先显示"正在打开你的空间"，此时截图会拍到一个空壳。
+      // 等应用真正就绪：记录页看输入框，落地页看标题文案。
+      // 本地 dev / 冷启动会先显示"正在打开你的空间"，此时截图会拍到一个空壳。
       let ready = false;
       for (let i = 0; i < 30; i += 1) {
         ready = await evaluate(call, `(() => {
           if (document.querySelector("textarea")) return true;
           const t = document.body.innerText || "";
+          // 记录页 / 资料库
           if (/回声屿|上一次记下|此刻，想记下什么/.test(t)) return true;
+          // 落地页（/）：标题文案出现即为就绪
+          if (/给念头一点柔和的光|一闪，便有回响|私人灵感空间/.test(t)) return true;
           return false;
         })()`);
         if (ready) break;

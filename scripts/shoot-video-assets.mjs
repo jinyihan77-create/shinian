@@ -101,53 +101,66 @@ async function navigate(call, url, attempts = 3) {
 }
 
 // ───────────────────────────────────────────────────────────
+// 滚动辅助：返回实际位移，用来自检"画面是否真的变了"
+// ───────────────────────────────────────────────────────────
+/** 把某个元素滚到视口中间，返回位移量。找不到时返回 scroll:0。 */
+const scrollToEl = (finder) => `(() => {
+  const el = ${finder};
+  if (!el) return "scroll:0";
+  const before = document.scrollingElement.scrollTop + (document.querySelector('.main-wrap')?.scrollTop ?? 0);
+  el.scrollIntoView({ block: "center", behavior: "instant" });
+  const after = document.scrollingElement.scrollTop + (document.querySelector('.main-wrap')?.scrollTop ?? 0);
+  return "scroll:" + Math.abs(after - before);
+})()`;
+
+// ───────────────────────────────────────────────────────────
 // 场景清单：按视频叙事顺序排列
 // ───────────────────────────────────────────────────────────
 const SCENES = [
   {
     n: "01", file: "01-落地页-给念头一点柔和的光",
     desc: "开场。暗紫星空 + 发光标题，第一眼气质",
-    url: "/", wait: 5000,
+    url: "/", wait: 6000,
   },
   {
     n: "02", file: "02-落地页-卡片与入口",
     desc: "向下滚一点，展示 SHINIAN/01 卡片与「进入拾念灵感空间」入口",
-    url: "/", wait: 5000,
-    act: `window.scrollTo({top: document.body.scrollHeight * 0.45, behavior: "instant"})`,
-    after: 2500,
+    url: "/", wait: 6000,
+    act: `(() => { const before = window.scrollY; window.scrollTo(0, window.innerHeight * 0.55); return "scroll:" + Math.abs(window.scrollY - before); })()`,
+    after: 3000,
   },
   {
     n: "03", file: "03-记录页-此刻想记下什么",
     desc: "核心页面。滚动提问式标题 + 捕捉卡片（登录后）",
-    url: "/workspace", wait: 7000, needReady: true,
+    url: "/workspace", wait: 8000, needReady: true,
   },
   {
     n: "04", file: "04-记录页-语音底座特写",
     desc: "「说给拾念听」Siri 式语音底座，含声波纹理",
-    url: "/workspace", wait: 7000, needReady: true,
-    act: `document.querySelector('.voice-siri-dock')?.scrollIntoView({block:'center'})`,
-    after: 2500,
+    url: "/workspace", wait: 8000, needReady: true,
+    act: scrollToEl(`document.querySelector('.voice-siri-dock')`),
+    after: 3000,
   },
   {
     n: "05", file: "05-记录页-放进哪里与添加来源",
     desc: "「放在哪里」三个分类胶囊 + 添加来源，展示捕捉的仪式感",
-    url: "/workspace", wait: 7000, needReady: true,
-    act: `(() => { const el = Array.from(document.querySelectorAll('*')).find(e => (e.textContent||'').trim() === '放在哪里'); el?.scrollIntoView({block:'center'}); return 'ok'; })()`,
-    after: 2500,
+    url: "/workspace", wait: 8000, needReady: true,
+    act: scrollToEl(`Array.from(document.querySelectorAll('*')).find(e => (e.textContent||'').trim() === '放在哪里')`),
+    after: 3000,
   },
   {
     n: "06", file: "06-记录页-今日星河卡",
     desc: "Q7 · 一念入星河 卡片 + 摘星按钮，产品记忆点",
-    url: "/workspace", wait: 7000, needReady: true,
-    act: `(() => { const el = Array.from(document.querySelectorAll('*')).find(e => /一念入星河/.test(e.textContent||'') && e.children.length < 4); el?.scrollIntoView({block:'center'}); return 'ok'; })()`,
-    after: 2500,
+    url: "/workspace", wait: 8000, needReady: true,
+    act: scrollToEl(`Array.from(document.querySelectorAll('*')).find(e => /一念入星河/.test(e.textContent||'') && e.children.length < 4)`),
+    after: 3000,
   },
   {
     n: "07", file: "07-星空打卡牌-今夜跃迁",
-    desc: "打开星空打卡牌：星海手势旅程 + 跃迁感",
-    url: "/workspace", wait: 7000, needReady: true,
-    act: `document.querySelector('[aria-label="打开星空打卡牌"]')?.click()`,
-    after: 4000,
+    desc: "打开星空打卡牌：星语星笺 + 跃迁仪式感（产品最强记忆点）",
+    url: "/workspace", wait: 8000, needReady: true,
+    act: `(() => { const b = document.querySelector('[aria-label="打开星空打卡牌"]'); if (!b) return "click:miss"; b.click(); return "click:ok"; })()`,
+    after: 5000,
   },
   {
     n: "08", file: "08-回声屿-资料库概览",
@@ -159,15 +172,24 @@ const SCENES = [
   {
     n: "09", file: "09-闪卡-油画显影",
     desc: "油画闪卡：半调显影技术，视觉最出彩的一屏",
-    url: "/design-preview#flashcard", wait: 6000,
-    act: `document.querySelector('[aria-label^="正在显影的闪卡"]')?.scrollIntoView({block:'center'})`,
-    after: 3500,
+    url: "/design-preview#flashcard", wait: 7000,
+    act: scrollToEl(`document.querySelector('[aria-label^="正在显影的闪卡"], [aria-label^="油画闪卡"]')`),
+    after: 4000,
   },
   {
-    n: "10", file: "10-闪卡-放大观感",
-    desc: "闪卡再靠近一点，看画作细节与信息层",
-    url: "/design-preview#flashcard", wait: 6000,
-    act: `(() => { const el = document.querySelector('[aria-label^="正在显影的闪卡"]'); el?.scrollIntoView({block:'center'}); return 'ok'; })()`,
+    n: "10", file: "10-闪卡-画作细节",
+    desc: "闪卡下半屏：画作信息与「查看 4K 画作」入口，靠近看清细节",
+    url: "/design-preview#flashcard", wait: 7000,
+    act: `(() => {
+      // 先滚到闪卡，再继续往下推一段，露出底部信息层（与 09 画面不同）
+      const el = document.querySelector('[aria-label^="正在显影的闪卡"], [aria-label^="油画闪卡"]');
+      if (!el) return "scroll:0";
+      const wrap = document.querySelector('.main-wrap') || document.scrollingElement;
+      el.scrollIntoView({ block: "center", behavior: "instant" });
+      const before = wrap.scrollTop;
+      wrap.scrollTop = before + 320;
+      return "scroll:" + Math.abs(wrap.scrollTop - before);
+    })()`,
     after: 4000,
   },
   {
@@ -257,7 +279,13 @@ try {
       if (scene.needReady) {
         let ready = false;
         for (let i = 0; i < 30; i += 1) {
-          ready = await evaluate(call, `!!document.querySelector("textarea") || /回声屿|此刻，想记下什么/.test(document.body.innerText||"")`);
+          ready = await evaluate(call, `(() => {
+            if (document.querySelector("textarea")) return true;
+            const t = document.body.innerText || "";
+            if (/回声屿|上一次记下|此刻，想记下什么/.test(t)) return true;
+            if (/给念头一点柔和的光|一闪，便有回响|私人灵感空间/.test(t)) return true;
+            return false;
+          })()`);
           if (ready) break;
           await sleep(1500);
         }
@@ -265,8 +293,13 @@ try {
       }
 
       if (scene.act) {
-        await evaluate(call, scene.act);
+        const acted = await evaluate(call, scene.act);
         await sleep(scene.after ?? 2500);
+        // 记录滚动是否真的发生，避免截出与上一张完全相同的重复画面
+        if (typeof acted === "string" && acted.startsWith("scroll:")) {
+          const moved = Number(acted.split(":")[1]);
+          if (!moved) throw new Error("滚动未生效，画面与上一张重复");
+        }
       }
 
       // 截图前等一小会儿，让入场动画落定
