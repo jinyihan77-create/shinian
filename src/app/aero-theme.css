@@ -517,6 +517,10 @@ input:focus, textarea:focus, select:focus {
 }
 
 @media (max-width: 760px) {
+  body[data-ai-cleanup-open="true"] .mobile-nav {
+    visibility: hidden;
+    pointer-events: none;
+  }
   body:has(.app-shell) { overflow: hidden; }
   .app-shell,
   .preview-shell {

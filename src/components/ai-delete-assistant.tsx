@@ -58,10 +58,16 @@ export function AiDeleteAssistant({ notes, disabled = false, preview = false, on
     if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    document.body.dataset.aiCleanupOpen = "true";
     const timer = window.setTimeout(() => inputRef.current?.focus(), 60);
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape" && !deleting) setOpen(false); };
     window.addEventListener("keydown", onKeyDown);
-    return () => { window.clearTimeout(timer); window.removeEventListener("keydown", onKeyDown); document.body.style.overflow = previous; };
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previous;
+      delete document.body.dataset.aiCleanupOpen;
+    };
   }, [open, deleting]);
 
   useEffect(() => () => { recognitionRef.current?.stop(); recognitionRef.current = null; }, []);
