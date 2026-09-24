@@ -369,7 +369,7 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
       <main className={`main-content ${view === "capture" ? "capture-page" : ""}`}>
         {!ready ? <div className="panel loading-panel">{bootError ? <><CircleHelp size={32} /><h2>回声屿暂时无法打开</h2><p>{bootError}</p><button className="btn btn-primary" onClick={() => void bootstrap()}>重新尝试</button></> : <><LoaderCircle className="spin" size={28} /><p>正在打开你的回声屿…</p></>}</div> : <>
           {view === "capture" && <CaptureSpace>
-            <CaptureComposer capture={capture} onChange={updateCapture} sourceOpen={sourceOpen} onSourceToggle={() => setSourceOpen(!sourceOpen)} saving={saving} draftState={draftState} onSave={organize => void saveCapture(organize)} captureKind={captureKind} onCaptureKind={updateCaptureKind} onOpenCheckin={() => document.getElementById("daily-star-entry")?.click()} onOrganizeSource={transcript => repository.organizeSource({ transcript, currentSourceType: capture.sourceType })} />
+            <CaptureComposer capture={capture} onChange={updateCapture} sourceOpen={sourceOpen} onSourceToggle={() => setSourceOpen(!sourceOpen)} saving={saving} draftState={draftState} onSave={organize => void saveCapture(organize)} captureKind={captureKind} onCaptureKind={updateCaptureKind} onOrganizeSource={transcript => repository.organizeSource({ transcript, currentSourceType: capture.sourceType })} />
             <CheckinPanel key={`capture-${user.id}`} userId={user.id} notes={notes} accountPaused={paused} compact />
             {recent[0] && <button className="last-thought" onClick={() => navigate("note", recent[0].id)}><span>上一次记下</span><span>{recent[0].title}</span><ArrowUpRight size={14} /></button>}
           </CaptureSpace>}

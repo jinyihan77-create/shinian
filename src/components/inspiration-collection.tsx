@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowUpRight, AudioLines, BookOpen, Headphones, Heart, Leaf, MessageCircle, MoonStar, Pause, Play, Plus, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { ArrowUpRight, AudioLines, BookOpen, Headphones, Heart, Leaf, MessageCircle, MoonStar, Pause, Play, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { searchNotes, type LibraryFilter } from "@/lib/search";
 import { composeSpeechInput } from "@/lib/speech-input";
 import type { DeletePlan, EchoNote } from "@/lib/types";
@@ -94,7 +94,6 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
     <div className={styles.atmosphere} aria-hidden="true" />
     <header className={styles.heading}>
       <div><span className={styles.kicker}><span />拾起片刻，留给以后</span><h1 id="collection-title"><span className={styles.titleCn}>回声屿</span><span className={styles.titleEn}>ECHO ISLE</span></h1><p>你留下的念头，都在这里等你回来。</p></div>
-      <button className={styles.create} onClick={onCreate}><Plus size={18} />留下一句话</button>
     </header>
 
     <div className={styles.tools}>
@@ -115,7 +114,7 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
     {searchMessage && <p className={styles.searchMessage} role="status">{searchMessage}</p>}
     {filterOpen && <div className={styles.filterDrawer} aria-label="更多筛选">
       <div className={styles.drawerHeader}><div><strong>马上找到</strong><span>先看状态；主题需要时再展开。</span></div><button aria-label="关闭筛选" onClick={() => setFilterOpen(false)}><X size={16} /></button></div>
-      <div className={styles.drawerSection}><span className={styles.drawerLabel}>状态</span><div className={styles.drawerChips} role="group" aria-label="按状态筛选"><button aria-pressed={filter === "departure"} onClick={() => onFilter("departure")}>行动票 <em>{filters[1].count}</em></button><button aria-pressed={filter === "arrival"} onClick={() => onFilter("arrival")}>已完成 <em>{filters[2].count}</em></button><button aria-pressed={filter === "all" && !tag} onClick={() => { onFilter("all"); if (tag !== FLASHCARD_TAG) onTag(""); }}>全部</button></div></div>
+      <div className={styles.drawerSection}><span className={styles.drawerLabel}>补充查看</span><div className={styles.drawerChips} role="group" aria-label="补充状态筛选"><button aria-pressed={filter === "arrival"} onClick={() => onFilter("arrival")}>已完成 <em>{filters[2].count}</em></button></div></div>
       {tags.length > 0 && <details className={styles.themeDetails}><summary>按主题查找 <span>{tags.length}</span></summary><div className={styles.drawerChips} role="group" aria-label="按主题筛选"><button aria-pressed={!tag || tag === FLASHCARD_TAG} onClick={() => onTag("")}>所有主题</button>{tags.map(item => <button key={item} aria-pressed={tag === item} onClick={() => onTag(tag === item ? "" : item)}># {item}</button>)}</div></details>}
       <div className={styles.drawerFooter}><label className={styles.sort}><span>排序</span><select value={sort} onChange={event => onSort(event.target.value as CollectionProps["sort"])}><option value="created">最新记下</option><option value="updated">最近修改</option></select></label><button className={styles.motionToggle} onClick={toggleMotion} aria-label={motionPaused ? "播放卡片背景" : "暂停卡片背景"}>{motionPaused ? <Play size={13} /> : <Pause size={13} />}<span>{motionPaused ? "播放背景" : "动态背景"}</span></button><button className={styles.clearFilters} onClick={reset}>清除筛选</button></div>
     </div>}

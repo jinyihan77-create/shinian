@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, AudioLines, BookOpen, Check, ChevronDown, FileText, Headphones, Heart, Leaf, Lightbulb, Link2, LoaderCircle, MoonStar, MoreHorizontal, Plus, Settings2, Sparkles, Star, Video } from "lucide-react";
+import { ArrowUpRight, AudioLines, BookOpen, Check, ChevronDown, FileText, Headphones, Heart, Leaf, Lightbulb, Link2, LoaderCircle, MoonStar, MoreHorizontal, Plus, Sparkles, Video } from "lucide-react";
 import type { CaptureInput, SourceIntakeResult } from "@/lib/types";
 import type { CaptureKind } from "@/lib/note-context";
 import { composeSpeechInput, type SpeechResultLike } from "@/lib/speech-input";
@@ -39,12 +39,8 @@ type NavigationView = "capture" | "library" | "settings";
 export function SpaceHeader({ view, onNavigate, status }: { view: NavigationView | "note"; onNavigate: (view: NavigationView) => void; status?: ReactNode }) {
   const pages: NavigationView[] = ["capture", "library", "settings"];
   return <header className="space-header">
-    <button className="brand" onClick={() => onNavigate("capture")} aria-label="拾念首页"><EchoSymbol /><strong>拾念</strong></button>
-    <nav className="space-nav" aria-label="主导航">
-      <button aria-current={view === "capture" ? "page" : undefined} onClick={() => onNavigate("capture")}>记录</button>
-      <button aria-current={view === "library" || view === "note" ? "page" : undefined} onClick={() => onNavigate("library")}>回声屿</button>
-    </nav>
-    <div className="space-account">{status}<button className="account-button" aria-label="账号与设置" aria-current={view === "settings" ? "page" : undefined} onClick={() => onNavigate("settings")}><Settings2 size={18} /></button></div>
+    <div className="brand"><EchoSymbol /><strong>拾念</strong></div>
+    <div className="space-account">{status}</div>
     <LineSidebar className={sidebarStyles.desktopRail} items={["记录", "回声屿", "设置"]} activeIndex={pages.indexOf(view === "note" ? "library" : view)}
       accentColor="#c084fc" textColor="#c4c4c4" markerColor="#6c6c6c" showIndex showMarker
       proximityRadius={100} maxShift={30} falloff="smooth" markerLength={60} markerGap={0}
@@ -126,7 +122,6 @@ type ComposerProps = {
   onSave: (organize: boolean) => void;
   captureKind?: CaptureKind;
   onCaptureKind?: (kind: CaptureKind) => void;
-  onOpenCheckin?: () => void;
   onOrganizeSource?: (transcript: string) => Promise<SourceIntakeResult>;
   preview?: boolean;
 };
@@ -352,7 +347,7 @@ function SourceVoiceIntake({ onChange, onOrganize, disabled, preview }: {
   </div>;
 }
 
-export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle, saving, draftState, onSave, captureKind = "thought", onCaptureKind = () => {}, onOpenCheckin = () => {}, onOrganizeSource, preview = false }: ComposerProps) {
+export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle, saving, draftState, onSave, captureKind = "thought", onCaptureKind = () => {}, onOrganizeSource, preview = false }: ComposerProps) {
   const hasContent = [capture.userText, capture.sourceName, capture.sourceUrl, capture.sourceTimestamp, capture.sourceExcerpt].some(value => value.trim());
   const sourceOptions = [
     { value: "播客", icon: Headphones },
@@ -367,7 +362,6 @@ export function CaptureComposer({ capture, onChange, sourceOpen, onSourceToggle,
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !event.nativeEvent.isComposing && !saving && hasContent) { event.preventDefault(); onSave(true); }
   }}>
     <div className="writing-surface">
-      <button type="button" className="capture-star-shortcut capture-star-primary" onClick={onOpenCheckin} disabled={saving} title="摘下今天的星" aria-label="摘下今天的星"><Star size={16} /><span>摘星</span></button>
       <label className="sr-only" htmlFor="capture-thought">我的想法</label>
       <textarea id="capture-thought" className="capture-textarea" placeholder="一句想法，一段听后感……" value={capture.userText} maxLength={20000} onChange={event => onChange({ userText: event.target.value })} disabled={saving} />
       <VoiceInput value={capture.userText} onChange={value => onChange({ userText: value })} onCommit={() => onSave(true)} disabled={saving} preview={preview} />

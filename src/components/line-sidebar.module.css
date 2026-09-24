@@ -15,7 +15,6 @@
 @media (min-width: 1180px) {
   .desktopRail { display: block; position: fixed; z-index: 25; left: 24px; top: clamp(180px, 31svh, 320px); width: 194px; }
   :global(.space-header):has(.desktopRail) { width: calc(100% - 48px); }
-  :global(.space-header):has(.desktopRail) :global(.space-nav) { display: none; }
   :global(.app-shell):has(.desktopRail) :global(.main-wrap) { margin-left: 226px; margin-right: 8px; }
   :global(.app-shell):has(.desktopRail) :global(.main-content) { width: min(1180px, calc(100% - 40px)); }
 }
