@@ -58,8 +58,14 @@
 .lineShell { position: relative; display: block; }
 .lineShell textarea { display: block; width: 100%; min-height: 64px; resize: vertical; border: 0; border-top: 1px solid rgb(255 255 255 / 7%); padding: 10px 42px 4px 0; background: transparent; color: #fff8fc; font-family: var(--ui-font); font-size: 15px; line-height: 1.65; outline: 0; }
 .lineShell textarea::placeholder { color: #8f7e8b; }
-.lineVoice { position: absolute; right: 0; bottom: 5px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgb(242 180 208 / 23%); border-radius: 12px 5px 12px 5px; background: linear-gradient(145deg, rgb(240 147 186 / 14%), rgb(154 128 198 / 13%)); color: #e9bbd0; }
+.lineVoice { position: absolute; right: 0; bottom: 5px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgb(242 180 208 / 23%); border-radius: 12px 5px 12px 5px; background: linear-gradient(145deg, rgb(240 147 186 / 14%), rgb(154 128 198 / 13%)); color: #e9bbd0; overflow: hidden; }
+.lineStrands { position: absolute; inset: 8px -18px; opacity: .25; pointer-events: none; transform: rotate(-8deg); }
+.lineStrands i { position: absolute; left: -6%; width: 112%; height: 9px; border-top: 1px solid #f7cfe39c; border-radius: 50%; }
+.lineStrands i:nth-child(1) { top: 1px; transform: rotate(-12deg); }
+.lineStrands i:nth-child(2) { top: 7px; border-color: #bde6f28c; transform: rotate(2deg); }
+.lineStrands i:nth-child(3) { top: 13px; transform: rotate(14deg); }
 .lineVoice:hover:not(:disabled), .lineVoice[aria-pressed="true"] { border-color: rgb(255 200 222 / 58%); background: linear-gradient(145deg, rgb(240 147 186 / 30%), rgb(154 128 198 / 24%)); color: #fff2f8; box-shadow: 0 0 16px rgb(232 139 181 / 17%); }
+.lineVoice[aria-pressed="true"] .lineStrands { opacity: .85; animation: line-strands-drift 1.4s ease-in-out infinite alternate; }
 .lineVoice[aria-pressed="true"] svg { animation: reflection-listen 1s ease-in-out infinite alternate; }
 .lineVoice:disabled { opacity: .4; }
 .advanceHint, .voiceMessage { margin: 1px 2px 0; color: #948692; font-size: 10px; line-height: 1.5; }
@@ -150,3 +156,4 @@
 @media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
 @keyframes reflection-listen { from { transform: scale(.88); filter: drop-shadow(0 0 2px #f0a9c8); } to { transform: scale(1.08); filter: drop-shadow(0 0 8px #f0a9c8); } }
 @media (prefers-reduced-motion: reduce) { .reflectionField, .refineButton, .restoreButton, .lineVoice[aria-pressed="true"] svg { transition: none; animation: none; } }
+@keyframes line-strands-drift { from { transform: rotate(-8deg) translateX(-4%); } to { transform: rotate(-8deg) translateX(4%); } }

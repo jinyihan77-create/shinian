@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createExamples } from "../src/lib/examples";
 import { searchNotes } from "../src/lib/search";
 import { createBackup, parseBackup, toMarkdown } from "../src/lib/backup";
-import { taskStatus, taskTags, preserveTaskTags, visibleTags, ticketNumber } from "../src/lib/task-tickets";
+import { applyTicketMeta, taskStatus, taskTags, preserveTaskTags, ticketMeta, ticketNumber, ticketPool, visibleTags } from "../src/lib/task-tickets";
 import { captureContextTags } from "../src/lib/note-context";
 
 describe("行动票独立于普通记录", () => {
@@ -71,5 +71,18 @@ describe("行动票独立于普通记录", () => {
     const dismissed = { ...suggested, tags: taskTags(suggested, "dismiss") };
     expect(taskStatus(dismissed)).toBe("none");
     expect(searchNotes([dismissed], "", "departure")).toHaveLength(0);
+  });
+
+  it("行动建议确认后才写入分区元数据，等待清单不会进入抽卡池", () => {
+    const plain = createExamples()[0];
+    const queuedTags = applyTicketMeta(taskTags(plain, "queue"), { pool: "one_time", durationMinutes: 10, resistance: "low", cadence: "none" });
+    const queued = { ...plain, tags: queuedTags };
+    expect(taskStatus(queued)).toBe("pending");
+    expect(ticketPool(queued)).toBe("one_time");
+    expect(ticketMeta(queued.tags)).toMatchObject({ durationMinutes: 10, resistance: "low", cadence: "none" });
+    const waiting = { ...plain, tags: applyTicketMeta(taskTags(plain, "hold"), { pool: "waiting", durationMinutes: 20, resistance: "high", cadence: "none", prerequisite: "等对方回复" }) };
+    expect(taskStatus(waiting)).toBe("none");
+    expect(ticketPool(waiting)).toBe("waiting");
+    expect(visibleTags(waiting.tags)).toEqual(visibleTags(plain.tags));
   });
 });

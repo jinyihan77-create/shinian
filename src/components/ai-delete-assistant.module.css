@@ -15,8 +15,15 @@
 .inputShell textarea { display: block; width: 100%; min-height: 104px; resize: vertical; border: 0; padding: 17px 17px 8px; background: transparent; color: #fff7fb; font-family: var(--ui-font); font-size: 15px; line-height: 1.65; outline: none; }
 .inputShell textarea::placeholder { color: #8f7e8c; }
 .inputActions { display: flex; align-items: center; justify-content: flex-end; gap: 9px; padding: 9px; border-top: 1px solid #ffffff0c; background: linear-gradient(180deg, transparent, #ffffff04); }
-.voice { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; border: 1px solid #f1b5cd38; border-radius: 13px 6px 13px 6px; padding: 0 13px; background: linear-gradient(135deg, #f28eb329, #977fc829); color: #f4cede; font-size: 11px; }
+.voice { position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; border: 1px solid #f1b5cd38; border-radius: 13px 6px 13px 6px; padding: 0 13px; background: linear-gradient(135deg, #f28eb329, #977fc829); color: #f4cede; font-size: 11px; overflow: hidden; }
+.voice > :not(.strands) { position: relative; z-index: 1; }
+.strands { position: absolute; z-index: 0; inset: 9px -12px; opacity: .25; pointer-events: none; transform: rotate(-7deg); }
+.strands b { position: absolute; left: -4%; width: 108%; height: 9px; border-top: 1px solid #f8d4e7a3; border-radius: 50%; }
+.strands b:nth-child(1) { top: 0; transform: rotate(-10deg); }
+.strands b:nth-child(2) { top: 7px; border-color: #bfe8f1a3; }
+.strands b:nth-child(3) { top: 14px; transform: rotate(10deg); }
 .voice[aria-pressed="true"] { border-color: #ffd0e0a6; background: linear-gradient(135deg, #fa9fbe4d, #a58bda3d); color: #fff; box-shadow: 0 0 22px #f593b83d; }
+.voice[aria-pressed="true"] .strands { opacity: .88; animation: delete-strands 1.4s ease-in-out infinite alternate; }
 .voice[aria-pressed="true"] svg { animation: listen 1s ease-in-out infinite alternate; }
 .previewNote { margin: 9px 2px 0; color: #b7a5b3; font-size: 10px; }
 .planButton, .delete, .finished button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 45px; border: 1px solid #ffc2d96b; border-radius: 14px 6px 14px 6px; padding: 0 17px; background: linear-gradient(125deg, #f29aba47, #a98bdb35 66%, #83bdc827); color: #fff7fb; font-size: 13px; box-shadow: inset 0 1px 0 #ffffff27, 0 10px 28px #1209134a; }
@@ -54,6 +61,7 @@
 @keyframes veil-in { from { opacity: 0; } }
 @keyframes dialog-in { from { opacity: 0; transform: translateY(12px) scale(.98); } }
 @keyframes listen { from { transform: scale(.88); filter: drop-shadow(0 0 2px #ff9fc1); } to { transform: scale(1.08); filter: drop-shadow(0 0 8px #ff9fc1); } }
+@keyframes delete-strands { from { transform: rotate(-7deg) translateX(-4%); } to { transform: rotate(-7deg) translateX(4%); } }
 @media (max-width: 620px) {
   .backdrop { align-items: end; padding: 0; }
   .dialog { width: 100%; max-height: min(88dvh, 760px); border-radius: 24px 24px 0 0; padding: 20px 16px calc(18px + env(safe-area-inset-bottom)); }

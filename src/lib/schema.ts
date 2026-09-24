@@ -59,6 +59,29 @@ export const reflectionRefineResultSchema = z.object({
   }
 });
 
+const durationSchema = z.union([z.literal(5), z.literal(10), z.literal(20), z.literal(30), z.literal(45), z.literal(60)]);
+const ticketSuggestionSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  nextStep: z.string().trim().min(1).max(200),
+  durationMinutes: durationSchema,
+  tags: z.array(z.string().trim().min(1).max(40)).max(5),
+  resistance: z.enum(["low", "medium", "high"]),
+}).strict();
+export const ticketAnalysisSchema = z.object({
+  category: z.enum(["idea", "task", "goal", "reference", "question"]),
+  pool: z.enum(["inbox", "one_time", "recurring", "waiting", "archive"]),
+  confidence: z.number().min(0).max(1),
+  rationale: z.string().trim().min(1).max(500),
+  durationMinutes: durationSchema,
+  cadence: z.enum(["none", "daily", "weekly", "monthly"]),
+  cadenceReason: z.string().trim().min(1).max(300),
+  tags: z.array(z.string().trim().min(1).max(40)).max(5),
+  prerequisite: z.string().trim().max(300).nullable(),
+  resistance: z.enum(["low", "medium", "high"]),
+  duplicateIds: z.array(z.string().uuid()).max(10),
+  suggestions: z.array(ticketSuggestionSchema).max(3),
+}).strict();
+
 export const deletePlanRequestSchema = z.object({
   command: z.string().trim().min(2, "请说清楚想删除哪类记录。").max(500, "这句话太长，请只说要清理的范围。"),
 }).strict();
@@ -83,6 +106,7 @@ export const aiResultSchema = z.object({
   // Older records can contain one or two prompts; new AI results produce three.
   reflectionQuestions: z.array(z.string().trim().min(1).max(500)).min(1).max(3),
   possibleApplication: z.string().max(2_000).nullable(),
+  analysis: ticketAnalysisSchema.nullable().optional(),
   actionItem: z.object({
     title: z.string().trim().min(1).max(80),
     nextStep: z.string().trim().min(1).max(160),

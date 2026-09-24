@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowUpRight, AudioLines, BookOpen, Headphones, Heart, Leaf, MessageCircle, MoonStar, Pause, Play, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, AudioLines, BookOpen, Check, Headphones, Heart, Leaf, LoaderCircle, MessageCircle, MoonStar, Pause, Play, Search, SlidersHorizontal, Sparkles, Ticket, X } from "lucide-react";
 import { searchNotes, type LibraryFilter } from "@/lib/search";
 import { composeSpeechInput } from "@/lib/speech-input";
 import type { DeletePlan, EchoNote } from "@/lib/types";
@@ -11,7 +11,7 @@ import styles from "./inspiration-collection.module.css";
 import { FLASHCARD_TAG, paintingForNote } from "@/lib/art-flashcards";
 import DepthCarousel from "./depth-carousel";
 import { PendingTickets, type TaskTransition } from "./pending-tickets";
-import { taskStatus, visibleTags } from "@/lib/task-tickets";
+import { actionTicketCopy, taskStatus, ticketMeta, ticketPool, visibleTags, type TaskAction } from "@/lib/task-tickets";
 import { DesktopScrollMemory } from "./desktop-scroll-memory";
 import { captureKindFromTags } from "@/lib/note-context";
 import { AiDeleteAssistant, type DeleteOutcome } from "./ai-delete-assistant";
@@ -34,6 +34,7 @@ interface CollectionProps {
   deleteDisabled?: boolean;
   preview?: boolean;
 }
+type PoolView = "all" | "inbox" | "one_time" | "recurring" | "waiting" | "archive";
 
 /** Shared by the private workspace and the explicitly labelled visual preview. */
 export function InspirationCollection({ notes, query, filter, tag, sort, onQuery, onFilter, onTag, onSort, onCreate, onOpen, onTransition = async () => {}, onDeletePlan, onBulkDelete, deleteDisabled = false, preview = false }: CollectionProps) {
@@ -41,6 +42,9 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
   const [filterOpen, setFilterOpen] = useState(false);
   const [searchListening, setSearchListening] = useState(false);
   const [searchMessage, setSearchMessage] = useState("");
+  const [drawn, setDrawn] = useState<EchoNote | null>(null);
+  const [drawBusy, setDrawBusy] = useState<TaskAction | null>(null);
+  const [poolView, setPoolView] = useState<PoolView>("all");
   const searchRecognition = useRef<{ stop: () => void } | null>(null);
   useEffect(() => {
     try { setMotionPaused(window.sessionStorage.getItem("shinian-card-motion") === "paused"); } catch { /* The visual preference is optional. */ }
@@ -52,7 +56,11 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
     try { window.sessionStorage.setItem("shinian-card-motion", next ? "paused" : "playing"); } catch { /* Keep the current-page preference when storage is unavailable. */ }
   }
   const deferredQuery = useDeferredValue(query);
-  const results = useMemo(() => searchNotes(notes, deferredQuery, filter, tag, sort), [notes, deferredQuery, filter, tag, sort]);
+  const results = useMemo(() => searchNotes(notes, deferredQuery, filter, tag, sort).filter(({ note }) => {
+    if (poolView === "all") return true;
+    if (poolView === "archive") return ticketPool(note) === "archive" || taskStatus(note) === "completed";
+    return ticketPool(note) === poolView;
+  }), [notes, deferredQuery, filter, tag, sort, poolView]);
   const tags = useMemo(() => [...new Set(notes.flatMap(note => visibleTags(note.tags)))].sort(), [notes]);
   const filters = useMemo<{ value: LibraryFilter; label: string; count: number }[]>(() => [
     { value: "all", label: "全部", count: notes.length },
@@ -60,8 +68,15 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
     { value: "arrival", label: "已完成", count: notes.filter(note => taskStatus(note) === "completed").length },
   ], [notes]);
   const flashcardCount = useMemo(() => notes.filter(note => note.tags.includes(FLASHCARD_TAG)).length, [notes]);
+  const poolCounts = useMemo(() => ({
+    inbox: notes.filter(note => ticketPool(note) === "inbox").length,
+    one_time: notes.filter(note => ticketPool(note) === "one_time" && ["pending", "active"].includes(taskStatus(note))).length,
+    recurring: notes.filter(note => ticketPool(note) === "recurring" && ["pending", "active"].includes(taskStatus(note))).length,
+    waiting: notes.filter(note => ticketPool(note) === "waiting").length,
+    archive: notes.filter(note => ticketPool(note) === "archive" || taskStatus(note) === "completed").length,
+  }), [notes]);
   const filtered = Boolean(query.trim() || tag || filter !== "all");
-  function reset() { onQuery(""); onFilter("all"); onTag(""); }
+  function reset() { onQuery(""); onFilter("all"); onTag(""); setPoolView("all"); }
   function selectView(next: "all" | "tasks" | "flashcards") {
     if (next === "all") { onFilter("all"); onTag(""); }
     if (next === "tasks") { onFilter(filter === "arrival" ? "arrival" : "departure"); onTag(""); }
@@ -70,6 +85,7 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
   const activeView = tag === FLASHCARD_TAG ? "flashcards" : filter === "departure" || filter === "arrival" ? "tasks" : "all";
   const filterCount = Number(Boolean(tag && tag !== FLASHCARD_TAG)) + Number(filter === "arrival") + Number(sort !== "created");
   const flashcards = results.filter(({ note }) => note.tags.includes(FLASHCARD_TAG));
+  const actionPool = useMemo(() => notes.filter(note => ["pending", "active"].includes(taskStatus(note)) && ["one_time", "recurring"].includes(ticketPool(note))), [notes]);
   const allowCardSweep = !motionPaused && results.length <= 8;
   function toggleSearchVoice() {
     if (searchRecognition.current) { searchRecognition.current.stop(); return; }
@@ -89,6 +105,22 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
     setSearchMessage(preview ? "语音只用于本次预览搜索，不会保存" : "");
     try { recognition.start(); setSearchListening(true); } catch { searchRecognition.current = null; setSearchListening(false); setSearchMessage("语音搜索暂时无法启动"); }
   }
+  function drawAction() {
+    if (!actionPool.length) { setDrawn(null); return; }
+    const weighted = actionPool.flatMap(note => {
+      const meta = ticketMeta(note.tags);
+      const resistanceWeight = meta.resistance === "low" ? 3 : meta.resistance === "medium" ? 2 : 1;
+      const durationWeight = Math.max(1, 65 - meta.durationMinutes) / 20;
+      return Array.from({ length: Math.max(1, Math.round(resistanceWeight * durationWeight)) }, () => note);
+    });
+    setDrawn(weighted[Math.floor(Math.random() * weighted.length)] || actionPool[0]);
+  }
+  async function drawnTransition(action: TaskAction) {
+    if (!drawn || drawBusy) return;
+    setDrawBusy(action);
+    try { await onTransition(drawn, action); if (action === "complete" || action === "dismiss") setDrawn(null); }
+    finally { setDrawBusy(null); }
+  }
 
   return <section className={styles.collection} aria-labelledby="collection-title">
     <div className={styles.atmosphere} aria-hidden="true" />
@@ -100,11 +132,12 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
       <div className={styles.search}>
         <Search size={19} aria-hidden="true" /><input aria-label="向过去的自己提问" placeholder="想问过去的自己什么？" value={query} onChange={event => onQuery(event.target.value)} />
         {query && <button aria-label="清空搜索" onClick={() => onQuery("")}><X size={17} /></button>}
-        <button className={styles.voiceSearch} aria-label={searchListening ? "停止语音搜索" : "用语音搜索"} aria-pressed={searchListening} onClick={toggleSearchVoice}><AudioLines size={18} /></button>
+        <button className={styles.voiceSearch} aria-label={searchListening ? "停止语音搜索" : "用语音搜索"} aria-pressed={searchListening} onClick={toggleSearchVoice}><AudioLines size={18} /><span className={styles.searchStrands} aria-hidden="true"><i /><i /><i /></span></button>
       </div>
       <div className={styles.cleanupAction}>
         <AiDeleteAssistant notes={notes} disabled={deleteDisabled} preview={preview} onPlan={onDeletePlan} onDelete={onBulkDelete} />
       </div>
+      <button className={styles.drawAction} disabled={preview || !actionPool.length} onClick={drawAction} title={actionPool.length ? "从已确认的行动池抽一张" : "先确认一条行动建议"}><Ticket size={15} /><span>抽一张行动卡</span><b>{actionPool.length}</b></button>
       <button className={styles.filterTrigger} aria-expanded={filterOpen} onClick={() => setFilterOpen(value => !value)}><SlidersHorizontal size={16} /><span>筛选</span>{filterCount > 0 && <b>{filterCount}</b>}</button>
     </div>
     <div className={styles.filterRow}>
@@ -113,7 +146,9 @@ export function InspirationCollection({ notes, query, filter, tag, sort, onQuery
         <span className={styles.count}>{preview ? "演示内容 · " : ""}{filtered ? "找到 " : "共 "}{results.length} 条</span>
       </div>
     </div>
+    <div className={styles.poolRail} aria-label="行动票根分区"><span className={styles.poolRailLabel}>行动分区</span><button aria-pressed={poolView === "inbox"} aria-label={`票根收集箱 ${poolCounts.inbox} 条`} onClick={() => { setPoolView("inbox"); onFilter("all"); onTag(""); }}>票根箱 <b>{poolCounts.inbox}</b></button><button aria-pressed={poolView === "one_time"} aria-label={`单次行动 ${poolCounts.one_time} 条`} onClick={() => { setPoolView("one_time"); onFilter("departure"); onTag(""); }}>单次 <b>{poolCounts.one_time}</b></button><button aria-pressed={poolView === "recurring"} aria-label={`周期行动 ${poolCounts.recurring} 条`} onClick={() => { setPoolView("recurring"); onFilter("departure"); onTag(""); }}>周期 <b>{poolCounts.recurring}</b></button><button aria-pressed={poolView === "waiting"} aria-label={`等待清单 ${poolCounts.waiting} 条`} onClick={() => { setPoolView("waiting"); onFilter("all"); onTag(""); }}>等待 <b>{poolCounts.waiting}</b></button><button aria-pressed={poolView === "archive"} aria-label={`归档 ${poolCounts.archive} 条`} onClick={() => { setPoolView("archive"); onFilter("arrival"); onTag(""); }}>归档 <b>{poolCounts.archive}</b></button></div>
     {searchMessage && <p className={styles.searchMessage} role="status">{searchMessage}</p>}
+    {drawn && <div className={styles.drawnPanel} role="dialog" aria-label="抽到的行动卡"><div className={styles.drawnGlow} aria-hidden="true" /><div className={styles.drawnHeading}><span><Ticket size={15} />今天先做这一件</span><button aria-label="关闭抽卡" onClick={() => setDrawn(null)}><X size={15} /></button></div><h2>{actionTicketCopy(drawn).title}</h2><p>{actionTicketCopy(drawn).nextStep}</p><small>{ticketPool(drawn) === "recurring" ? "周期行动" : "单次行动"} · {ticketMeta(drawn.tags).durationMinutes} 分钟 · {ticketMeta(drawn.tags).resistance === "low" ? "低阻力" : ticketMeta(drawn.tags).resistance === "high" ? "高阻力" : "中等阻力"}</small><div className={styles.drawnActions}>{taskStatus(drawn) === "pending" && <button className="btn btn-primary" disabled={Boolean(drawBusy)} onClick={() => void drawnTransition("start")}>{drawBusy === "start" ? <LoaderCircle className="spin" size={14} /> : <ArrowRight size={14} />}开始这一步</button>}{taskStatus(drawn) === "active" && <button className="btn btn-primary" disabled={Boolean(drawBusy)} onClick={() => void drawnTransition("complete")}>{drawBusy === "complete" ? <LoaderCircle className="spin" size={14} /> : <Check size={14} />}标记完成</button>}<button className="btn btn-secondary" disabled={Boolean(drawBusy)} onClick={() => setDrawn(null)}>跳过</button>{taskStatus(drawn) === "pending" && <button className="btn btn-ghost" disabled={Boolean(drawBusy)} onClick={() => void drawnTransition("dismiss")}>作废</button>}<button className="btn btn-ghost" disabled={Boolean(drawBusy)} onClick={() => { setDrawn(null); window.setTimeout(drawAction, 0); }}>再抽一张</button></div></div>}
     {filterOpen && <div className={styles.filterDrawer} aria-label="更多筛选">
       <div className={styles.drawerHeader}><div><strong>马上找到</strong><span>先看状态；主题需要时再展开。</span></div><button aria-label="关闭筛选" onClick={() => setFilterOpen(false)}><X size={16} /></button></div>
       <div className={styles.drawerSection}><span className={styles.drawerLabel}>补充查看</span><div className={styles.drawerChips} role="group" aria-label="补充状态筛选"><button aria-pressed={filter === "arrival"} onClick={() => onFilter("arrival")}>已完成 <em>{filters[2].count}</em></button></div></div>

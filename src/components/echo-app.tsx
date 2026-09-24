@@ -6,12 +6,12 @@ import { repository, RepositoryError } from "@/lib/repository";
 import { createBackup, inspectBackup, MAX_BACKUP_BYTES, parseBackup, splitBackup, toMarkdown } from "@/lib/backup";
 import { InspirationCollection } from "./inspiration-collection";
 import { createExamples } from "@/lib/examples";
-import { emptyCapture, SOURCE_TYPES, type AiServiceStatus, type Backup, type CaptureInput, type EchoNote } from "@/lib/types";
+import { emptyCapture, SOURCE_TYPES, type AiServiceStatus, type Backup, type CaptureInput, type EchoNote, type TicketAnalysis, type TicketPool, type TicketSuggestion } from "@/lib/types";
 import { NoteDetail } from "./note-detail";
 import { CaptureComposer, CaptureSpace, MobileNav, SpaceHeader } from "./studio-ui";
 import { CheckinPanel } from "./checkin-panel";
 import type { LibraryFilter } from "@/lib/search";
-import { taskStatus, type TaskAction } from "@/lib/task-tickets";
+import { taskStatus, ticketPool, type TaskAction } from "@/lib/task-tickets";
 import { captureContextTags, isCaptureKind, type CaptureKind } from "@/lib/note-context";
 
 type View = "capture" | "library" | "settings" | "note";
@@ -109,6 +109,19 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
     await onUpdated(saved);
     setFilter(action === "complete" ? "arrival" : action === "dismiss" ? "all" : "departure");
     notify(action === "complete" ? "这张行动票已经盖章。" : action === "reopen" ? "已重新放回行动票。" : action === "dismiss" ? "已经改回普通记录，不再作为行动提醒。" : action === "queue" ? "已经收进行动票。" : "已经开始这一步，进度已保存。");
+  }
+  async function queueRecommendation(note: EchoNote, analysis: TicketAnalysis, suggestion: TicketSuggestion, pool: TicketPool) {
+    if (paused) throw new Error("账号当前暂停写入，请稍后再试。");
+    if (pool === "recurring" && ticketPool(note) !== "recurring" && notes.filter(item => ticketPool(item) === "recurring" && ["pending", "active"].includes(taskStatus(item))).length >= 3) {
+      throw new Error("周期行动池每天最多保留 3 张，先完成或移出一张再加入新的。");
+    }
+    const saved = await repository.updateTicket(note, pool === "waiting" ? "hold" : "queue", {
+      pool, durationMinutes: suggestion.durationMinutes, resistance: suggestion.resistance,
+      cadence: analysis.cadence, prerequisite: analysis.prerequisite,
+    });
+    await onUpdated(saved);
+    setFilter(pool === "waiting" ? "all" : "departure");
+    notify(pool === "waiting" ? "已放入等待清单，前置条件满足后再回来。" : pool === "recurring" ? "已加入周期行动池，之后可以重复抽取。" : "已加入单次行动池，准备好时再抽一张。", "success");
   }
   const deleteNotes = useCallback(async (targets: EchoNote[]) => {
     if (paused) throw new Error("账号当前暂停写入，请稍后再试。");
@@ -381,7 +394,7 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
             onDeletePlan={command => repository.planDeletion(command)} onBulkDelete={deleteNotes} deleteDisabled={paused}
           />}
 
-          {view === "note" && (selected ? <>{!cloudSelected && <p className="inline-notice error-notice" role="alert">这条记录已不在最新云端列表中，可能已在另一设备删除。当前输入仍保留，请先复制需要的内容。</p>}<NoteDetail key={selected.id} note={selected} onBack={() => navigate("library")} onUpdated={onUpdated} onOrganize={organize} onNotify={notify} /></> : <div className="panel empty-state"><BookOpen size={30} /><h2>这条记录不在当前回声屿中</h2><p>它可能已被删除，请检查登录账号或刷新资料库。</p><button className="btn btn-secondary" onClick={() => navigate("library")}><ArrowLeft size={15} />返回回声屿</button></div>)}
+          {view === "note" && (selected ? <>{!cloudSelected && <p className="inline-notice error-notice" role="alert">这条记录已不在最新云端列表中，可能已在另一设备删除。当前输入仍保留，请先复制需要的内容。</p>}<NoteDetail key={selected.id} note={selected} onBack={() => navigate("library")} onUpdated={onUpdated} onOrganize={organize} onQueueRecommendation={queueRecommendation} onNotify={notify} /></> : <div className="panel empty-state"><BookOpen size={30} /><h2>这条记录不在当前回声屿中</h2><p>它可能已被删除，请检查登录账号或刷新资料库。</p><button className="btn btn-secondary" onClick={() => navigate("library")}><ArrowLeft size={15} />返回回声屿</button></div>)}
 
           {view === "settings" && <>
             <div className="page-heading"><h1>账号与设置</h1></div>

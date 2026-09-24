@@ -444,6 +444,29 @@ input:focus, textarea:focus, select:focus { border-color: #8a9ed7 !important; bo
   .note-card-icon { display: none; }
 }
 @media (hover: none) { .note-card:hover, .nav-item:hover, .backup-action:hover { transform: none; } }
+
+.ticket-analysis { margin-top: 18px; border: 1px solid #e6bdd83b; border-radius: 18px 8px 18px 8px; padding: 17px; background: linear-gradient(135deg, #e7a7c40d, #a990d00b 55%, #86c7d60b); box-shadow: inset 0 1px 0 #ffffff12; }
+.ticket-analysis-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ticket-analysis-heading h3 { margin: 3px 0 0; color: #fff2f8; font-size: 16px; font-weight: 560; }
+.ticket-confidence { flex: 0 0 auto; border: 1px solid #e8b5d744; border-radius: 999px; padding: 4px 8px; color: #efc6db; font-size: 10px; }
+.ticket-analysis-rationale { margin: 9px 0 11px; color: #d5c4d0; font-size: 12px; line-height: 1.65; }
+.ticket-analysis-facts { display: flex; flex-wrap: wrap; gap: 7px 12px; color: #c6afc1; font-size: 10px; }
+.ticket-analysis-facts span { display: inline-flex; align-items: center; gap: 4px; }
+.ticket-analysis-facts svg { color: #eab2cd; }
+.ticket-analysis-wait, .ticket-analysis-duplicate { display: flex; align-items: flex-start; gap: 6px; margin: 12px 0 0; color: #f0c5d5; font-size: 11px; line-height: 1.55; }
+.ticket-analysis-wait svg { flex: 0 0 auto; margin-top: 2px; }
+.ticket-analysis-duplicate { color: #e9d0a3; }
+.ticket-analysis-suggestions { display: grid; gap: 9px; margin-top: 16px; }
+.ticket-analysis-suggestions > strong { color: #f4e6ef; font-size: 11px; font-weight: 560; }
+.ticket-suggestion { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #ffffff12; border-radius: 13px 6px 13px 6px; padding: 11px 12px; background: #ffffff08; }
+.ticket-suggestion > div { min-width: 0; }
+.ticket-suggestion b { display: block; overflow: hidden; color: #f9edf4; font-size: 12px; font-weight: 560; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-suggestion p { margin: 4px 0 0; color: #cdbbc9; font-size: 11px; line-height: 1.45; }
+.ticket-suggestion small { display: block; margin-top: 5px; color: #9f8d9b; font-size: 9px; }
+.ticket-suggestion .btn { flex: 0 0 auto; min-height: 34px; padding-inline: 10px; font-size: 10px; }
+.ticket-analysis-empty, .ticket-analysis-note { margin: 15px 0 0; color: #b7a5b2; font-size: 11px; line-height: 1.6; }
+.ticket-analysis-note { margin-top: 12px; color: #927e8c; font-size: 10px; }
+@media (max-width: 600px) { .ticket-suggestion { align-items: flex-start; flex-direction: column; } .ticket-suggestion .btn { width: 100%; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .aura-orbit { transform: translate(-50%, -50%); }

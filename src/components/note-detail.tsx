@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowUpRight, Check, ChevronDown, LoaderCircle, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, ChevronDown, Clock3, LoaderCircle, Pencil, Plus, Repeat2, Sparkles, Ticket, Trash2, X } from "lucide-react";
 import { repository, RepositoryError } from "@/lib/repository";
 import { CAPTURE_LIMITS, isSafeSourceUrl } from "@/lib/schema";
-import { DEFAULT_QUESTION, SOURCE_TYPES, type AiResult, type CaptureInput, type EchoNote } from "@/lib/types";
+import { DEFAULT_QUESTION, SOURCE_TYPES, type AiResult, type CaptureInput, type EchoNote, type TicketAnalysis, type TicketPool, type TicketSuggestion } from "@/lib/types";
 import reflectionStyles from "./reflection-panel.module.css";
 import { ArtFlashcard } from "./art-flashcard";
 import { FLASHCARD_TAG, withFlashcardFavorite } from "@/lib/art-flashcards";
@@ -21,6 +21,7 @@ export interface NoteDetailProps {
   onBack: () => void;
   onUpdated: (note?: EchoNote, deletedId?: string) => Promise<void>;
   onOrganize: (note: EchoNote) => Promise<void>;
+  onQueueRecommendation?: (note: EchoNote, analysis: TicketAnalysis, suggestion: TicketSuggestion, pool: TicketPool) => Promise<void>;
   onNotify: (message: string, tone?: "success" | "error" | "info") => void;
 }
 
@@ -36,7 +37,7 @@ function SectionTitle({ number, title, hint, action }: { number: string; title: 
   return <div className="section-heading"><div className="section-title"><span className="section-number" aria-hidden="true">{number}</span><div><h2>{title}</h2>{hint && <p className="muted">{hint}</p>}</div></div>{action}</div>;
 }
 
-export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: NoteDetailProps) {
+export function NoteDetail({ note, onBack, onUpdated, onOrganize, onQueueRecommendation, onNotify }: NoteDetailProps) {
   const [editingContent, setEditingContent] = useState(false);
   const [content, setContent] = useState<CaptureInput>(() => captureOf(note));
   const [editingMeta, setEditingMeta] = useState(false);
@@ -309,7 +310,7 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
         {processing && <div className="ai-thinking-state"><LatticeLoader label="正在理清线索" pattern="orbit" grid={3} shape="round" color="#efc4df" cellSize={7} gap={3} fontSize={14} step={105} idleOpacity={0.16} glow glowColor="#e5a9d3" /></div>}
         {note.aiResult || aiBaseline ? <>
           <p className="ai-basis muted">{stale ? "以下结果基于修改前提供的记录与材料。" : note.sourceExcerpt.trim() ? note.userText.trim() ? "本次整理依据：你的记录和你提供的来源片段" : "本次整理依据：你提供的来源片段；未提供个人想法" : "本次整理依据：你的记录；未读取来源正文"}</p>
-          {aiBaseline ? <AiEditor key={note.id} result={aiBaseline.result} hasThought={aiBaseline.hasThought} hasSource={aiBaseline.hasSource} blocked={Boolean(busy)} onCancel={() => { setAiBaseline(null); setAiDirty(false); setSyncError(""); }} onSave={saveAi} onDirtyChange={setAiDirty} onError={error => { reportError(error); }} /> : note.aiResult && <AiResultView result={note.aiResult} />}
+          {aiBaseline ? <AiEditor key={note.id} result={aiBaseline.result} hasThought={aiBaseline.hasThought} hasSource={aiBaseline.hasSource} blocked={Boolean(busy)} onCancel={() => { setAiBaseline(null); setAiDirty(false); setSyncError(""); }} onSave={saveAi} onDirtyChange={setAiDirty} onError={error => { reportError(error); }} /> : note.aiResult && <><AiResultView result={note.aiResult} /><TicketAnalysisPanel note={note} analysis={note.aiResult.analysis} onQueue={onQueueRecommendation} onNotify={onNotify} /></>}
           {!editingAi && <button className="btn btn-ghost" disabled={processing || Boolean(busy)} onClick={() => {
             if (!note.aiResult) return;
             setAiBaseline({ result: structuredClone(note.aiResult), hasThought: Boolean(note.userText.trim()), hasSource: Boolean(note.sourceExcerpt.trim()), version: note.storageVersion }); setAiDirty(false); setSyncError("");
@@ -362,6 +363,36 @@ export function NoteDetail({ note, onBack, onUpdated, onOrganize, onNotify }: No
         <div className="actions"><button className="btn btn-primary" onClick={() => setPendingNavigation(null)}>继续编辑</button><button className="btn btn-ghost" onClick={discardAndLeave}>放弃修改并离开</button></div>
       </div>
     </div>}
+  </div>;
+}
+
+const categoryLabels: Record<TicketAnalysis["category"], string> = { idea: "灵感 / 备忘", task: "可执行事项", goal: "宏大目标", reference: "参考资料", question: "待调研问题" };
+const poolLabels: Record<TicketPool, string> = { inbox: "票根收集箱", one_time: "单次行动卡池", recurring: "周期行动卡池", waiting: "等待清单", archive: "归档区" };
+const resistanceLabels = { low: "低阻力", medium: "中等阻力", high: "高阻力" } as const;
+const cadenceLabels = { none: "不建议周期化", daily: "每日", weekly: "每周", monthly: "每月" } as const;
+
+function TicketAnalysisPanel({ note, analysis, onQueue, onNotify }: { note: EchoNote; analysis?: TicketAnalysis | null; onQueue?: NoteDetailProps["onQueueRecommendation"]; onNotify: NoteDetailProps["onNotify"] }) {
+  const [busyIndex, setBusyIndex] = useState<number | null>(null);
+  if (!analysis) return null;
+  const resolvedAnalysis = analysis;
+  const suggestions = resolvedAnalysis.suggestions.length ? resolvedAnalysis.suggestions : [];
+  async function choose(suggestion: TicketSuggestion, index: number, pool: TicketPool) {
+    const queue = onQueue;
+    if (!queue) { onNotify("行动池确认暂时不可用，请刷新后再试。", "error"); return; }
+    setBusyIndex(index);
+    try { await queue(note, resolvedAnalysis, suggestion, pool); }
+    catch (error) { onNotify(error instanceof Error ? error.message : "这条建议还没有保存成功，请再试一次。", "error"); }
+    finally { setBusyIndex(null); }
+  }
+  const suggestedPool = resolvedAnalysis.pool === "archive" || resolvedAnalysis.pool === "inbox" ? "one_time" : resolvedAnalysis.pool;
+  return <div className="ticket-analysis" aria-label="行动票 AI 分析建议">
+    <div className="ticket-analysis-heading"><div><p className="eyebrow">行动票分析 · 需要你确认</p><h3>{categoryLabels[analysis.category]}</h3></div><span className="ticket-confidence">{Math.round(analysis.confidence * 100)}% 把握</span></div>
+    <p className="ticket-analysis-rationale">{analysis.rationale}</p>
+    <div className="ticket-analysis-facts"><span><Clock3 size={13} />约 {analysis.durationMinutes} 分钟</span><span><Repeat2 size={13} />{cadenceLabels[analysis.cadence]}</span><span>{resistanceLabels[analysis.resistance]}</span></div>
+    {analysis.prerequisite && <p className="ticket-analysis-wait"><Ticket size={14} />需要先等：{analysis.prerequisite}</p>}
+    {analysis.duplicateIds.length > 0 && <p className="ticket-analysis-duplicate">发现 {analysis.duplicateIds.length} 条相似记录，入池前建议先核对。</p>}
+    {suggestions.length > 0 ? <div className="ticket-analysis-suggestions"><strong>可以从哪一步开始</strong>{suggestions.map((suggestion, index) => <div className="ticket-suggestion" key={`${suggestion.title}-${index}`}><div><b>{suggestion.title}</b><p>{suggestion.nextStep}</p><small>{suggestion.durationMinutes} 分钟 · {resistanceLabels[suggestion.resistance]}{suggestion.tags.length ? ` · ${suggestion.tags.join("、")}` : ""}</small></div><button className="btn btn-secondary" disabled={busyIndex !== null} onClick={() => void choose(suggestion, index, suggestedPool)}>{busyIndex === index ? <LoaderCircle className="spin" size={14} /> : <Check size={14} />}{suggestedPool === "recurring" ? "加入周期池" : suggestedPool === "waiting" ? "放入等待清单" : "加入单次池"}</button></div>)}</div> : <p className="ticket-analysis-empty">这条内容先留在票根箱，不会自动变成任务。以后想做时，可以在这里重新整理。</p>}
+    <p className="ticket-analysis-note">AI 只做推荐；未点击确认前，不会改变你的行动池。</p>
   </div>;
 }
 

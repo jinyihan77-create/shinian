@@ -90,7 +90,7 @@ export function ReflectionTriptych({ idPrefix, value, questions, onChange, disab
             event.preventDefault(); focusNext(index);
           }} />
         <button type="button" className={styles.lineVoice} aria-label={listening === index ? `停止第 ${index + 1} 句语音输入` : `用语音回答第 ${index + 1} 个问题`}
-          aria-pressed={listening === index} disabled={disabled || (listening !== null && listening !== index)} onClick={() => toggleVoice(index)}><AudioLines size={16} /></button>
+          aria-pressed={listening === index} disabled={disabled || (listening !== null && listening !== index)} onClick={() => toggleVoice(index)}><AudioLines size={16} /><span className={styles.lineStrands} aria-hidden="true"><i /><i /><i /></span></button>
       </span>
     </div>)}
     <p className={styles.advanceHint}>按回车进入下一句，Shift + 回车可在当前栏换行。</p>

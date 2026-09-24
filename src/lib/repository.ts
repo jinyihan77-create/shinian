@@ -1,7 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import { aiResultSchema, backupSchema, CAPTURE_LIMITS, captureInputSchema, deletePlanRequestSchema, deletePlanResultSchema, noteSchema, reflectionRefineRequestSchema, reflectionRefineResultSchema, sourceIntakeRequestSchema, sourceIntakeResultSchema } from "./schema";
 import type { AiResult, CaptureInput, DeletePlan, EchoNote, ReflectionRefineResult, SourceIntakeRequest, SourceIntakeResult } from "./types";
-import { taskStatus, taskTags, type TaskAction } from "./task-tickets";
+import { applyTicketMeta, taskStatus, taskTags, type TaskAction, type TicketMeta } from "./task-tickets";
 
 interface Setting { key: string; value: unknown }
 interface Submission { id: string; input: CaptureInput; tags?: string[] }
@@ -266,6 +266,14 @@ export const repository = {
     const tags = taskTags(note, action);
     const saved = await patch(note.id, "meta", { title: note.title, tags }, note.storageVersion);
     if (taskStatus(saved) !== taskStatus({ tags })) throw new RepositoryError("服务器还未确认事项状态，请刷新核对后重试。", "INVALID_RESPONSE");
+    return saved;
+  },
+  async updateTicket(note: EchoNote, action: TaskAction, meta: TicketMeta): Promise<EchoNote> {
+    if (!note.storageVersion) throw new RepositoryError("请刷新这条记录后再更新行动建议。", "VERSION_REQUIRED");
+    const task = taskTags(note, action);
+    const tags = applyTicketMeta(task, meta);
+    const saved = await patch(note.id, "meta", { title: note.title, tags }, note.storageVersion);
+    if (action !== "hold" && taskStatus(saved) !== taskStatus({ tags })) throw new RepositoryError("服务器还未确认行动票状态，请刷新核对后重试。", "INVALID_RESPONSE");
     return saved;
   },
   saveReflection(id: string, text: string, prompt?: string, version?: number): Promise<EchoNote> {

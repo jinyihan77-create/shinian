@@ -340,7 +340,7 @@ function SourceVoiceIntake({ onChange, onOrganize, disabled, preview }: {
     <button type="button" className="source-voice-trigger" onClick={toggle} disabled={disabled || organizing} aria-pressed={recording}>
       <span className="source-voice-orb" aria-hidden="true">{organizing ? <Sparkles size={20} /> : <AudioLines size={20} />}<i /><i /></span>
       <span className="source-voice-copy"><strong>{recording ? "说完了" : organizing ? "AI 正在整理" : "告诉 AI 来源"}</strong><small>{recording ? "说完轻触这里" : "这是什么？你听到了哪一句？"}</small></span>
-      <span className="source-voice-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+      <span className="voice-strands source-voice-wave" aria-hidden="true"><i /><i /><i /><i /><i /><i /></span>
     </button>
     {transcript && <p className="source-voice-transcript">“{transcript}”</p>}
     {message && <p className={`source-voice-message is-${tone}`} role={tone === "error" ? "alert" : "status"}>{message}</p>}

@@ -30,104 +30,163 @@ const LANDMARKS = [
   { latitude: .02, longitude: 1.02 },
 ] as const;
 
+const PLANET_VERTEX_SHADER = `
+  varying vec3 vNormal;
+  varying vec3 vPosition;
+  void main() {
+    vNormal = normalize(normalMatrix * normal);
+    vPosition = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+// The surface is procedural so rotation never exposes a texture seam. The same
+// noise vocabulary is reused by the cloud shell and the thought particles.
+const PLANET_FRAGMENT_SHADER = `
+  varying vec3 vNormal;
+  varying vec3 vPosition;
+  uniform float time;
+  uniform vec3 baseColor;
+  uniform vec3 accentColor;
+  uniform vec3 secondaryColor;
+  uniform vec3 glowColor;
+
+  float hash31(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.yzx + 33.33);
+    return fract((p.x + p.y) * p.z);
+  }
+
+  float noise3(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float n000 = hash31(i + vec3(0.0, 0.0, 0.0));
+    float n100 = hash31(i + vec3(1.0, 0.0, 0.0));
+    float n010 = hash31(i + vec3(0.0, 1.0, 0.0));
+    float n110 = hash31(i + vec3(1.0, 1.0, 0.0));
+    float n001 = hash31(i + vec3(0.0, 0.0, 1.0));
+    float n101 = hash31(i + vec3(1.0, 0.0, 1.0));
+    float n011 = hash31(i + vec3(0.0, 1.0, 1.0));
+    float n111 = hash31(i + vec3(1.0, 1.0, 1.0));
+    float x00 = mix(n000, n100, f.x);
+    float x10 = mix(n010, n110, f.x);
+    float x01 = mix(n001, n101, f.x);
+    float x11 = mix(n011, n111, f.x);
+    return mix(mix(x00, x10, f.y), mix(x01, x11, f.y), f.z);
+  }
+
+  float fbm(vec3 p) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    for (int i = 0; i < 4; i++) {
+      value += noise3(p) * amplitude;
+      p = p * 2.03 + vec3(7.2, 3.1, 5.4);
+      amplitude *= 0.5;
+    }
+    return value;
+  }
+
+  void main() {
+    vec3 normal = normalize(vNormal);
+    vec3 flowPosition = vPosition * 1.48 + vec3(time * 0.035, -time * 0.018, time * 0.022);
+    float flow = fbm(flowPosition);
+    float detail = fbm(vPosition * 3.4 - vec3(time * 0.045, time * 0.032, 0.0));
+    float cloud = smoothstep(0.34, 0.78, flow + detail * 0.22);
+    float band = sin((vPosition.y + flow * 0.18 + time * 0.012) * 8.5) * 0.5 + 0.5;
+    float light = max(dot(normal, normalize(vec3(-0.28, 0.5, 1.0))), 0.0);
+    float rim = pow(1.0 - max(dot(normal, vec3(0.0, 0.0, 1.0)), 0.0), 2.35);
+    vec3 body = mix(baseColor * 0.33, secondaryColor * 0.76, smoothstep(0.18, 0.72, flow));
+    body = mix(body, accentColor, cloud * 0.42);
+    body += secondaryColor * band * 0.075;
+    vec3 color = body * (0.48 + light * 0.72) + glowColor * rim * 0.52;
+    gl_FragColor = vec4(color, 0.94 + rim * 0.05);
+  }
+`;
+
+const CLOUD_VERTEX_SHADER = PLANET_VERTEX_SHADER;
+const CLOUD_FRAGMENT_SHADER = `
+  varying vec3 vNormal;
+  varying vec3 vPosition;
+  uniform float time;
+  uniform vec3 accentColor;
+  uniform vec3 secondaryColor;
+
+  float hash31(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.yzx + 33.33);
+    return fract((p.x + p.y) * p.z);
+  }
+
+  float noise3(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = mix(hash31(i), hash31(i + vec3(1.0, 0.0, 0.0)), f.x);
+    float b = mix(hash31(i + vec3(0.0, 1.0, 0.0)), hash31(i + vec3(1.0, 1.0, 0.0)), f.x);
+    float c = mix(hash31(i + vec3(0.0, 0.0, 1.0)), hash31(i + vec3(1.0, 0.0, 1.0)), f.x);
+    float d = mix(hash31(i + vec3(0.0, 1.0, 1.0)), hash31(i + vec3(1.0, 1.0, 1.0)), f.x);
+    return mix(mix(a, b, f.y), mix(c, d, f.y), f.z);
+  }
+
+  void main() {
+    float cloud = smoothstep(0.55, 0.84, noise3(vPosition * 2.8 + vec3(time * 0.02, -time * 0.015, 0.0)));
+    float rim = pow(1.0 - max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 1.8);
+    vec3 color = mix(secondaryColor, accentColor, cloud);
+    gl_FragColor = vec4(color, cloud * 0.13 + rim * 0.055);
+  }
+`;
+
+const ATMOSPHERE_FRAGMENT_SHADER = `
+  varying vec3 vNormal;
+  uniform vec3 glowColor;
+  void main() {
+    float rim = pow(1.0 - max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 2.45);
+    gl_FragColor = vec4(glowColor, rim * 0.34);
+  }
+`;
+
+const PARTICLE_VERTEX_SHADER = `
+  attribute float aSize;
+  attribute float aPhase;
+  attribute float aTone;
+  uniform float time;
+  uniform vec3 pointer;
+  uniform float pointerStrength;
+  varying vec3 vColor;
+  void main() {
+    vec3 positionOffset = normalize(position) * sin(time * 0.42 + aPhase) * 0.055;
+    vec3 nextPosition = position + positionOffset;
+    vec3 towardPointer = pointer - nextPosition;
+    float distanceToPointer = length(towardPointer);
+    float pull = smoothstep(2.35, 0.12, distanceToPointer) * pointerStrength;
+    nextPosition += normalize(towardPointer + vec3(0.0001)) * pull * 0.22;
+    vec4 mvPosition = modelViewMatrix * vec4(nextPosition, 1.0);
+    gl_PointSize = aSize * (310.0 / max(1.0, -mvPosition.z));
+    gl_Position = projectionMatrix * mvPosition;
+    vec3 rose = vec3(0.91, 0.59, 0.78);
+    vec3 lilac = vec3(0.66, 0.62, 0.98);
+    vec3 pearl = vec3(0.91, 0.88, 1.0);
+    vColor = aTone < 0.5 ? rose : (aTone < 1.5 ? lilac : pearl);
+  }
+`;
+
+const PARTICLE_FRAGMENT_SHADER = `
+  varying vec3 vColor;
+  void main() {
+    float distanceToCenter = length(gl_PointCoord - vec2(0.5));
+    float alpha = smoothstep(0.5, 0.04, distanceToCenter);
+    float core = smoothstep(0.18, 0.0, distanceToCenter);
+    gl_FragColor = vec4(vColor * (0.72 + core * 0.85), alpha * 0.7);
+  }
+`;
+
 function seededRandom(seed: number) {
   let value = seed || 1;
   return () => {
     value = (value * 1664525 + 1013904223) >>> 0;
     return value / 4294967296;
   };
-}
-
-function rgba(color: string, alpha: number) {
-  const parsed = new THREE.Color().setStyle(color);
-  return `rgba(${Math.round(parsed.r * 255)},${Math.round(parsed.g * 255)},${Math.round(parsed.b * 255)},${alpha})`;
-}
-
-function textureCanvas(theme: number, base: string, accent: string, secondary: string) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 512;
-  const context = canvas.getContext("2d");
-  if (!context) return null;
-  const random = seededRandom(theme * 7919 + 73);
-  const baseColor = new THREE.Color(base);
-  const deepColor = baseColor.clone().multiplyScalar(.18);
-  const middleColor = baseColor.clone().lerp(new THREE.Color(secondary), .34);
-  const wash = context.createLinearGradient(0, 0, 0, canvas.height);
-  wash.addColorStop(0, `#${new THREE.Color(accent).lerp(new THREE.Color("#ffffff"), .28).getHexString()}`);
-  wash.addColorStop(.26, `#${middleColor.getHexString()}`);
-  wash.addColorStop(.68, `#${baseColor.clone().multiplyScalar(.56).getHexString()}`);
-  wash.addColorStop(1, `#${deepColor.getHexString()}`);
-  context.fillStyle = wash;
-  context.fillRect(0, 0, canvas.width, canvas.height);
-
-  context.globalCompositeOperation = "screen";
-  for (let band = 0; band < 22; band += 1) {
-    const y = (band / 22) * canvas.height + (random() - .5) * 26;
-    const cycles = 1 + Math.floor(random() * 4);
-    const amplitude = 12 + random() * 22;
-    const phase = random() * Math.PI * 2;
-    const detailPhase = random() * Math.PI * 2;
-    context.beginPath();
-    for (let x = -canvas.width; x <= canvas.width * 2; x += 16) {
-      const turn = x / canvas.width;
-      const wave = Math.sin(turn * Math.PI * 2 * cycles + phase) * amplitude
-        + Math.sin(turn * Math.PI * 2 * (cycles + 1) + detailPhase) * amplitude * .24;
-      if (x === -canvas.width) context.moveTo(x, y + wave);
-      else context.lineTo(x, y + wave);
-    }
-    context.strokeStyle = band % 3 === 0 ? rgba(accent, .13) : rgba(secondary, .09);
-    context.lineWidth = 8 + random() * 28;
-    context.lineCap = "round";
-    context.stroke();
-  }
-
-  context.globalCompositeOperation = "soft-light";
-  for (let spot = 0; spot < 48; spot += 1) {
-    const x = random() * canvas.width;
-    const y = random() * canvas.height;
-    const radius = 18 + random() * 90;
-    const color = random() > .45 ? "rgba(255,247,251,.22)" : rgba(secondary, .16);
-    for (const offset of [-canvas.width, 0, canvas.width]) {
-      const wrappedX = x + offset;
-      const glow = context.createRadialGradient(wrappedX, y, 0, wrappedX, y, radius);
-      glow.addColorStop(0, color);
-      glow.addColorStop(1, "#00000000");
-      context.fillStyle = glow;
-      context.fillRect(wrappedX - radius, y - radius, radius * 2, radius * 2);
-    }
-  }
-  return canvas;
-}
-
-function cloudCanvas(theme: number, accent: string, secondary: string) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 512;
-  const context = canvas.getContext("2d");
-  if (!context) return null;
-  const random = seededRandom(theme * 3571 + 191);
-  context.globalCompositeOperation = "screen";
-  for (let index = 0; index < 64; index += 1) {
-    const x = random() * canvas.width;
-    const y = random() * canvas.height;
-    const width = 45 + random() * 170;
-    const height = 4 + random() * 16;
-    const color = index % 3 ? rgba(accent, .14) : rgba(secondary, .12);
-    for (const offset of [-canvas.width, 0, canvas.width]) {
-      const wrappedX = x + offset;
-      const haze = context.createRadialGradient(wrappedX, y, 0, wrappedX, y, width);
-      haze.addColorStop(0, color);
-      haze.addColorStop(1, "#00000000");
-      context.save();
-      context.translate(wrappedX, y);
-      context.scale(1, height / width);
-      context.fillStyle = haze;
-      context.fillRect(-width, -width, width * 2, width * 2);
-      context.restore();
-    }
-  }
-  return canvas;
 }
 
 function landmarkPosition(index: number) {
@@ -139,6 +198,64 @@ function landmarkPosition(index: number) {
     radius * Math.sin(point.latitude),
     radius * horizontal * Math.cos(point.longitude),
   );
+}
+
+function createGlowTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(.14, "rgba(255,221,247,.94)");
+  gradient.addColorStop(.42, "rgba(220,176,255,.26)");
+  gradient.addColorStop(1, "rgba(220,176,255,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 64, 64);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function createThoughtParticles(theme: number) {
+  const count = 980;
+  const random = seededRandom(theme * 7919 + 411);
+  const positions = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  const phases = new Float32Array(count);
+  const tones = new Float32Array(count);
+  for (let index = 0; index < count; index += 1) {
+    const theta = random() * Math.PI * 2;
+    const phi = Math.acos(2 * random() - 1);
+    const radius = 2.45 + random() * 0.88;
+    const sinPhi = Math.sin(phi);
+    positions[index * 3] = radius * sinPhi * Math.cos(theta);
+    positions[index * 3 + 1] = radius * Math.cos(phi) * 0.86;
+    positions[index * 3 + 2] = radius * sinPhi * Math.sin(theta);
+    sizes[index] = 1.2 + random() * 2.45;
+    phases[index] = random() * Math.PI * 2;
+    tones[index] = random() > .78 ? 2 : random() > .45 ? 1 : 0;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("aSize", new THREE.BufferAttribute(sizes, 1));
+  geometry.setAttribute("aPhase", new THREE.BufferAttribute(phases, 1));
+  geometry.setAttribute("aTone", new THREE.BufferAttribute(tones, 1));
+  const uniforms = {
+    time: { value: 0 },
+    pointer: { value: new THREE.Vector3(0, 0, 9) },
+    pointerStrength: { value: 0 },
+  };
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: PARTICLE_VERTEX_SHADER,
+    fragmentShader: PARTICLE_FRAGMENT_SHADER,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  return { points: new THREE.Points(geometry, material), uniforms };
 }
 
 export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThought, paused = false, reduceMotion = false }: OrbitPlanet3DProps) {
@@ -154,8 +271,11 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || navigator.userAgent.toLowerCase().includes("jsdom")) return;
-    const material = starMaterial(theme);
-    const roseGlow = new THREE.Color().setStyle(`rgb(${material.glow})`).lerp(new THREE.Color("#f1c5df"), .38);
+    const palette = starMaterial(theme);
+    const baseColor = new THREE.Color(palette.base);
+    const accentColor = new THREE.Color(palette.accent);
+    const secondaryColor = new THREE.Color(`rgb(${palette.secondary})`);
+    const glowColor = new THREE.Color(`rgb(${palette.glow})`).lerp(new THREE.Color("#f1c5df"), .32);
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
@@ -166,7 +286,7 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.04;
+    renderer.toneMappingExposure = .94;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, .1, 100);
     camera.position.set(0, .08, 8.15);
@@ -176,104 +296,91 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     planetGroup.rotation.set(-.08, 0, -.08);
     scene.add(planetGroup);
 
-    const colorCanvas = textureCanvas(theme, material.base, material.accent, `rgb(${material.secondary})`);
-    const cloudLayer = cloudCanvas(theme, material.accent, `rgb(${material.secondary})`);
-    const surfaceTexture = colorCanvas ? new THREE.CanvasTexture(colorCanvas) : null;
-    const cloudsTexture = cloudLayer ? new THREE.CanvasTexture(cloudLayer) : null;
-    for (const texture of [surfaceTexture, cloudsTexture]) {
-      if (!texture) continue;
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-    }
-
+    const surfaceUniforms = {
+      time: { value: 0 },
+      baseColor: { value: baseColor },
+      accentColor: { value: accentColor },
+      secondaryColor: { value: secondaryColor },
+      glowColor: { value: glowColor },
+    };
     const sphere = new THREE.Mesh(
       new THREE.SphereGeometry(2.18, 128, 96),
-      new THREE.MeshPhysicalMaterial({ color: material.base, map: surfaceTexture,
-        roughness: Math.max(.42, material.roughness), metalness: material.metalness * .22, clearcoat: .16, clearcoatRoughness: .72 }),
+      new THREE.ShaderMaterial({ uniforms: surfaceUniforms, vertexShader: PLANET_VERTEX_SHADER, fragmentShader: PLANET_FRAGMENT_SHADER }),
     );
     sphere.renderOrder = 1;
     planetGroup.add(sphere);
 
+    const cloudUniforms = { time: { value: 0 }, accentColor: { value: accentColor }, secondaryColor: { value: secondaryColor } };
     const clouds = new THREE.Mesh(
-      new THREE.SphereGeometry(2.205, 80, 52),
-      new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: cloudsTexture, alphaMap: cloudsTexture, transparent: true,
-        opacity: .31, depthWrite: false, roughness: .82, blending: THREE.AdditiveBlending }),
+      new THREE.SphereGeometry(2.205, 96, 64),
+      new THREE.ShaderMaterial({ uniforms: cloudUniforms, vertexShader: CLOUD_VERTEX_SHADER, fragmentShader: CLOUD_FRAGMENT_SHADER, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
     );
     clouds.renderOrder = 2;
     planetGroup.add(clouds);
 
     const atmosphere = new THREE.Mesh(
-      new THREE.SphereGeometry(2.28, 64, 48),
-      new THREE.ShaderMaterial({ side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-        uniforms: { glowColor: { value: roseGlow } },
-        vertexShader: "varying vec3 vNormal; void main(){ vNormal=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
-        fragmentShader: "varying vec3 vNormal; uniform vec3 glowColor; void main(){ float rim=pow(0.72-max(0.0,dot(vNormal,vec3(0.0,0.0,1.0))),2.2); gl_FragColor=vec4(glowColor,rim*0.38); }" }),
+      new THREE.SphereGeometry(2.3, 80, 60),
+      new THREE.ShaderMaterial({ side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { glowColor: { value: glowColor } }, vertexShader: PLANET_VERTEX_SHADER, fragmentShader: ATMOSPHERE_FRAGMENT_SHADER }),
     );
     atmosphere.renderOrder = 3;
     planetGroup.add(atmosphere);
 
+    const glowTexture = createGlowTexture();
+    const thoughtParticles = createThoughtParticles(theme);
+    thoughtParticles.points.renderOrder = 5;
+    planetGroup.add(thoughtParticles.points);
+
     const rings = new THREE.Group();
     rings.rotation.set(1.15, .02, -.2);
-    const dustMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color().setStyle(`rgb(${material.secondary})`).lerp(new THREE.Color(material.accent), .36),
-      emissive: roseGlow, emissiveIntensity: .04, roughness: .58, metalness: .08, transparent: true, opacity: .13,
-      depthWrite: false, side: THREE.DoubleSide,
-    });
-    const dustRing = new THREE.Mesh(new THREE.RingGeometry(2.58, 3.34, 256, 8), dustMaterial);
-    dustRing.renderOrder = 3;
-    rings.add(dustRing);
     [
-      { radius: 2.63, tube: .018, opacity: .3 }, { radius: 2.76, tube: .012, opacity: .2 },
-      { radius: 2.94, tube: .03, opacity: .52 }, { radius: 3.12, tube: .014, opacity: .26 },
-      { radius: 3.3, tube: .01, opacity: .18 },
-    ].forEach((lane, index) => {
-      const laneMaterial = new THREE.MeshPhysicalMaterial({ color: index === 2 ? material.accent : `rgb(${material.secondary})`,
-        emissive: roseGlow, emissiveIntensity: index === 2 ? .08 : .03, roughness: .46, metalness: .1,
-        transparent: true, opacity: lane.opacity, depthWrite: false });
-      const ringLane = new THREE.Mesh(new THREE.TorusGeometry(lane.radius, lane.tube, 12, 256), laneMaterial);
+      { radius: 2.63, tube: .014, opacity: .26, color: secondaryColor },
+      { radius: 2.8, tube: .008, opacity: .18, color: glowColor },
+      { radius: 2.98, tube: .022, opacity: .42, color: accentColor },
+      { radius: 3.17, tube: .009, opacity: .22, color: secondaryColor },
+      { radius: 3.32, tube: .006, opacity: .13, color: glowColor },
+    ].forEach(lane => {
+      const ringLane = new THREE.Mesh(new THREE.TorusGeometry(lane.radius, lane.tube, 10, 256), new THREE.MeshBasicMaterial({ color: lane.color, transparent: true, opacity: lane.opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
       ringLane.renderOrder = 4;
       rings.add(ringLane);
     });
+    if (glowTexture) {
+      const random = seededRandom(theme * 3571 + 19);
+      const dustPositions = new Float32Array(190 * 3);
+      for (let index = 0; index < 190; index += 1) {
+        const angle = random() * Math.PI * 2;
+        const radius = 2.6 + random() * .72;
+        dustPositions[index * 3] = Math.cos(angle) * radius;
+        dustPositions[index * 3 + 1] = (random() - .5) * .055;
+        dustPositions[index * 3 + 2] = Math.sin(angle) * radius;
+      }
+      const dustGeometry = new THREE.BufferGeometry();
+      dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
+      rings.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({ map: glowTexture, color: accentColor, size: .075, transparent: true, opacity: .34, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true })));
+    }
     planetGroup.add(rings);
 
     const markerGroups: THREE.Group[] = [];
     visibleThoughts.forEach((_, index) => {
       const normal = landmarkPosition(index).normalize();
       const marker = new THREE.Group();
-      marker.position.copy(normal.clone().multiplyScalar(2.22));
+      marker.position.copy(normal.clone().multiplyScalar(2.225));
       marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(.018, .028, .22, 8),
-        new THREE.MeshPhysicalMaterial({ color: 0xf0d9e7, roughness: .56, metalness: .08 }));
-      stem.position.y = .09;
-      marker.add(stem);
-      const crownGeometry = index % 3 === 0 ? new THREE.IcosahedronGeometry(.12, 1)
-        : index % 3 === 1 ? new THREE.OctahedronGeometry(.13, 1) : new THREE.SphereGeometry(.105, 18, 12);
-      const crown = new THREE.Mesh(crownGeometry, new THREE.MeshPhysicalMaterial({
-        color: index % 2 ? material.accent : `rgb(${material.secondary})`, emissive: roseGlow, emissiveIntensity: .42,
-        roughness: .28, metalness: .12, transparent: true, opacity: .94,
-      }));
-      crown.position.y = .24;
-      marker.add(crown);
-      const aura = new THREE.Mesh(new THREE.TorusGeometry(.17, .008, 8, 48),
-        new THREE.MeshBasicMaterial({ color: roseGlow, transparent: true, opacity: .48, depthWrite: false }));
-      aura.position.y = .235;
-      aura.rotation.x = Math.PI / 2;
-      marker.add(aura);
+      if (glowTexture) {
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: index % 2 ? accentColor : secondaryColor, transparent: true, opacity: .62, depthWrite: false, blending: THREE.AdditiveBlending }));
+        halo.scale.setScalar(.46);
+        halo.position.y = .02;
+        marker.add(halo);
+        const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: 0xffffff, transparent: true, opacity: .92, depthWrite: false, blending: THREE.AdditiveBlending }));
+        core.scale.setScalar(.14);
+        core.position.y = .02;
+        marker.add(core);
+      }
+      const orbitRing = new THREE.Mesh(new THREE.TorusGeometry(.2, .006, 6, 48), new THREE.MeshBasicMaterial({ color: index % 2 ? accentColor : secondaryColor, transparent: true, opacity: .34, depthWrite: false, blending: THREE.AdditiveBlending }));
+      orbitRing.rotation.x = Math.PI / 2;
+      marker.add(orbitRing);
       markerGroups.push(marker);
       planetGroup.add(marker);
     });
-
-    scene.add(new THREE.HemisphereLight(0xffe8f4, 0x11182a, 1));
-    const key = new THREE.DirectionalLight(0xfff2fa, 2.15);
-    key.position.set(-4.2, 4.8, 5.5);
-    scene.add(key);
-    const fill = new THREE.PointLight(new THREE.Color().setStyle(`rgb(${material.secondary})`), 5.8, 15, 2);
-    fill.position.set(4.5, -.2, 3.8);
-    scene.add(fill);
-    const rose = new THREE.PointLight(new THREE.Color(material.accent), 4.1, 12, 2);
-    rose.position.set(-4.2, -2.5, 3);
-    scene.add(rose);
 
     let frame = 0;
     let disposed = false;
@@ -287,6 +394,8 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     let targetPitch = -.08;
     let currentYaw = 0;
     let currentPitch = -.08;
+    let pointerStrengthTarget = 0;
+    const pointerTarget = new THREE.Vector3(0, 0, 9);
     const world = new THREE.Vector3();
     const center = new THREE.Vector3();
     const projected = new THREE.Vector3();
@@ -296,12 +405,13 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     const resize = () => {
       const width = Math.max(1, canvas.clientWidth);
       const height = Math.max(1, canvas.clientHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, width < 620 ? 1.25 : 1.75));
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.fov = width < 620 ? 46 : 38;
       planetGroup.scale.setScalar(width < 620 ? .86 : 1);
       planetGroup.position.y = width < 620 ? -.67 : -.78;
+      thoughtParticles.points.geometry.setDrawRange(0, width < 620 ? 560 : 980);
       camera.updateProjectionMatrix();
     };
     const updateLabels = () => {
@@ -322,18 +432,31 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
         label.style.zIndex = String(Math.max(1, Math.round((1 - projected.z) * 10)));
       });
     };
+    const updatePointer = (event: globalThis.PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1;
+      const y = -(((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 - 1);
+      pointerTarget.set(x * 3.2, y * 2.35, 2.5);
+    };
     const render = (time = 0) => {
       if (disposed) return;
-      if (!paused && !reduceMotion && !dragging && !labelHoldRef.current) { targetYaw += .0007 + velocityY; velocityY *= .94; }
+      if (!paused && !reduceMotion && !dragging && !labelHoldRef.current) { targetYaw += .00062 + velocityY; velocityY *= .94; }
       if (labelHoldRef.current) velocityY *= .72;
       currentYaw += (targetYaw - currentYaw) * .09;
       currentPitch += (targetPitch - currentPitch) * .09;
       planetGroup.rotation.x = currentPitch;
       planetGroup.rotation.y = currentYaw;
-      clouds.rotation.y = time * .000035 + .18;
+      clouds.rotation.y = time * .000022 + .18;
       rings.rotation.z = -.2 + Math.sin(time * .00013) * .018;
+      thoughtParticles.points.rotation.y = time * .000022;
+      thoughtParticles.uniforms.time.value = time * .001;
+      thoughtParticles.uniforms.pointer.value.lerp(pointerTarget, .09);
+      thoughtParticles.uniforms.pointerStrength.value += (pointerStrengthTarget - thoughtParticles.uniforms.pointerStrength.value) * .1;
+      surfaceUniforms.time.value = time * .001;
+      cloudUniforms.time.value = time * .001;
       markerGroups.forEach((marker, index) => {
-        const scale = (selectedRef.current === index ? 1.28 : 1) + Math.sin(time * .003 + index) * .035;
+        const selected = selectedRef.current === index;
+        const scale = (selected ? 1.26 : 1) + Math.sin(time * .0024 + index * 1.4) * .035;
         marker.scale.setScalar(scale);
       });
       renderer.render(scene, camera);
@@ -343,9 +466,12 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     const onPointerDown = (event: globalThis.PointerEvent) => {
       if (event.button !== 0) return;
       dragging = true; pointerId = event.pointerId; lastX = event.clientX; lastY = event.clientY;
-      lastMove = performance.now(); velocityY = 0; canvas.setPointerCapture(event.pointerId); canvas.dataset.dragging = "true";
+      lastMove = performance.now(); velocityY = 0; pointerStrengthTarget = .78;
+      updatePointer(event); canvas.setPointerCapture(event.pointerId); canvas.dataset.dragging = "true";
     };
     const onPointerMove = (event: globalThis.PointerEvent) => {
+      updatePointer(event);
+      pointerStrengthTarget = .52;
       if (!dragging || event.pointerId !== pointerId) return;
       event.preventDefault();
       const dx = event.clientX - lastX;
@@ -358,12 +484,14 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     };
     const onPointerEnd = (event: globalThis.PointerEvent) => {
       if (event.pointerId !== pointerId) return;
-      dragging = false; pointerId = -1;
+      dragging = false; pointerId = -1; pointerStrengthTarget = .24;
       if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
       delete canvas.dataset.dragging;
     };
+    const onPointerLeave = () => { if (!dragging) pointerStrengthTarget = 0; };
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
+      pointerStrengthTarget = .46;
       targetYaw += Math.sign(event.deltaY) * Math.min(.28, Math.abs(event.deltaY) * .0014);
     };
 
@@ -371,6 +499,7 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerEnd);
     canvas.addEventListener("pointercancel", onPointerEnd);
+    canvas.addEventListener("pointerleave", onPointerLeave);
     canvas.addEventListener("wheel", onWheel, { passive: false });
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => { resize(); if (paused || reduceMotion) render(); });
     observer?.observe(canvas);
@@ -386,15 +515,18 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerEnd);
       canvas.removeEventListener("pointercancel", onPointerEnd);
+      canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("wheel", onWheel);
       scene.traverse(object => {
-        if (object instanceof THREE.Mesh) {
-          object.geometry.dispose();
-          const materials = Array.isArray(object.material) ? object.material : [object.material];
-          materials.forEach(item => item.dispose());
+        const drawable = object as unknown as { geometry?: { dispose: () => void }; material?: THREE.Material | THREE.Material[] };
+        drawable.geometry?.dispose();
+        if (drawable.material) {
+          const materials = Array.isArray(drawable.material) ? drawable.material : [drawable.material];
+          materials.forEach(material => material.dispose());
         }
       });
-      surfaceTexture?.dispose(); cloudsTexture?.dispose(); renderer.dispose();
+      glowTexture?.dispose();
+      renderer.dispose();
     };
   }, [theme, paused, reduceMotion, visibleThoughts]);
 

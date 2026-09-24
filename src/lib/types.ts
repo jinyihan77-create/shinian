@@ -1,6 +1,31 @@
 export const SOURCE_TYPES = ["播客", "文章", "书籍", "视频", "生活", "其他"] as const;
 export type SourceType = typeof SOURCE_TYPES[number];
 export type AiStatus = "not_started" | "processing" | "done" | "error" | "outdated";
+export type ThoughtCategory = "idea" | "task" | "goal" | "reference" | "question";
+export type TicketPool = "inbox" | "one_time" | "recurring" | "waiting" | "archive";
+export type TicketResistance = "low" | "medium" | "high";
+export type TicketCadence = "none" | "daily" | "weekly" | "monthly";
+export interface TicketSuggestion {
+  title: string;
+  nextStep: string;
+  durationMinutes: 5 | 10 | 20 | 30 | 45 | 60;
+  tags: string[];
+  resistance: TicketResistance;
+}
+export interface TicketAnalysis {
+  category: ThoughtCategory;
+  pool: TicketPool;
+  confidence: number;
+  rationale: string;
+  durationMinutes: 5 | 10 | 20 | 30 | 45 | 60;
+  cadence: TicketCadence;
+  cadenceReason: string;
+  tags: string[];
+  prerequisite: string | null;
+  resistance: TicketResistance;
+  duplicateIds: string[];
+  suggestions: TicketSuggestion[];
+}
 export interface AiResult {
   title: string;
   thoughtSummary: string;
@@ -9,6 +34,8 @@ export interface AiResult {
   tags: string[];
   reflectionQuestions: string[];
   possibleApplication: string | null;
+  /** Analysis is a recommendation only. It never changes task state by itself. */
+  analysis?: TicketAnalysis | null;
   actionItem?: {
     title: string;
     nextStep: string;
