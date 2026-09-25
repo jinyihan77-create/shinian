@@ -110,27 +110,46 @@ const tunnel = spawn(cloudflared, ["tunnel", "--url", localUrl, "--no-autoupdate
 children.push(tunnel);
 
 let announced = false;
-const pattern = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/;
+// 只认真正的隧道地址。cloudflared 的输出里还会出现 api.trycloudflare.com
+// 之类的固定域名，那些不是你的网站地址，不能拿去生成二维码。
+// 真实隧道地址形如 https://rain-delivery-montreal.trycloudflare.com，
+// 主机名里必定带连字符，且不以 api./www. 开头。
+const pattern = /https:\/\/(?!api\.|www\.)[a-z0-9]+(?:-[a-z0-9]+)+\.trycloudflare\.com/;
 
-function scan(chunk) {
+async function scan(chunk) {
   if (announced) return;
   const match = pattern.exec(String(chunk));
   if (!match) return;
   announced = true;
+
   console.log(`
 ──────────────────────────────────────────────────────────
-  好了！手机现在打开这个网址
+  好了！用手机扫下面这个二维码
 ──────────────────────────────────────────────────────────
+`);
+
+  try {
+    const qrcode = (await import("qrcode-terminal")).default;
+    await new Promise(resolve => {
+      qrcode.generate(match[0], { small: true }, code => { console.log(code); resolve(); });
+    });
+  } catch {
+    console.log("  （二维码没画出来，用下面的网址也一样）\n");
+  }
+
+  console.log(`
+  手机相机对着二维码照一下 → 点弹出的链接 → 就打开了。
+
+  如果扫码不方便，也可以手动输入这个网址：
 
       ${match[0]}
 
-  手机用流量（4G/5G）或任何 WiFi 都能打开，
-  不用连学校 WiFi，也不受校园网限制。
+  用流量（4G/5G）或任何 WiFi 都行，不用连学校 WiFi。
 
   ⚠️ 两点要知道：
      · 这个网址是公网可达的，谁拿到都能打开你的网站。
        不用的时候，关掉这个窗口就断开了。
-     · 每次启动网址都不一样，手机书签会失效，
+     · 每次启动网址都不一样，二维码也会变，
        以这个窗口里显示的为准。
 
   想停止：关掉这个窗口即可。
@@ -138,8 +157,8 @@ function scan(chunk) {
 `);
 }
 
-tunnel.stdout.on("data", scan);
-tunnel.stderr.on("data", scan);
+tunnel.stdout.on("data", chunk => { void scan(chunk); });
+tunnel.stderr.on("data", chunk => { void scan(chunk); });
 
 tunnel.once("close", code => {
   if (!announced) {
