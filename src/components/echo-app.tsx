@@ -112,6 +112,9 @@ export function EchoApp({ user, paused, onLogout }: { user: { id: string; email:
   }
   async function queueRecommendation(note: EchoNote, analysis: TicketAnalysis, suggestion: TicketSuggestion, pool: TicketPool) {
     if (paused) throw new Error("账号当前暂停写入，请稍后再试。");
+    if (pool === "one_time" && ticketPool(note) !== "one_time" && notes.filter(item => ticketPool(item) === "one_time" && ["pending", "active"].includes(taskStatus(item))).length >= 8) {
+      throw new Error("单次行动池最多保留 8 张，先完成、跳过或移出一张再加入新的。");
+    }
     if (pool === "recurring" && ticketPool(note) !== "recurring" && notes.filter(item => ticketPool(item) === "recurring" && ["pending", "active"].includes(taskStatus(item))).length >= 3) {
       throw new Error("周期行动池每天最多保留 3 张，先完成或移出一张再加入新的。");
     }
