@@ -1,8 +1,12 @@
 # 给 GPT 的修复任务：脱离腾讯云、改成纯本地运行
 
-> 写于 2026-09-25。每条都基于对磁盘源码和腾讯云 CLI 的真实核查，不是推测。
+> 写于 2026-09-25，**末尾附有修订记录**（原版有 8 处经核实不准确的地方，已逐条改正）。
 > **按 P0 → P1 → P2 顺序做，每完成一条贴出真实命令输出作为自证。**
 > 不接受"应该可以了"这类描述——此前发生过自报"已改成 86px"而源码仍是 18px 的情况。
+
+> **给 GPT 的两条使用须知**：
+> 1. 文中所有行号**仅供参考**，文件一直在被并行修改。**动手前请自己搜一遍定位**，以搜到的实际内容为准。
+> 2. 文中标注 ✅ 的条目是**已经完成的**，不要重复做。
 
 ---
 
@@ -28,13 +32,34 @@
 
 环境 `echo-77-d3gm5g3t081337d79`（上海体验版）**已被隔离**，实测：
 
-| 检查项 | 实测结果 |
+| 检查项 | 实测结果（2026-09-25 11:52 复现） |
 |---|---|
 | 线上访问 | `HTTP 503` + `SERVICE_FORBIDDEN` / `Your server is isolated` |
-| `tcb db execute` | `instance status must be Running to execute SQL, current: Isolated` |
-| 资源点 | 3000 / 3000 **已超额**（消耗 3298.62 点，云托管 2771 点占 84%） |
+| `tcb db execute --sql "select 1"` | `[ExecutePGSql] instance status must be Running to execute SQL, current: Isolated` |
+| `tcb env list` | 显示 `Status: Normal` ← **会骗人，别信这个字段** |
 
-根因：**我们自己的自动化烧的**——「自动发布」每 5 分钟访问线上站触发容器冷启动，3 天烧光一个月额度。
+### 资源点（`npx tcb env usage` 实测，计费周期 2026-09-22 ~ 2026-10-22）
+
+```
+套餐内资源点：2504.81 已用 / 3000.00 总额
+资源包用量：   0.00 点
+按量计费：     298.63 点
+合计消耗：     2803.44 点
+```
+
+按模块拆（**云托管是绝对主因**）：
+
+| 模块 | 消耗 |
+|---|---|
+| **云托管** | **2771.3 点**（占合计的 98.9%）|
+| API 调用 | 24.71 点 |
+| HTTP 网关 | 7.43 点 |
+| 其他（云函数/存储/AI/静态托管/认证） | 均为 0 |
+
+⚠️ **注意**：先前文档里写的"消耗 3298.62 点"是**算错的**——那是把套餐总额 3000 和按量计费 298.62
+错误相加了（3000 + 298.62 = 3298.62）。正确合计是 **2803.44**。云托管占比也因此是 98.9% 而非 84%。
+
+根因：**我们自己的自动化烧的**——「自动发布」每 5 分钟访问线上站触发容器冷启动，3 天把额度用光。
 
 **不要删除腾讯云环境**，不要执行 `tcb env delete` 等销毁命令。
 
@@ -57,21 +82,42 @@
 脚本已支持该开关（`scripts/auto-publish.mjs:438` 有 `if (!config.enabled)` 分支），
 **改一行即可，不要改脚本逻辑**。
 
-2. **`scripts/ship.mjs:235` 无条件执行腾讯云部署**：
+✅ **2026-09-25 11:40 复查：这一条已经完成**（`auto-publish.config.json` 里 `enabled: false`）。
+不需要重复做，只需要在最终验收时用 `npm run auto:status` 确认仍显示「已关闭」。
 
-```js
-const deploy = await run("发布到云托管", "node", ["scripts/deploy-tencent.mjs", "--yes"], STEP_TIMEOUT.deploy);
-```
+2. **`scripts/ship.mjs` 无条件执行腾讯云部署**：
+
+现在的位置在文件末尾（`const deploy = await run("发布到云托管", ...)`，搜 `发布到云托管` 即可定位）。
+**注意：不要用行号定位**——这份文档写好后文件已被改过，行号会漂移。
 
 改成：部署前先探测云端可用性，不可用时打印「云端不可用，已跳过部署，本地检查全部通过」
 并**正常退出（退出码 0）**。`deploy-tencent.mjs` 保留不删。
 
-3. **硬编码死站地址收口**。受影响位置：
-   `scripts/health-check.mjs:15`、`scripts/night-watch*.mjs`（6 个文件的 `DEFAULT_ORIGIN` / `origin` 默认值）、
-   `scripts/probe-landing-scroll.mjs:7`、`scripts/ship.mjs:248` 和 `:273`、
-   文档 `README.md:7` `:11`、`验收记录.md:5`、`部署配置清单.md:7`、`页面体检-使用说明.md:33`。
+同时把文件里两处提示文案的地址换成从配置读取（搜 `verify:live -- --origin` 可定位）。
 
-   改成从 `.env.local` 的 `APP_ORIGIN` 读取，读不到就明确报错退出。
+3. **硬编码死站地址收口**。**已用脚本逐文件扫描核实（2026-09-25 11:48），只剩 4 个文件**：
+
+| 文件 | 处数 | 定位方式 |
+|---|---|---|
+| `scripts/health-check.mjs` | 1 处 | `const ORIGIN =` 那一行（约第 15 行） |
+| `scripts/probe-landing-scroll.mjs` | 1 处 | `const ORIGIN =` 那一行（约第 7 行） |
+| `scripts/ship.mjs` | 2 处 | 搜 `verify:live -- --origin`（**约 281 / 306 行，但会漂移，请搜索定位**） |
+| `scripts/shoot-video-assets.mjs` | 1 处 | 第 43 行的 `origin:` 默认值 |
+
+✅ **`scripts/night-watch*.mjs` 系列（9 个文件）已经改好了，不要动**——它们已经改成读
+`.env.local` 的 `APP_ORIGIN`，读不到就抛错（见 `night-watch.mjs:46-47`）。
+**本任务书早先版本说要改它们，那条已过时。**
+
+文档里也有死站地址，需要加一行声明（**只是加声明，不需要删地址**）：
+
+| 文件 | 位置 |
+|---|---|
+| `README.md` | 第 7 行、第 11 行 |
+| `验收记录.md` | 第 5 行 |
+| `部署配置清单.md` | 第 7 行所在段落、第 11 行附近 |
+| `页面体检-使用说明.md` | 第 33 行 |
+
+   脚本改成从 `.env.local` 的 `APP_ORIGIN` 读取，读不到就明确报错退出。
    文档在开头加一行：`> 2026-09-25 起腾讯云环境已因额度超额被隔离，本文件记录的地址当前不可访问。`
    **不要改 `s.json`**（腾讯云 CLI 原始返回存档）。
 
@@ -107,8 +153,22 @@ const deploy = await run("发布到云托管", "node", ["scripts/deploy-tencent.
 
 **2. 数据落本地 PostgreSQL（PGlite）——不要手写 IndexedDB 业务逻辑**
 
-项目已有 `@electric-sql/pglite` 依赖（目前在 `devDependencies`，**需要移到 `dependencies`**，
-因为运行时要真的用它）。测试里已有完整可抄的实现，见 `tests/cloud-notes.test.ts:52-61` 的 `beforeAll`：
+**✅ 依赖已就绪**：`@electric-sql/pglite` 已在 `dependencies`（`package.json:49`），
+**不需要从 devDependencies 移动**（本任务书早先版本说需要移动，那条已过时）。
+
+**✅ 持久化已实测可用**（2026-09-25 用真实脚本验证过，不是推测）：
+
+```js
+new PGlite("./private-data/pglite")   // 传入目录路径即落盘
+```
+
+实测结果：写入数据后目录下生成 22 个文件（`base` / `global` / `pg_commit_ts` / `pg_dynshmem` 等）；
+`await db.close()` 之后用同一目录重新 `new PGlite()`，**数据完整读回**。
+
+这正是"永久使用"的技术保证：关掉服务、重启电脑数据都在。
+**请务必沿用这个 `dataDir` 方式，不要改成内存模式**（内存模式一关就丢）。
+
+测试里已有完整可抄的实现，见 `tests/cloud-notes.test.ts:52-61` 的 `beforeAll`：
 
 ```
 create role anon; create role authenticated; create role service_role;
@@ -134,8 +194,8 @@ insert into public.echo_private_members(user_id) values($1);
 **3. 写一个 `DataClient` 适配器**
 
 接口定义在 `src/lib/server/data-client.ts`：`{from, rpc}`。
-内部转成 PGlite 的 SQL。**RPC 调用样板见 `tests/cloud-notes.test.ts:41` 的 `call()` 函数**，
-含每个函数需要的类型转换（`casts` 映射表）：
+内部转成 PGlite 的 SQL。**RPC 调用样板见 `tests/cloud-notes.test.ts:39` 的 `call()` 函数**，
+含每个函数需要的类型转换（`casts` 映射表，第 41 行起）：
 
 ```ts
 echo_create_note: ["uuid","jsonb","jsonb"], echo_update_note: ["uuid","bigint","text","jsonb"],
@@ -223,14 +283,18 @@ npm run dev         # 浏览器打开 http://localhost:3000
 ## 不要改（重要）
 
 1. **`supabase/migrations/` 下的 3 个 SQL**——本地模式要跑它们，一字不改。
+   （已核实是 3 个文件：`202609210001_private_library.sql` / `202609210002_daily_checkins.sql` / `202609230001_seven_star_checkins.sql`）
 2. **`src/lib/server/cloud-notes.ts` / `cloud-checkins.ts` 的 RPC 调用与语义**——
-   本地模式要复用，改了会连锁破坏。
+   本地模式要复用，改了会连锁破坏。（已核实：203 行 / 53 行）
 3. **`tests/` 目录**——不许为了让测试变绿而修改断言或删用例。
-   **基线：26 文件 / 230 用例全过**。
+   **基线：26 文件 / 230 用例全过**（2026-09-25 11:39 实测确认）。
+   注意 `vitest.config.ts:16` 已有 `hookTimeout: 120_000`，是修并发超时的；不要动它。
 4. **`.env.tencent-owner.local`**——含密码，**不许删、不许改、不许读出来打印**。
 5. **`.env.local` 的腾讯配置项**——可以注释掉，**不要删除**。
+   （已核实：里面共有 5 个腾讯相关配置项：`CLOUD_PROVIDER` / `CLOUDBASE_ENV_ID` / `CLOUDBASE_REGION` / `CLOUDBASE_AI_MODEL` / `CLOUDBASE_APIKEY`）
 6. **腾讯云环境**——不要删除或销毁。
 7. **`docs/` 下已有的 PRD 文件**——不要改动。
+   （已核实有 4 个：`PRD-2026-09-23-体验修复与原创设计恢复.md` / `PRD-一念入星河-摘星体验重构.md` / `PRD-拾念私人星卡与拾光手账.md` / `UX审查-七七私人使用版.md`）
 
 ---
 
@@ -244,3 +308,35 @@ npm run auto:status  # 显示总开关「已关闭」
 ```
 
 **每条都要贴真实输出。**
+
+另外**必须验证磁盘落盘**（这是本地模式的核心，不能只看界面"看起来能保存"）：
+
+```bash
+# 启动、写入一条记录、然后关掉服务
+ls private-data/pglite/          # 应该能看到 PGlite 生成的文件（base/ global/ pg_commit_ts 等）
+# 重新启动，记录仍在 → 才算真的成功
+```
+
+---
+
+## 本任务书的修订记录
+
+**2026-09-25 11:45 修订**（由 ZCode 核实后更新，逐条对照过磁盘源码）：
+
+| 原先写的 | 实际情况 | 已修正为 |
+|---|---|---|
+| 资源点"消耗 3298.62 点，云托管占 84%" | **算错了**。正确合计 **2803.44**（2504.81 套餐内 + 298.63 按量），云托管 2771.3 点占 **98.9%** | 已重写背景表格，附完整拆解 |
+| pglite 在 `devDependencies`，需移到 `dependencies` | 已在 `dependencies`（`package.json:49`） | 标注"已就绪，不需要移动" |
+| `auto-publish.mjs:438` 有开关分支 | ✅ 正确 | 保留，并标注"P0-1 已完成" |
+| `ship.mjs:235` 执行部署 | 行号已漂移 | 改为"搜 `发布到云托管` 定位，不要用行号" |
+| `ship.mjs:248` 和 `:273` 含地址 | 实际在 **281 和 306 行** | 改为"搜 `verify:live -- --origin` 定位" |
+| night-watch 系列"6 个文件"需要改地址 | **9 个文件全都已经改好了**（读 `APP_ORIGIN`，读不到就抛错） | **从待改清单移除**，标注"不要动" |
+| 未提及 `shoot-video-assets.mjs` | 第 43 行也有死站地址 | 已加入清单 |
+| `tests/cloud-notes.test.ts:41` 的 `call()` | 正确位置是 **第 39 行**（41 行起是 casts 表） | 已修正 |
+| 未说明持久化已验证 | 已实测 PGlite 落盘可用 | 新增实测结论 + "不要改成内存模式"的警告 |
+
+**结论：脚本层面只剩 4 个文件需要收口**（health-check / probe-landing-scroll / ship / shoot-video-assets），
+不是原任务书说的十几个。**先做 P1（本地模式），P0-3 可以放到最后**。
+
+**给 GPT 的提醒**：这份任务书里的行号仅供参考，**动手前请先自己搜一遍定位**。
+文件一直在被并行修改，行号会漂移。以实际搜索到的内容为准。

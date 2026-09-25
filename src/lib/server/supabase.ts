@@ -3,11 +3,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { ApiError } from "./http";
 import type { DataClient } from "./data-client";
+import { asLocalSupabaseClient, createLocalDataClient, LOCAL_USER_EMAIL, LOCAL_USER_ID } from "./local-data-client";
 import { cloudbaseConfigured, requireCloudbaseUser, usesCloudbase } from "./tencent-auth";
 
-export function ownerEmail() { return process.env.OWNER_EMAIL?.trim().toLowerCase() ?? ""; }
+export function localMode() { return process.env.ECHO_LOCAL_MODE?.trim() === "1" && process.env.NODE_ENV !== "test"; }
+export function ownerEmail() { return localMode() ? LOCAL_USER_EMAIL : process.env.OWNER_EMAIL?.trim().toLowerCase() ?? ""; }
 
 export function isCloudConfigured(): boolean {
+  if (localMode()) return true;
   if (usesCloudbase()) return cloudbaseConfigured();
   if (process.env.CLOUD_PROVIDER?.trim() && process.env.CLOUD_PROVIDER.trim() !== "supabase") return false;
   const key = process.env.SUPABASE_ANON_KEY?.trim();
@@ -27,6 +30,7 @@ export function isCloudConfigured(): boolean {
 }
 
 export async function createPrivateClient(): Promise<SupabaseClient> {
+  if (localMode()) return asLocalSupabaseClient(await createLocalDataClient());
   if (usesCloudbase() || !isCloudConfigured()) throw new ApiError(503, "CLOUD_NOT_CONFIGURED", "私人账号与云端保存尚未配置，暂时无法登录或保存记录。");
   const store = await cookies();
   return createServerClient(process.env.SUPABASE_URL!.trim(), process.env.SUPABASE_ANON_KEY!.trim(), {
@@ -61,6 +65,12 @@ export async function requirePrivateUser(request?: Request): Promise<{ client: D
     const result = await requireCloudbaseUser();
     if (request) requireMatchingUser(request, result.user.id);
     return result;
+  }
+  if (localMode()) {
+    const client = await createLocalDataClient();
+    const user = { id: LOCAL_USER_ID, email: LOCAL_USER_EMAIL };
+    if (request) requireMatchingUser(request, user.id);
+    return { client, user };
   }
   const client = await createPrivateClient();
   // Verify at Auth; cookie contents/getSession alone never authorize access.

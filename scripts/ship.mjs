@@ -16,6 +16,7 @@
  *   npm run ship -- --check-only   只检查不发布
  */
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { acquirePublishLock } from "./publish-lock.mjs";
@@ -72,6 +73,36 @@ function run(label, command, commandArgs, timeoutMs) {
 const failures = [];
 function recordFailure(label, detail) {
   failures.push({ label, detail });
+}
+
+async function appOrigin() {
+  const direct = process.env.APP_ORIGIN?.trim();
+  if (direct) return direct.replace(/\/+$/, "");
+  let envText = "";
+  try { envText = await readFile(path.join(project, ".env.local"), "utf8"); } catch { /* The explicit error below is more useful than a file error. */ }
+  const match = envText.match(/^\s*APP_ORIGIN\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s#]+))/m);
+  const origin = (match?.[1] || match?.[2] || match?.[3] || "").trim();
+  if (!origin) throw new Error("缺少 APP_ORIGIN：请在 .env.local 或当前环境中配置本地/部署地址。");
+  return origin.replace(/\/+$/, "");
+}
+
+async function localModeEnabled() {
+  if (process.env.ECHO_LOCAL_MODE?.trim() === "1") return true;
+  try {
+    const envText = await readFile(path.join(project, ".env.local"), "utf8");
+    return /^\s*ECHO_LOCAL_MODE\s*=\s*1(?:\s*#.*)?$/m.test(envText);
+  } catch {
+    return false;
+  }
+}
+
+async function probeAppOrigin(origin) {
+  try {
+    const response = await fetch(origin, { method: "GET", signal: AbortSignal.timeout(10_000) });
+    return { available: response.status < 500, status: response.status };
+  } catch (error) {
+    return { available: false, status: 0, message: error instanceof Error ? error.message : "网络不可达" };
+  }
 }
 
 console.log(`
@@ -232,6 +263,22 @@ console.log(`
 ╚══════════════════════════════════════════════════════════╝
 `);
 
+let origin;
+try { origin = await appOrigin(); }
+catch (error) {
+  console.log(`\n✗ 云端探测未执行：${error instanceof Error ? error.message : "APP_ORIGIN 无效"}`);
+  await finish(1, { result: "origin-missing", detail: "未配置 APP_ORIGIN", summary: "❌ 未发布：缺少 APP_ORIGIN" });
+}
+if (await localModeEnabled()) {
+  console.log("\n云端不可用，已跳过部署，本地检查全部通过");
+  await finish(0, { result: "cloud-skipped", detail: "ECHO_LOCAL_MODE=1", summary: "⏭️ 本地模式已跳过云端部署，本地检查全部通过" });
+}
+const probe = await probeAppOrigin(origin);
+if (!probe.available) {
+  console.log("\n云端不可用，已跳过部署，本地检查全部通过");
+  await finish(0, { result: "cloud-skipped", detail: `APP_ORIGIN 探测状态 ${probe.status || "不可达"}`, summary: "⏭️ 云端不可用，已跳过部署，本地检查全部通过" });
+}
+
 const deploy = await run("发布到云托管", "node", ["scripts/deploy-tencent.mjs", "--yes"], STEP_TIMEOUT.deploy);
 
 if (!deploy.ok) {
@@ -245,7 +292,7 @@ if (!deploy.ok) {
   1. 过几分钟重试：npm run ship -- --skip-build
   2. 若云端已有新版本但流量未切换，可查看：node scripts/deploy-tencent.mjs --detail
   3. 用验收脚本确认线上到底是不是好的：
-     npm run verify:live -- --origin https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com
+     npm run verify:live -- --origin ${origin}
 `);
   await finish(1, {
     result: "deploy-failed",
@@ -270,7 +317,7 @@ console.log(`
 
 建议再跑一次真实验收，确认线上功能正常：
 
-  npm run verify:live -- --origin https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com
+  npm run verify:live -- --origin ${origin}
 
 如果验收发现问题，回退到上一个存档点：
   git reset --hard HEAD~1

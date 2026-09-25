@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "quietMinutes": 5,
   "retryCooldownMinutes": 30,
   "healthCheckRetries": 3,

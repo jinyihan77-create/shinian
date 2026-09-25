@@ -37,11 +37,12 @@ async function loadCredentials() {
   if (!values.OWNER_EMAIL || !(values.OWNER_PASSWORD || values.OWNER_INITIAL_PASSWORD)) {
     throw new Error("缺少 OWNER_EMAIL / OWNER_PASSWORD");
   }
+  if (!overrideOrigin && !values.APP_ORIGIN) throw new Error("缺少 APP_ORIGIN：请在 .env.local 中配置本地地址。");
   return {
     email: values.OWNER_EMAIL,
     password: values.OWNER_PASSWORD || values.OWNER_INITIAL_PASSWORD,
     // 支持 --origin 覆盖，用于在发布前先验证本地改动（本地库用的是同一套账号）
-    origin: (overrideOrigin || values.APP_ORIGIN || "https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com").replace(/\/+$/, ""),
+    origin: (overrideOrigin || values.APP_ORIGIN).replace(/\/+$/, ""),
   };
 }
 

@@ -2,9 +2,14 @@
  * 探测落地页在手机端是否可滚动（只读，一次性排障用）
  */
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const ORIGIN = "https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com";
+const envText = await readFile(path.resolve(".env.local"), "utf8").catch(() => "");
+const originMatch = envText.match(/^\s*APP_ORIGIN\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s#]+))/m);
+const ORIGIN = (originMatch?.[1] || originMatch?.[2] || originMatch?.[3] || "").replace(/\/+$/, "");
+if (!ORIGIN) throw new Error("缺少 APP_ORIGIN：请在 .env.local 中配置本地地址。");
 const PORT = 9370;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

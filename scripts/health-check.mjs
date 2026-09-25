@@ -8,11 +8,15 @@
  * 这个脚本只读：不修改任何文件，不发布，不碰线上。
  */
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const ORIGIN = "https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com";
+const envText = await readFile(path.join(project, ".env.local"), "utf8").catch(() => "");
+const originMatch = envText.match(/^\s*APP_ORIGIN\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s#]+))/m);
+const ORIGIN = (originMatch?.[1] || originMatch?.[2] || originMatch?.[3] || "").replace(/\/+$/, "");
+if (!ORIGIN) throw new Error("缺少 APP_ORIGIN：请在 .env.local 中配置本地地址。");
 const line = "─".repeat(58);
 const heavy = "=".repeat(58);
 

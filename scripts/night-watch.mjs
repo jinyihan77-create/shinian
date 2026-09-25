@@ -20,7 +20,6 @@ const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
 const OUT_DIR = path.resolve("test-results", "night-watch");
 const PROFILE = path.join(OUT_DIR, ".edge-profile");
 const PORT = 9341;
-const DEFAULT_ORIGIN = "https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -44,7 +43,8 @@ async function loadCredentials() {
   }
   const email = values.OWNER_EMAIL;
   const password = values.OWNER_PASSWORD || values.OWNER_INITIAL_PASSWORD;
-  const origin = values.APP_ORIGIN || DEFAULT_ORIGIN;
+  const origin = values.APP_ORIGIN;
+  if (!origin) throw new Error("缺少 APP_ORIGIN：请在 .env.local 中配置本地地址。");
   if (!email || !password) throw new Error("缺少 OWNER_EMAIL / OWNER_PASSWORD");
   return { email, password, origin: origin.replace(/\/+$/, "") };
 }

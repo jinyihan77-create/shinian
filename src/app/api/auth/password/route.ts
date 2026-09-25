@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { checkSameOrigin, consumeAuthAttempt } from "@/lib/server/access";
 import { ApiError, errorResponse, jsonResponse, readJsonBody } from "@/lib/server/http";
-import { authProviderError, createPrivateClient, requireMatchingUser, requirePrivateUser } from "@/lib/server/supabase";
+import { authProviderError, createPrivateClient, localMode, requireMatchingUser, requirePrivateUser } from "@/lib/server/supabase";
 import { cloudbaseChangePassword, passwordCapability, requireCloudbaseIdentity, usesCloudbase } from "@/lib/server/tencent-auth";
 
 export const runtime = "nodejs";
@@ -9,6 +9,7 @@ const passwordSchema = z.object({ currentPassword: z.string().min(1).max(256), n
 
 export async function GET(request: Request) {
   try {
+    if (localMode()) return jsonResponse({ requiresVerification: false, verificationAvailable: false, verificationMethod: null, message: "本地模式不需要账号密码。" });
     if (usesCloudbase()) {
       const identity = await requireCloudbaseIdentity();
       requireMatchingUser(request, identity.user.id);
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     checkSameOrigin(request);
+    if (localMode()) throw new ApiError(400, "LOCAL_MODE_NO_PASSWORD", "本地模式不需要修改账号密码。数据只保存在当前电脑。",);
     const identity = usesCloudbase() ? await requireCloudbaseIdentity() : null;
     if (identity) requireMatchingUser(request, identity.user.id);
     const user = identity?.user || (await requirePrivateUser(request)).user;

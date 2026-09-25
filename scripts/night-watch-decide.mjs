@@ -25,10 +25,11 @@ async function loadCredentials() {
       values[m[1]] = /^(["']).*\1$/.test(raw) ? raw.slice(1, -1) : raw;
     }
   }
+  if (!values.APP_ORIGIN) throw new Error("缺少 APP_ORIGIN：请在 .env.local 中配置本地地址。");
   return {
     email: values.OWNER_EMAIL,
     password: values.OWNER_PASSWORD || values.OWNER_INITIAL_PASSWORD,
-    origin: (values.APP_ORIGIN || "https://inspiration-echo-318255-10-1492602203.sh.run.tcloudbase.com").replace(/\/+$/, ""),
+    origin: values.APP_ORIGIN.replace(/\/+$/, ""),
   };
 }
 

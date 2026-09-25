@@ -28,7 +28,8 @@ export function checkSameOrigin(request: Request) {
     // next dev binds 0.0.0.0, while the browser opens localhost or a LAN host.
     // Honor the browser Host only for local development; production stays fixed.
     const developmentOrigin = incoming.protocol + "//" + (request.headers.get("host") || incoming.host);
-    const configured = new URL(appOrigin || developmentOrigin);
+    const local = process.env.ECHO_LOCAL_MODE?.trim() === "1" && process.env.NODE_ENV !== "test";
+    const configured = new URL(local ? developmentOrigin : appOrigin || developmentOrigin);
     if ((production && configured.protocol !== "https:") || !["https:", "http:"].includes(configured.protocol)) throw new Error("Invalid origin");
     expectedOrigin = configured.origin;
   } catch {
