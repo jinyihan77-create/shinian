@@ -112,4 +112,5 @@ export interface PrivateSession {
   authenticated: boolean;
   user: { id: string; email: string } | null;
   message: string;
+  confirmationRequired?: boolean;
 }

@@ -14,7 +14,7 @@
   --aero-pearl: #f8f2fa;
   --aero-lavender: #c8b8d7;
   --aero-muted: #9d90a6;
-  --capture-surface: #2a1d315c;
+  --capture-surface: rgb(36 26 42 / 76%);
   --capture-toolbar: #21162552;
   --ui-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --display-font: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;

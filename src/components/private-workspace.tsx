@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowRight, Cloud, KeyRound, LoaderCircle, LockKeyhole, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowRight, Cloud, KeyRound, LoaderCircle, LockKeyhole, RefreshCw, ShieldCheck, UserPlus } from "lucide-react";
 import { repository } from "@/lib/repository";
 import type { PrivateSession } from "@/lib/types";
 import { EchoApp } from "./echo-app";
@@ -14,8 +14,10 @@ export function PrivateWorkspace() {
   const [activeUser, setActiveUser] = useState<PrivateSession["user"]>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
 
   const acceptSession = useCallback((next: PrivateSession) => {
@@ -56,8 +58,23 @@ export function PrivateWorkspace() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "登录未成功，请稍后重试。");
       if (body.authenticated !== true || !body.user?.id || !body.user?.email) throw new Error("账号服务尚未确认登录成功，请重试。");
-      acceptSession(body); setPassword("");
+      acceptSession(body); setPassword(""); setConfirmPassword("");
     } catch (err) { setError(err instanceof Error ? err.message : "登录未确认成功，请检查网络后重试。"); }
+    finally { setSubmitting(false); }
+  }
+
+  async function register(event: React.FormEvent) {
+    event.preventDefault(); if (submitting) return;
+    setSubmitting(true); setError("");
+    try {
+      const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim(), password, confirmPassword }), signal: AbortSignal.timeout(20000) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "注册未成功，请稍后重试。");
+      if (body.authenticated === true && body.user?.id && body.user?.email) {
+        acceptSession(body); setPassword(""); setConfirmPassword(""); return;
+      }
+      setSession(body); setPassword(""); setConfirmPassword(""); setError(body.message || "注册成功，请查收邮箱完成验证。");
+    } catch (err) { setError(err instanceof Error ? err.message : "注册未确认成功，请检查网络后重试。"); }
     finally { setSubmitting(false); }
   }
 
@@ -77,18 +94,20 @@ export function PrivateWorkspace() {
       <div className="auth-brand"><EchoSymbol /><span>拾念</span></div>
       <div className="auth-layout">
       <EchoAura />
-      <section className="panel auth-card" aria-label="私人账号登录">
-        {loading ? <div className="auth-loading"><LoaderCircle className="spin" size={29} /><h1>正在打开你的空间</h1><p>验证私人账号与云端连接…</p></div> : <>
-          <span className="auth-emblem">{session?.configured === false ? <Cloud size={27} /> : <LockKeyhole size={25} />}</span>
+       <section className="panel auth-card" aria-label={mode === "login" ? "账号登录" : "注册账号"}>
+         {loading ? <div className="auth-loading"><LoaderCircle className="spin" size={29} /><h1>正在打开你的空间</h1><p>验证账号与云端连接…</p></div> : <>
+          <span className="auth-emblem">{session?.configured === false ? <Cloud size={27} /> : mode === "register" ? <UserPlus size={25} /> : <LockKeyhole size={25} />}</span>
           
-          <h1 className="kinetic-heading"><EchoHeading>{session?.configured === false ? "你的空间正在准备中" : "回到你的灵感空间"}</EchoHeading></h1>
-          <p className="auth-description">{session?.configured === false ? "私人账号和云端资料库尚未接通，当前还不能保存或同步正式资料。" : "登录同一个私人账号，在手机和电脑上继续你的思考。"}</p>
-          {session?.configured && <form onSubmit={e => void login(e)}>
+          <h1 className="kinetic-heading"><EchoHeading>{session?.configured === false ? "你的空间正在准备中" : mode === "register" ? "创建你的灵感空间" : "回到你的灵感空间"}</EchoHeading></h1>
+          <p className="auth-description">{session?.configured === false ? "账号和云端资料库尚未接通，当前还不能保存或同步正式资料。" : mode === "register" ? "注册后，你的记录会保存在自己的云端空间，只有你能看到。" : "登录同一个账号，在手机和电脑上继续你的思考。"}</p>
+          {session?.configured && <form onSubmit={e => void (mode === "register" ? register(e) : login(e))}>
             <label className="field"><span className="field-label">邮箱</span><input className="input" type="email" autoComplete="username" placeholder="你的私人登录邮箱" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} disabled={submitting} /></label>
-            <label className="field"><span className="field-label">密码</span><input className="input" type="password" autoComplete="current-password" placeholder="输入账号密码" required maxLength={256} value={password} onChange={e => setPassword(e.target.value)} disabled={submitting} /></label>
+             <label className="field"><span className="field-label">密码</span><input className="input" type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} placeholder="输入账号密码" required maxLength={256} value={password} onChange={e => setPassword(e.target.value)} disabled={submitting} /></label>
+             {mode === "register" && <label className="field"><span className="field-label">再次输入密码</span><input className="input" type="password" autoComplete="new-password" placeholder="再次输入密码" required minLength={12} maxLength={256} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} disabled={submitting} /></label>}
             {error && <p className="inline-notice error-notice" role="alert">{error}</p>}
-            <button className="btn btn-primary auth-submit" disabled={submitting}>{submitting ? <LoaderCircle className="spin" size={17} /> : <ArrowRight size={17} />}{submitting ? "正在验证账号…" : "进入我的空间"}</button>
-            <p className="auth-account-note"><KeyRound size={13} />使用为你初始化的私人账号，不开放公开注册。</p>
+             <button className="btn btn-primary auth-submit" disabled={submitting}>{submitting ? <LoaderCircle className="spin" size={17} /> : mode === "register" ? <UserPlus size={17} /> : <ArrowRight size={17} />}{submitting ? (mode === "register" ? "正在创建账号…" : "正在验证账号…") : mode === "register" ? "创建我的空间" : "进入我的空间"}</button>
+             {mode === "register" && <p className="auth-account-note"><KeyRound size={13} />密码至少 12 位。注册后请按邮件提示完成验证。</p>}
+             <button type="button" className="text-button auth-mode-toggle" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}>{mode === "login" ? "还没有账号？现在注册" : "已经有账号？返回登录"}</button>
           </form>}
           {!session?.configured && <>
             {error && <p className="inline-notice error-notice" role="alert">{error}</p>}
@@ -99,7 +118,7 @@ export function PrivateWorkspace() {
         </>}
       </section>
       </div>
-      <p className="auth-footer"><ShieldCheck size={14} />只有登录后的私人账号可以访问资料。</p>
+       <p className="auth-footer"><ShieldCheck size={14} />每个账号只能访问自己的资料。</p>
     </main>}
   </>;
 }

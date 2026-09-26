@@ -9,7 +9,7 @@ const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 try { process.loadEnvFile(path.join(project, ".env.local")); }
 catch (error) { if (error.code !== "ENOENT") throw new Error("无法读取 .env.local，请检查文件格式。具体值不会输出。"); }
 
-const required = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_DB_URL", "OWNER_EMAIL", "OWNER_INITIAL_PASSWORD"];
+const required = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_DB_URL"];
 const missing = required.filter(name => !process.env[name]?.trim());
 if (missing.length) {
   console.error(`尚未提供：${missing.join("、")}。没有连接或修改远程服务。`);
@@ -17,12 +17,12 @@ if (missing.length) {
 } else if (!process.argv.includes("--apply")) {
   console.log("初始化所需变量名称均已配置；尚未验证凭据或连接远程服务。执行 npm run setup:cloud -- --apply 才会初始化数据库与私人账号。");
 } else {
-  const owner = process.env.OWNER_EMAIL.trim().toLowerCase();
-  const password = process.env.OWNER_INITIAL_PASSWORD;
+    const owner = process.env.OWNER_EMAIL?.trim().toLowerCase() ?? "";
+    const password = process.env.OWNER_INITIAL_PASSWORD ?? "";
   let sql;
   try {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner)) throw new Error("INVALID_EMAIL");
-    if (password.length < 12) throw new Error("PASSWORD_TOO_SHORT");
+    if (owner && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner)) throw new Error("INVALID_EMAIL");
+    if (owner && password.length < 12) throw new Error("PASSWORD_TOO_SHORT");
     const endpoint = new URL(process.env.SUPABASE_URL);
     if (endpoint.protocol !== "https:") throw new Error("HTTPS_REQUIRED");
     const connection = new URL(process.env.SUPABASE_DB_URL);
@@ -50,26 +50,29 @@ if (missing.length) {
       }
     });
     console.log("数据库结构已确认；正在配置私人账号权限。");
-    const admin = createClient(endpoint.href, process.env.SUPABASE_SERVICE_ROLE_KEY.trim(), {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    });
-    let ownerUser;
-    for (let page = 1; ; page++) {
-      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
-      if (error) throw new Error("AUTH_LIST_FAILED");
-      ownerUser = data.users.find(user => user.email?.toLowerCase() === owner);
-      if (ownerUser || data.users.length < 200) break;
+    if (owner) {
+      const admin = createClient(endpoint.href, process.env.SUPABASE_SERVICE_ROLE_KEY.trim(), {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      });
+      let ownerUser;
+      for (let page = 1; ; page++) {
+        const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+        if (error) throw new Error("AUTH_LIST_FAILED");
+        ownerUser = data.users.find(user => user.email?.toLowerCase() === owner);
+        if (ownerUser || data.users.length < 200) break;
+      }
+      let created = false;
+      if (!ownerUser) {
+        const { data, error } = await admin.auth.admin.createUser({ email: owner, password, email_confirm: true });
+        if (error || !data.user) throw new Error("AUTH_CREATE_FAILED");
+        ownerUser = data.user; created = true;
+      }
+      await sql`insert into public.echo_private_members(user_id) values(${ownerUser.id}) on conflict(user_id) do nothing`;
+      console.log(created ? "初始账号已创建并授权。" : "已有初始账号已授权，原密码保持不变。");
+    } else {
+      console.log("未提供初始账号；数据库已就绪，用户可通过网站注册。");
     }
-    let created = false;
-    if (!ownerUser) {
-      const { data, error } = await admin.auth.admin.createUser({ email: owner, password, email_confirm: true });
-      if (error || !data.user) throw new Error("AUTH_CREATE_FAILED");
-      ownerUser = data.user; created = true;
-    }
-    // An existing password is intentionally never reset by repeat deployments.
-    await sql`insert into public.echo_private_members(user_id) values(${ownerUser.id}) on conflict(user_id) do nothing`;
-    console.log(created ? "私人账号已创建并授权。" : "已有账号已授权，原密码保持不变。");
-    console.log("云端初始化成功；仍需部署网站并实际验证登录、跨设备保存与真实 AI 调用，才能完成产品验收。");
+    console.log("云端初始化成功；仍需部署网站并实际验证注册、登录、保存与跨设备同步。");
   } catch (error) {
     const messages = {
       INVALID_EMAIL: "OWNER_EMAIL 格式不正确。",

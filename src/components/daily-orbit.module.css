@@ -15,13 +15,13 @@
 .aries circle:not(.starAura) { fill:#fffaff; filter:drop-shadow(0 0 4px #fff); }
 .starAura { fill:rgba(var(--orbit-glow),.11); stroke:rgba(var(--orbit-secondary),.18); stroke-width:.5; }
 .planetScene { position:absolute; z-index:1; inset:-14px 0 -20px; overflow:hidden; pointer-events:auto; }
-.planetScene::before { content:""; position:absolute; z-index:0; inset:12% 12% 3%; border-radius:50%; background:radial-gradient(circle at 48% 43%,rgba(var(--orbit-glow),.18),transparent 54%),radial-gradient(circle at 62% 64%,rgba(var(--orbit-secondary),.13),transparent 62%); filter:blur(28px); opacity:.7; pointer-events:none; }
-.planetScene::after { content:""; position:absolute; z-index:2; inset:0; background:radial-gradient(ellipse 43% 58% at 50% 48%,#0d0a1d60 0 42%,#0d0a1d2e 64%,transparent 84%); mix-blend-mode:multiply; pointer-events:none; }
-.planetCanvas { position:relative; z-index:1; display:block; width:100%; height:100%; cursor:grab; opacity:.82; filter:saturate(1.34) contrast(1.06) brightness(.82); }
+.planetScene::before { content:""; position:absolute; z-index:0; inset:20% 22% 10%; border-radius:50%; background:radial-gradient(circle at 42% 36%,rgba(169,187,223,.12),transparent 58%),radial-gradient(circle at 64% 68%,rgba(222,216,199,.07),transparent 64%); filter:blur(34px); opacity:.55; pointer-events:none; }
+.planetScene::after { content:""; position:absolute; z-index:2; inset:0; background:radial-gradient(ellipse 40% 52% at 50% 46%,transparent 53%,#120f1726 86%,transparent 100%); pointer-events:none; }
+.planetCanvas { position:relative; z-index:1; display:block; width:100%; height:100%; cursor:grab; opacity:.99; filter:saturate(.82) contrast(1.02) brightness(1.04); }
 .planetCanvas[data-dragging=true] { cursor:grabbing; }
-.planetFallback { position:absolute; z-index:1; left:50%; top:54%; width:330px; aspect-ratio:1; border-radius:50%; transform:translate(-50%,-50%); background:radial-gradient(circle at 31% 26%,#fff9fd92 0 1.4%,color-mix(in srgb,var(--orbit-accent) 54%,#fff) 8%,#3a304c 34%,#171426 67%,#060914 100%); box-shadow:inset -42px -34px 74px #03040cc9,0 0 42px rgba(var(--orbit-glow),.2); transition:opacity .35s ease; }
-.planetFallback span,.planetFallback i { position:absolute; left:50%; top:50%; width:148%; height:27%; border:2px solid color-mix(in srgb,var(--orbit-accent) 58%,#fff); border-radius:50%; transform:translate(-50%,-50%) rotate(-11deg); box-shadow:0 0 18px rgba(var(--orbit-glow),.12); }
-.planetFallback i { width:166%; height:33%; border-width:1px; border-color:rgba(var(--orbit-secondary),.4); }
+.planetFallback { position:absolute; z-index:1; left:50%; top:54%; width:330px; aspect-ratio:1; border-radius:50%; transform:translate(-50%,-50%); background:radial-gradient(circle at 31% 26%,#fff9eda8 0 1.4%,#d7d9df 8%,#a9bbdf 28%,#77859e 58%,#4b5262 78%,#2e303b 100%); box-shadow:inset -42px -34px 74px #25293666,0 0 34px rgba(169,187,223,.16); transition:opacity .35s ease; }
+.planetFallback span,.planetFallback i { position:absolute; left:50%; top:50%; width:148%; height:27%; border:2px solid #e2ded2aa; border-radius:50%; transform:translate(-50%,-50%) rotate(-11deg); box-shadow:0 0 15px rgba(169,187,223,.1); }
+.planetFallback i { width:166%; height:33%; border-width:1px; border-color:#a9bbdf66; }
 .planetScene[data-ready=true] .planetFallback { opacity:0; }
 .planetLabels { position:absolute; z-index:3; inset:0; pointer-events:none; }
 .planetLabel { position:absolute; left:0; top:0; display:flex; align-items:center; gap:6px; min-width:44px; min-height:44px; padding:7px 10px; color:#f6eaf2; border:0; background:transparent; cursor:pointer; pointer-events:auto; transition:opacity .2s,filter .2s; }

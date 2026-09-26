@@ -17,19 +17,15 @@ export async function POST(request: Request) {
     if (!parsed.success) throw new ApiError(400, "INVALID_INPUT", "请输入有效邮箱和密码。");
     const email = parsed.data.email.toLowerCase();
     consumeAuthAttempt(email);
-    if (email !== ownerEmail()) throw new ApiError(401, "INVALID_CREDENTIALS", "邮箱或密码不正确。");
     if (usesCloudbase()) {
+      if (email !== ownerEmail()) throw new ApiError(401, "INVALID_CREDENTIALS", "邮箱或密码不正确。");
       const user = await cloudbaseLogin(parsed.data.password);
-      return jsonResponse({ configured: true, authenticated: true, user, message: "已登录私人账号。" } satisfies PrivateSession);
+      return jsonResponse({ configured: true, authenticated: true, user, message: "已登录账号。" } satisfies PrivateSession);
     }
     const client = await createPrivateClient();
     const { data, error } = await client.auth.signInWithPassword({ email, password: parsed.data.password });
     authProviderError(error);
     if (error || !data.user || !data.session) throw new ApiError(401, "INVALID_CREDENTIALS", "邮箱或密码不正确。");
-    if (data.user.email?.toLowerCase() !== ownerEmail()) {
-      await client.auth.signOut({ scope: "local" });
-      throw new ApiError(401, "INVALID_CREDENTIALS", "邮箱或密码不正确。");
-    }
-    return jsonResponse({ configured: true, authenticated: true, user: { id: data.user.id, email: data.user.email }, message: "已登录私人账号。" } satisfies PrivateSession);
+    return jsonResponse({ configured: true, authenticated: true, user: { id: data.user.id, email: data.user.email ?? email }, message: "已登录账号。" } satisfies PrivateSession);
   } catch (error) { return errorResponse(error); }
 }

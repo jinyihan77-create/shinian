@@ -1,6 +1,6 @@
 import { checkSameOrigin } from "@/lib/server/access";
 import { ApiError, errorResponse, jsonResponse } from "@/lib/server/http";
-import { authProviderError, createPrivateClient, localMode, requireMatchingUser, ownerEmail } from "@/lib/server/supabase";
+import { authProviderError, createPrivateClient, localMode, requireMatchingUser } from "@/lib/server/supabase";
 import { cloudbaseLogout, usesCloudbase } from "@/lib/server/tencent-auth";
 
 export const runtime = "nodejs";
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     if (request.headers.has("x-echo-user-id")) {
       const { data, error } = await client.auth.getUser();
       authProviderError(error);
-      if (data.user && data.user.email?.toLowerCase() === ownerEmail()) requireMatchingUser(request, data.user.id);
+      if (data.user) requireMatchingUser(request, data.user.id);
     }
     const { error } = await client.auth.signOut({ scope: "local" });
     authProviderError(error);

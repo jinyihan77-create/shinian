@@ -35,17 +35,16 @@ const PLANET_VERTEX_SHADER = `
   varying vec3 vPosition;
   void main() {
     vNormal = normalize(normalMatrix * normal);
-    vPosition = position;
+    vPosition = normalize(position);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 
-// The surface is procedural so rotation never exposes a texture seam. The same
-// noise vocabulary is reused by the cloud shell and the thought particles.
+// A restrained procedural surface keeps the planet tactile without turning it
+// into a noisy, over-lit illustration.
 const PLANET_FRAGMENT_SHADER = `
   varying vec3 vNormal;
   varying vec3 vPosition;
-  uniform float time;
   uniform vec3 baseColor;
   uniform vec3 accentColor;
   uniform vec3 secondaryColor;
@@ -76,64 +75,23 @@ const PLANET_FRAGMENT_SHADER = `
     return mix(mix(x00, x10, f.y), mix(x01, x11, f.y), f.z);
   }
 
-  float fbm(vec3 p) {
-    float value = 0.0;
-    float amplitude = 0.5;
-    for (int i = 0; i < 4; i++) {
-      value += noise3(p) * amplitude;
-      p = p * 2.03 + vec3(7.2, 3.1, 5.4);
-      amplitude *= 0.5;
-    }
-    return value;
-  }
-
   void main() {
     vec3 normal = normalize(vNormal);
-    vec3 flowPosition = vPosition * 1.48 + vec3(time * 0.035, -time * 0.018, time * 0.022);
-    float flow = fbm(flowPosition);
-    float detail = fbm(vPosition * 3.4 - vec3(time * 0.045, time * 0.032, 0.0));
-    float cloud = smoothstep(0.34, 0.78, flow + detail * 0.22);
-    float band = sin((vPosition.y + flow * 0.18 + time * 0.012) * 8.5) * 0.5 + 0.5;
-    float light = max(dot(normal, normalize(vec3(-0.28, 0.5, 1.0))), 0.0);
-    float rim = pow(1.0 - max(dot(normal, vec3(0.0, 0.0, 1.0)), 0.0), 2.35);
-    vec3 body = mix(baseColor * 0.2, secondaryColor * 0.42, smoothstep(0.18, 0.72, flow));
-    body = mix(body, accentColor, cloud * 0.12);
-    body += secondaryColor * band * 0.025;
-    vec3 color = body * (0.3 + light * 0.42) + glowColor * rim * 0.1;
-    gl_FragColor = vec4(color, 0.94 + rim * 0.02);
-  }
-`;
-
-const CLOUD_VERTEX_SHADER = PLANET_VERTEX_SHADER;
-const CLOUD_FRAGMENT_SHADER = `
-  varying vec3 vNormal;
-  varying vec3 vPosition;
-  uniform float time;
-  uniform vec3 accentColor;
-  uniform vec3 secondaryColor;
-
-  float hash31(vec3 p) {
-    p = fract(p * 0.1031);
-    p += dot(p, p.yzx + 33.33);
-    return fract((p.x + p.y) * p.z);
-  }
-
-  float noise3(vec3 p) {
-    vec3 i = floor(p);
-    vec3 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float a = mix(hash31(i), hash31(i + vec3(1.0, 0.0, 0.0)), f.x);
-    float b = mix(hash31(i + vec3(0.0, 1.0, 0.0)), hash31(i + vec3(1.0, 1.0, 0.0)), f.x);
-    float c = mix(hash31(i + vec3(0.0, 0.0, 1.0)), hash31(i + vec3(1.0, 0.0, 1.0)), f.x);
-    float d = mix(hash31(i + vec3(0.0, 1.0, 1.0)), hash31(i + vec3(1.0, 1.0, 1.0)), f.x);
-    return mix(mix(a, b, f.y), mix(c, d, f.y), f.z);
-  }
-
-  void main() {
-    float cloud = smoothstep(0.55, 0.84, noise3(vPosition * 2.8 + vec3(time * 0.02, -time * 0.015, 0.0)));
-    float rim = pow(1.0 - max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 1.8);
-    vec3 color = mix(secondaryColor, accentColor, cloud);
-    gl_FragColor = vec4(color, cloud * 0.08 + rim * 0.02);
+    vec3 lightDirection = normalize(vec3(-0.44, 0.56, 0.82));
+    float diffuse = max(dot(normal, lightDirection), 0.0);
+    float surfaceNoise = noise3(vPosition * 1.85);
+    float detailNoise = noise3(vPosition * 4.2 + vec3(4.0, 1.0, 7.0));
+    float contour = smoothstep(0.43, 0.66, surfaceNoise);
+    float contourEdge = smoothstep(0.43, 0.5, surfaceNoise) * (1.0 - smoothstep(0.58, 0.66, surfaceNoise));
+    float latitude = sin(vPosition.y * 9.0 + surfaceNoise * 0.8) * 0.5 + 0.5;
+    float pearlSheen = pow(max(dot(reflect(-lightDirection, normal), vec3(-0.08, 0.12, 0.98)), 0.0), 18.0);
+    float rim = pow(1.0 - max(dot(normal, vec3(0.0, 0.0, 1.0)), 0.0), 2.8);
+    vec3 surface = mix(baseColor * 0.82, secondaryColor * 0.94, contour * 0.46 + latitude * 0.08);
+    surface += secondaryColor * (detailNoise - 0.5) * 0.055;
+    vec3 color = surface * (0.62 + diffuse * 0.42);
+    color += accentColor * contourEdge * 0.035;
+    color += glowColor * (pearlSheen * 0.11 + rim * 0.018);
+    gl_FragColor = vec4(color, 0.97);
   }
 `;
 
@@ -141,43 +99,8 @@ const ATMOSPHERE_FRAGMENT_SHADER = `
   varying vec3 vNormal;
   uniform vec3 glowColor;
   void main() {
-    float rim = pow(1.0 - max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 2.45);
-    gl_FragColor = vec4(glowColor, rim * 0.1);
-  }
-`;
-
-const PARTICLE_VERTEX_SHADER = `
-  attribute float aSize;
-  attribute float aPhase;
-  attribute float aTone;
-  uniform float time;
-  uniform vec3 pointer;
-  uniform float pointerStrength;
-  varying vec3 vColor;
-  void main() {
-    vec3 positionOffset = normalize(position) * sin(time * 0.42 + aPhase) * 0.055;
-    vec3 nextPosition = position + positionOffset;
-    vec3 towardPointer = pointer - nextPosition;
-    float distanceToPointer = length(towardPointer);
-    float pull = smoothstep(2.35, 0.12, distanceToPointer) * pointerStrength;
-    nextPosition += normalize(towardPointer + vec3(0.0001)) * pull * 0.22;
-    vec4 mvPosition = modelViewMatrix * vec4(nextPosition, 1.0);
-    gl_PointSize = aSize * (310.0 / max(1.0, -mvPosition.z));
-    gl_Position = projectionMatrix * mvPosition;
-    vec3 rose = vec3(0.91, 0.59, 0.78);
-    vec3 lilac = vec3(0.66, 0.62, 0.98);
-    vec3 pearl = vec3(0.91, 0.88, 1.0);
-    vColor = aTone < 0.5 ? rose : (aTone < 1.5 ? lilac : pearl);
-  }
-`;
-
-const PARTICLE_FRAGMENT_SHADER = `
-  varying vec3 vColor;
-  void main() {
-    float distanceToCenter = length(gl_PointCoord - vec2(0.5));
-    float alpha = smoothstep(0.5, 0.04, distanceToCenter);
-    float core = smoothstep(0.18, 0.0, distanceToCenter);
-    gl_FragColor = vec4(vColor * (0.72 + core * 0.85), alpha * 0.7);
+    float rim = pow(1.0 - max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 2.8);
+    gl_FragColor = vec4(glowColor, rim * 0.045);
   }
 `;
 
@@ -207,10 +130,10 @@ function createGlowTexture() {
   const context = canvas.getContext("2d");
   if (!context) return null;
   const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(.14, "rgba(255,221,247,.94)");
-  gradient.addColorStop(.42, "rgba(220,176,255,.26)");
-  gradient.addColorStop(1, "rgba(220,176,255,0)");
+  gradient.addColorStop(0, "rgba(255,252,241,.72)");
+  gradient.addColorStop(.14, "rgba(232,225,207,.44)");
+  gradient.addColorStop(.42, "rgba(169,187,223,.12)");
+  gradient.addColorStop(1, "rgba(169,187,223,0)");
   context.fillStyle = gradient;
   context.fillRect(0, 0, 64, 64);
   const texture = new THREE.CanvasTexture(canvas);
@@ -218,44 +141,31 @@ function createGlowTexture() {
   return texture;
 }
 
-function createThoughtParticles(theme: number) {
-  const count = 980;
+function createOrbitalStars(theme: number, accentColor: THREE.Color, secondaryColor: THREE.Color) {
+  const count = 78;
   const random = seededRandom(theme * 7919 + 411);
   const positions = new Float32Array(count * 3);
-  const sizes = new Float32Array(count);
-  const phases = new Float32Array(count);
-  const tones = new Float32Array(count);
+  const colors = new Float32Array(count * 3);
+  const warm = new THREE.Color("#e5ddce");
+  const cool = new THREE.Color("#b2c2d9");
   for (let index = 0; index < count; index += 1) {
     const theta = random() * Math.PI * 2;
     const phi = Math.acos(2 * random() - 1);
-    const radius = 2.45 + random() * 0.88;
+    const radius = 2.3 + random() * 0.28;
     const sinPhi = Math.sin(phi);
     positions[index * 3] = radius * sinPhi * Math.cos(theta);
     positions[index * 3 + 1] = radius * Math.cos(phi) * 0.86;
     positions[index * 3 + 2] = radius * sinPhi * Math.sin(theta);
-    sizes[index] = 1.2 + random() * 2.45;
-    phases[index] = random() * Math.PI * 2;
-    tones[index] = random() > .78 ? 2 : random() > .45 ? 1 : 0;
+    const color = random() > .58 ? cool.clone().lerp(secondaryColor, .34) : warm.clone().lerp(accentColor, .24);
+    colors[index * 3] = color.r;
+    colors[index * 3 + 1] = color.g;
+    colors[index * 3 + 2] = color.b;
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("aSize", new THREE.BufferAttribute(sizes, 1));
-  geometry.setAttribute("aPhase", new THREE.BufferAttribute(phases, 1));
-  geometry.setAttribute("aTone", new THREE.BufferAttribute(tones, 1));
-  const uniforms = {
-    time: { value: 0 },
-    pointer: { value: new THREE.Vector3(0, 0, 9) },
-    pointerStrength: { value: 0 },
-  };
-  const material = new THREE.ShaderMaterial({
-    uniforms,
-    vertexShader: PARTICLE_VERTEX_SHADER,
-    fragmentShader: PARTICLE_FRAGMENT_SHADER,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-  return { points: new THREE.Points(geometry, material), uniforms };
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  const material = new THREE.PointsMaterial({ size: .036, vertexColors: true, transparent: true, opacity: .48, depthWrite: false, blending: THREE.NormalBlending, sizeAttenuation: true });
+  return new THREE.Points(geometry, material);
 }
 
 export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThought, paused = false, reduceMotion = false }: OrbitPlanet3DProps) {
@@ -272,10 +182,14 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     const canvas = canvasRef.current;
     if (!canvas || navigator.userAgent.toLowerCase().includes("jsdom")) return;
     const palette = starMaterial(theme);
-    const baseColor = new THREE.Color(palette.base).multiplyScalar(.68);
-    const accentColor = new THREE.Color(palette.accent).multiplyScalar(.7);
-    const secondaryColor = new THREE.Color(`rgb(${palette.secondary})`).multiplyScalar(.72);
-    const glowColor = new THREE.Color(`rgb(${palette.glow})`).lerp(new THREE.Color("#f1c5df"), .32).multiplyScalar(.62);
+    const moonMist = new THREE.Color("#a9bbdf");
+    const pearlWhite = new THREE.Color("#f1eee6");
+    const mutedSteel = new THREE.Color("#879bb0");
+    const quietChampagne = new THREE.Color("#ded8c7");
+    const baseColor = new THREE.Color(palette.base).lerp(moonMist, .72).multiplyScalar(.98);
+    const accentColor = new THREE.Color(palette.accent).lerp(pearlWhite, .62).multiplyScalar(.8);
+    const secondaryColor = new THREE.Color(`rgb(${palette.secondary})`).lerp(mutedSteel, .68).multiplyScalar(.88);
+    const glowColor = new THREE.Color(`rgb(${palette.glow})`).lerp(quietChampagne, .82).multiplyScalar(.42);
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
@@ -286,7 +200,7 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = .6;
+    renderer.toneMappingExposure = .82;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, .1, 100);
     camera.position.set(0, .08, 8.15);
@@ -296,13 +210,7 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     planetGroup.rotation.set(-.08, 0, -.08);
     scene.add(planetGroup);
 
-    const surfaceUniforms = {
-      time: { value: 0 },
-      baseColor: { value: baseColor },
-      accentColor: { value: accentColor },
-      secondaryColor: { value: secondaryColor },
-      glowColor: { value: glowColor },
-    };
+    const surfaceUniforms = { baseColor: { value: baseColor }, accentColor: { value: accentColor }, secondaryColor: { value: secondaryColor }, glowColor: { value: glowColor } };
     const sphere = new THREE.Mesh(
       new THREE.SphereGeometry(2.18, 128, 96),
       new THREE.ShaderMaterial({ uniforms: surfaceUniforms, vertexShader: PLANET_VERTEX_SHADER, fragmentShader: PLANET_FRAGMENT_SHADER }),
@@ -310,43 +218,33 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     sphere.renderOrder = 1;
     planetGroup.add(sphere);
 
-    const cloudUniforms = { time: { value: 0 }, accentColor: { value: accentColor }, secondaryColor: { value: secondaryColor } };
-    const clouds = new THREE.Mesh(
-      new THREE.SphereGeometry(2.205, 96, 64),
-      new THREE.ShaderMaterial({ uniforms: cloudUniforms, vertexShader: CLOUD_VERTEX_SHADER, fragmentShader: CLOUD_FRAGMENT_SHADER, transparent: true, depthWrite: false, blending: THREE.NormalBlending }),
-    );
-    clouds.renderOrder = 2;
-    planetGroup.add(clouds);
-
     const atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(2.3, 80, 60),
-      new THREE.ShaderMaterial({ side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { glowColor: { value: glowColor } }, vertexShader: PLANET_VERTEX_SHADER, fragmentShader: ATMOSPHERE_FRAGMENT_SHADER }),
+      new THREE.ShaderMaterial({ side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.NormalBlending, uniforms: { glowColor: { value: glowColor } }, vertexShader: PLANET_VERTEX_SHADER, fragmentShader: ATMOSPHERE_FRAGMENT_SHADER }),
     );
     atmosphere.renderOrder = 3;
     planetGroup.add(atmosphere);
 
     const glowTexture = createGlowTexture();
-    const thoughtParticles = createThoughtParticles(theme);
-    thoughtParticles.points.renderOrder = 5;
-    planetGroup.add(thoughtParticles.points);
+    const orbitalStars = createOrbitalStars(theme, accentColor, secondaryColor);
+    orbitalStars.renderOrder = 5;
+    planetGroup.add(orbitalStars);
 
     const rings = new THREE.Group();
     rings.rotation.set(1.15, .02, -.2);
     [
-      { radius: 2.63, tube: .014, opacity: .18, color: secondaryColor },
-      { radius: 2.8, tube: .008, opacity: .12, color: glowColor },
-      { radius: 2.98, tube: .022, opacity: .28, color: accentColor },
-      { radius: 3.17, tube: .009, opacity: .15, color: secondaryColor },
-      { radius: 3.32, tube: .006, opacity: .09, color: glowColor },
+      { radius: 2.68, tube: .012, opacity: .11, color: secondaryColor },
+      { radius: 2.9, tube: .008, opacity: .08, color: glowColor },
+      { radius: 3.12, tube: .014, opacity: .13, color: accentColor },
     ].forEach(lane => {
-      const ringLane = new THREE.Mesh(new THREE.TorusGeometry(lane.radius, lane.tube, 10, 256), new THREE.MeshBasicMaterial({ color: lane.color, transparent: true, opacity: lane.opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
+      const ringLane = new THREE.Mesh(new THREE.TorusGeometry(lane.radius, lane.tube, 8, 256), new THREE.MeshBasicMaterial({ color: lane.color, transparent: true, opacity: lane.opacity, depthWrite: false, blending: THREE.NormalBlending }));
       ringLane.renderOrder = 4;
       rings.add(ringLane);
     });
     if (glowTexture) {
       const random = seededRandom(theme * 3571 + 19);
-      const dustPositions = new Float32Array(190 * 3);
-      for (let index = 0; index < 190; index += 1) {
+      const dustPositions = new Float32Array(36 * 3);
+      for (let index = 0; index < 36; index += 1) {
         const angle = random() * Math.PI * 2;
         const radius = 2.6 + random() * .72;
         dustPositions[index * 3] = Math.cos(angle) * radius;
@@ -355,7 +253,7 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
       }
       const dustGeometry = new THREE.BufferGeometry();
       dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
-      rings.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({ map: glowTexture, color: accentColor, size: .075, transparent: true, opacity: .34, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true })));
+      rings.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({ map: glowTexture, color: accentColor, size: .022, transparent: true, opacity: .22, depthWrite: false, blending: THREE.NormalBlending, sizeAttenuation: true })));
     }
     planetGroup.add(rings);
 
@@ -366,16 +264,16 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
       marker.position.copy(normal.clone().multiplyScalar(2.225));
       marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
       if (glowTexture) {
-        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: index % 2 ? accentColor : secondaryColor, transparent: true, opacity: .4, depthWrite: false, blending: THREE.AdditiveBlending }));
-        halo.scale.setScalar(.46);
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: index % 2 ? accentColor : secondaryColor, transparent: true, opacity: .11, depthWrite: false, blending: THREE.NormalBlending }));
+        halo.scale.setScalar(.2);
         halo.position.y = .02;
         marker.add(halo);
-        const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: 0xffffff, transparent: true, opacity: .68, depthWrite: false, blending: THREE.AdditiveBlending }));
-        core.scale.setScalar(.14);
+        const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: 0xffffff, transparent: true, opacity: .28, depthWrite: false, blending: THREE.NormalBlending }));
+        core.scale.setScalar(.07);
         core.position.y = .02;
         marker.add(core);
       }
-      const orbitRing = new THREE.Mesh(new THREE.TorusGeometry(.2, .006, 6, 48), new THREE.MeshBasicMaterial({ color: index % 2 ? accentColor : secondaryColor, transparent: true, opacity: .34, depthWrite: false, blending: THREE.AdditiveBlending }));
+      const orbitRing = new THREE.Mesh(new THREE.TorusGeometry(.16, .004, 6, 48), new THREE.MeshBasicMaterial({ color: index % 2 ? accentColor : secondaryColor, transparent: true, opacity: .22, depthWrite: false, blending: THREE.NormalBlending }));
       orbitRing.rotation.x = Math.PI / 2;
       marker.add(orbitRing);
       markerGroups.push(marker);
@@ -394,8 +292,6 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     let targetPitch = -.08;
     let currentYaw = 0;
     let currentPitch = -.08;
-    let pointerStrengthTarget = 0;
-    const pointerTarget = new THREE.Vector3(0, 0, 9);
     const world = new THREE.Vector3();
     const center = new THREE.Vector3();
     const projected = new THREE.Vector3();
@@ -411,7 +307,6 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
       camera.fov = width < 620 ? 46 : 38;
       planetGroup.scale.setScalar(width < 620 ? .86 : 1);
       planetGroup.position.y = width < 620 ? -.67 : -.78;
-      thoughtParticles.points.geometry.setDrawRange(0, width < 620 ? 560 : 980);
       camera.updateProjectionMatrix();
     };
     const updateLabels = () => {
@@ -432,12 +327,6 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
         label.style.zIndex = String(Math.max(1, Math.round((1 - projected.z) * 10)));
       });
     };
-    const updatePointer = (event: globalThis.PointerEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1;
-      const y = -(((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 - 1);
-      pointerTarget.set(x * 3.2, y * 2.35, 2.5);
-    };
     const render = (time = 0) => {
       if (disposed) return;
       if (!paused && !reduceMotion && !dragging && !labelHoldRef.current) { targetYaw += .00062 + velocityY; velocityY *= .94; }
@@ -446,14 +335,7 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
       currentPitch += (targetPitch - currentPitch) * .09;
       planetGroup.rotation.x = currentPitch;
       planetGroup.rotation.y = currentYaw;
-      clouds.rotation.y = time * .000022 + .18;
       rings.rotation.z = -.2 + Math.sin(time * .00013) * .018;
-      thoughtParticles.points.rotation.y = time * .000022;
-      thoughtParticles.uniforms.time.value = time * .001;
-      thoughtParticles.uniforms.pointer.value.lerp(pointerTarget, .09);
-      thoughtParticles.uniforms.pointerStrength.value += (pointerStrengthTarget - thoughtParticles.uniforms.pointerStrength.value) * .1;
-      surfaceUniforms.time.value = time * .001;
-      cloudUniforms.time.value = time * .001;
       markerGroups.forEach((marker, index) => {
         const selected = selectedRef.current === index;
         const scale = (selected ? 1.26 : 1) + Math.sin(time * .0024 + index * 1.4) * .035;
@@ -466,12 +348,9 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     const onPointerDown = (event: globalThis.PointerEvent) => {
       if (event.button !== 0) return;
       dragging = true; pointerId = event.pointerId; lastX = event.clientX; lastY = event.clientY;
-      lastMove = performance.now(); velocityY = 0; pointerStrengthTarget = .78;
-      updatePointer(event); canvas.setPointerCapture(event.pointerId); canvas.dataset.dragging = "true";
+      lastMove = performance.now(); velocityY = 0; canvas.setPointerCapture(event.pointerId); canvas.dataset.dragging = "true";
     };
     const onPointerMove = (event: globalThis.PointerEvent) => {
-      updatePointer(event);
-      pointerStrengthTarget = .52;
       if (!dragging || event.pointerId !== pointerId) return;
       event.preventDefault();
       const dx = event.clientX - lastX;
@@ -484,14 +363,12 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     };
     const onPointerEnd = (event: globalThis.PointerEvent) => {
       if (event.pointerId !== pointerId) return;
-      dragging = false; pointerId = -1; pointerStrengthTarget = .24;
+      dragging = false; pointerId = -1;
       if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
       delete canvas.dataset.dragging;
     };
-    const onPointerLeave = () => { if (!dragging) pointerStrengthTarget = 0; };
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      pointerStrengthTarget = .46;
       targetYaw += Math.sign(event.deltaY) * Math.min(.28, Math.abs(event.deltaY) * .0014);
     };
 
@@ -499,7 +376,6 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerEnd);
     canvas.addEventListener("pointercancel", onPointerEnd);
-    canvas.addEventListener("pointerleave", onPointerLeave);
     canvas.addEventListener("wheel", onWheel, { passive: false });
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => { resize(); if (paused || reduceMotion) render(); });
     observer?.observe(canvas);
@@ -515,7 +391,6 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerEnd);
       canvas.removeEventListener("pointercancel", onPointerEnd);
-      canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("wheel", onWheel);
       scene.traverse(object => {
         const drawable = object as unknown as { geometry?: { dispose: () => void }; material?: THREE.Material | THREE.Material[] };

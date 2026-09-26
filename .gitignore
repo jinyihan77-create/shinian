@@ -4,6 +4,10 @@ node_modules/
 !.env.example
 !.env.deploy.example
 .vercel/
+.open-next/
+.wrangler/
+.codex/
+supabase/.temp/
 *.tsbuildinfo
 coverage/
 test-results/

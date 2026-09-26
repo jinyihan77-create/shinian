@@ -49,7 +49,7 @@ describe("private account routes (mocked auth provider)", () => {
   });
   it("uses fresh verified identity and never returns session tokens", async () => {
     const response = await session();
-    expect(await response.json()).toEqual({ configured: true, authenticated: true, user, message: "已登录私人账号。" });
+    expect(await response.json()).toEqual({ configured: true, authenticated: true, user, message: "已登录账号。" });
     expect(mocks.getUser).toHaveBeenCalledTimes(1); expect(response.headers.get("cache-control")).toContain("private");
     expect(response.headers.get("cache-control")).toContain("no-store");
     const loggedIn = await login(post("/api/auth/login", { email: "OWNER@example.com", password: "a-private-password" }));
@@ -57,11 +57,11 @@ describe("private account routes (mocked auth provider)", () => {
     expect(loggedIn.status).toBe(200); expect(text).not.toContain("access_token"); expect(text).not.toContain("private-access-token");
     expect(mocks.signInWithPassword).toHaveBeenCalledWith({ email: user.email, password: "a-private-password" });
   });
-  it("treats expired cookies and non-owner users as unauthenticated", async () => {
+  it("treats expired cookies as unauthenticated and accepts another registered account", async () => {
     mocks.getUser.mockResolvedValueOnce({ data: { user: null }, error: { status: 401, code: "session_not_found" } });
     expect(await (await session()).json()).toMatchObject({ configured: true, authenticated: false, user: null });
     mocks.getUser.mockResolvedValueOnce({ data: { user: { ...user, email: "someone@example.com" } }, error: null });
-    await expect(requirePrivateUser()).rejects.toMatchObject({ status: 401, code: "AUTH_REQUIRED" });
+    await expect(requirePrivateUser()).resolves.toMatchObject({ user: { email: "someone@example.com" } });
   });
   it("does not turn provider outages into logged-out or successful states", async () => {
     mocks.getUser.mockResolvedValueOnce({ data: { user: null }, error: { status: 503, message: "private provider detail" } });
@@ -72,10 +72,11 @@ describe("private account routes (mocked auth provider)", () => {
     mocks.signOut.mockResolvedValueOnce({ error: { status: 500 } });
     expect((await logout(post("/api/auth/logout"))).status).toBe(503);
   });
-  it("allows only the configured owner and returns generic credential failures", async () => {
+  it("allows any registered account and returns generic credential failures", async () => {
+    mocks.signInWithPassword.mockResolvedValueOnce({ data: { user: { ...user, email: "someone@example.com" }, session: { access_token: "other-access-token" } }, error: null });
     const response = await login(post("/api/auth/login", { email: "someone@example.com", password: "unknown-password" }));
-    expect(response.status).toBe(401); expect((await response.json()).error).toBe("邮箱或密码不正确。");
-    expect(mocks.signInWithPassword).not.toHaveBeenCalled();
+    expect(response.status).toBe(200); expect((await response.json()).user.email).toBe("someone@example.com");
+    expect(mocks.signInWithPassword).toHaveBeenCalledWith({ email: "someone@example.com", password: "unknown-password" });
     mocks.signInWithPassword.mockResolvedValueOnce({ data: { user: null, session: null }, error: { status: 400 } });
     expect((await login(post("/api/auth/login", { email: user.email, password: "wrong-password" }))).status).toBe(401);
   });

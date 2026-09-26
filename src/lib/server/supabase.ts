@@ -14,11 +14,10 @@ export function isCloudConfigured(): boolean {
   if (usesCloudbase()) return cloudbaseConfigured();
   if (process.env.CLOUD_PROVIDER?.trim() && process.env.CLOUD_PROVIDER.trim() !== "supabase") return false;
   const key = process.env.SUPABASE_ANON_KEY?.trim();
-  const email = ownerEmail();
   try {
     const url = new URL(process.env.SUPABASE_URL?.trim() ?? "");
     if (url.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))) return false;
-    if (!key || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
+    if (!key) return false;
     // Runtime must never use a secret/service-role key that bypasses RLS.
     if (key.startsWith("sb_secret_")) return false;
     if (key.split(".").length === 3) {
@@ -77,8 +76,8 @@ export async function requirePrivateUser(request?: Request): Promise<{ client: D
   const { data, error } = await client.auth.getUser();
   authProviderError(error);
   const user = data.user;
-  if (error || !user?.id || user.email?.toLowerCase() !== ownerEmail()) {
-    throw new ApiError(401, "AUTH_REQUIRED", "请先登录私人账号，再查看或保存你的资料。");
+  if (error || !user?.id || !user.email) {
+    throw new ApiError(401, "AUTH_REQUIRED", "请先登录账号，再查看或保存你的资料。");
   }
   if (request) requireMatchingUser(request, user.id);
   return { client, user: { id: user.id, email: user.email } };
