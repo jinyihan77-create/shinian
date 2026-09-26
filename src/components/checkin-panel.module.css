@@ -31,10 +31,10 @@
 .modalHeader .pickAgain { width:auto; padding:0 7px; border:0; border-radius:8px; display:flex; gap:7px; font-size:11px; background:transparent; color:#ad99be; }
 .picker { animation:arrive .65s both; }
 .pickerNote { color:#88768f; font-size:10px; text-align:center; margin:0; padding:0 15px 19px; }
-.journey { position:relative; display:grid; min-height:590px; place-items:center; overflow:hidden; outline:none; padding:72px 28px 38px; text-align:center; isolation:isolate; touch-action:none; overscroll-behavior:contain; cursor:ns-resize; user-select:none; background:#120e19; }
-.journeySky { position:absolute; inset:0; z-index:0; overflow:hidden; background:radial-gradient(circle at 50% 47%,rgba(var(--star-glow),.18),transparent 12%),radial-gradient(ellipse at 50% 60%,#d7aecd20,transparent 43%),linear-gradient(160deg,#100c16,#211628 52%,#0d1722); filter:brightness(var(--journey-sky-brightness)); transition:filter .34s ease-out; }
+.journey { position:relative; display:grid; min-height:590px; place-items:center; overflow:hidden; outline:none; padding:72px 28px 38px; text-align:center; isolation:isolate; touch-action:none; overscroll-behavior:contain; cursor:ns-resize; user-select:none; background:#181125; }
+.journeySky { position:absolute; inset:0; z-index:0; overflow:hidden; background:radial-gradient(circle at 50% 47%,rgba(var(--star-glow),.22),transparent 12%),radial-gradient(ellipse at 50% 60%,#d7aecd2d,transparent 43%),linear-gradient(160deg,#181226,#2b1d3a 52%,#142b38); filter:brightness(var(--journey-sky-brightness)); transition:filter .34s ease-out; }
 .journeySky::before { content:""; position:absolute; inset:-18%; background:radial-gradient(ellipse at 51% 49%,transparent 0 18%,rgba(var(--star-secondary),.07) 34%,transparent 56%),conic-gradient(from 18deg at 50% 48%,transparent 0 9%,rgba(var(--star-glow),.045) 12%,transparent 18% 31%,rgba(var(--star-secondary),.05) 35%,transparent 43% 66%,rgba(var(--star-glow),.04) 71%,transparent 79%); transform:scale(var(--journey-far-scale)); transform-origin:50% 48%; transition:transform .34s cubic-bezier(.18,.72,.2,1); }
-.journeySky::after { content:""; position:absolute; inset:0; background:radial-gradient(circle at 50% 48%,transparent 0 7%,#0c09110a 23%,#08060d54 77%,#07050b9c 100%); pointer-events:none; }
+.journeySky::after { content:""; position:absolute; inset:0; background:radial-gradient(circle at 50% 48%,transparent 0 7%,#0c09110a 23%,#08060d32 77%,#07050b70 100%); pointer-events:none; }
 .journeyDust { position:absolute; inset:-8%; display:block; transform-origin:50% 48%; transition:transform .34s cubic-bezier(.18,.72,.2,1),filter .34s ease-out; }
 .journeyDust i { position:absolute; display:block; border-radius:50%; background:#fff7fc; box-shadow:0 0 5px #f8dff3b8,0 0 11px rgba(var(--star-secondary),.24); }
 .journeyDustFar { transform:scale(var(--journey-far-scale)); filter:blur(.15px); }
@@ -172,12 +172,13 @@
 .entry::after { background: conic-gradient(from 125deg, transparent 0 24%, #efbddb75 34%, #a7c9ea5e 45%, transparent 57% 82%, #f0d3e75c 92%, transparent); }
 .entryAction { color: #e8c6dc; }
 .dialog {
-  background: #211a28;
+  background: #29223a;
   border-color: #f0cde044;
-  box-shadow: 0 42px 150px #030205a3, 0 0 42px #dda6c717, inset 0 1px 0 #ffffff20;
+  box-shadow: 0 42px 150px #0906118c, 0 0 42px #dda6c72b, inset 0 1px 0 #ffffff2b;
 }
-.modal { background: radial-gradient(ellipse at 14% 34%, rgba(var(--star-glow),.2), transparent 54%), radial-gradient(ellipse at 96% 15%, #d49bbb15, transparent 42%), linear-gradient(135deg,#ffffff07,#18121f00 62%); }
-.modalHeader { background: linear-gradient(#211a28f2,#211a28c7); }
+.dialog::backdrop { background: #38224899; backdrop-filter: blur(8px) saturate(1.08); }
+.modal { background: radial-gradient(ellipse at 14% 34%, rgba(var(--star-glow),.23), transparent 54%), radial-gradient(ellipse at 96% 15%, #d49bbb1f, transparent 42%), linear-gradient(135deg,#ffffff0c,#28203a00 62%); }
+.modalHeader { background: linear-gradient(#302643f2,#302643d4); }
 .layout { grid-template-columns: minmax(390px, .96fr) minmax(320px, .82fr); align-items: start; }
 .visual { padding: 0 16px 26px; }
 .scene { height: 430px; overflow: hidden; border-radius: 22px; }

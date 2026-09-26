@@ -96,11 +96,11 @@ const PLANET_FRAGMENT_SHADER = `
     float band = sin((vPosition.y + flow * 0.18 + time * 0.012) * 8.5) * 0.5 + 0.5;
     float light = max(dot(normal, normalize(vec3(-0.28, 0.5, 1.0))), 0.0);
     float rim = pow(1.0 - max(dot(normal, vec3(0.0, 0.0, 1.0)), 0.0), 2.35);
-    vec3 body = mix(baseColor * 0.33, secondaryColor * 0.76, smoothstep(0.18, 0.72, flow));
-    body = mix(body, accentColor, cloud * 0.42);
-    body += secondaryColor * band * 0.075;
-    vec3 color = body * (0.48 + light * 0.72) + glowColor * rim * 0.52;
-    gl_FragColor = vec4(color, 0.94 + rim * 0.05);
+    vec3 body = mix(baseColor * 0.2, secondaryColor * 0.42, smoothstep(0.18, 0.72, flow));
+    body = mix(body, accentColor, cloud * 0.12);
+    body += secondaryColor * band * 0.025;
+    vec3 color = body * (0.3 + light * 0.42) + glowColor * rim * 0.1;
+    gl_FragColor = vec4(color, 0.94 + rim * 0.02);
   }
 `;
 
@@ -133,7 +133,7 @@ const CLOUD_FRAGMENT_SHADER = `
     float cloud = smoothstep(0.55, 0.84, noise3(vPosition * 2.8 + vec3(time * 0.02, -time * 0.015, 0.0)));
     float rim = pow(1.0 - max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 1.8);
     vec3 color = mix(secondaryColor, accentColor, cloud);
-    gl_FragColor = vec4(color, cloud * 0.13 + rim * 0.055);
+    gl_FragColor = vec4(color, cloud * 0.08 + rim * 0.02);
   }
 `;
 
@@ -142,7 +142,7 @@ const ATMOSPHERE_FRAGMENT_SHADER = `
   uniform vec3 glowColor;
   void main() {
     float rim = pow(1.0 - max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 2.45);
-    gl_FragColor = vec4(glowColor, rim * 0.34);
+    gl_FragColor = vec4(glowColor, rim * 0.1);
   }
 `;
 
@@ -272,10 +272,10 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     const canvas = canvasRef.current;
     if (!canvas || navigator.userAgent.toLowerCase().includes("jsdom")) return;
     const palette = starMaterial(theme);
-    const baseColor = new THREE.Color(palette.base);
-    const accentColor = new THREE.Color(palette.accent);
-    const secondaryColor = new THREE.Color(`rgb(${palette.secondary})`);
-    const glowColor = new THREE.Color(`rgb(${palette.glow})`).lerp(new THREE.Color("#f1c5df"), .32);
+    const baseColor = new THREE.Color(palette.base).multiplyScalar(.68);
+    const accentColor = new THREE.Color(palette.accent).multiplyScalar(.7);
+    const secondaryColor = new THREE.Color(`rgb(${palette.secondary})`).multiplyScalar(.72);
+    const glowColor = new THREE.Color(`rgb(${palette.glow})`).lerp(new THREE.Color("#f1c5df"), .32).multiplyScalar(.62);
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
@@ -286,7 +286,7 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = .94;
+    renderer.toneMappingExposure = .6;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, .1, 100);
     camera.position.set(0, .08, 8.15);
@@ -313,7 +313,7 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     const cloudUniforms = { time: { value: 0 }, accentColor: { value: accentColor }, secondaryColor: { value: secondaryColor } };
     const clouds = new THREE.Mesh(
       new THREE.SphereGeometry(2.205, 96, 64),
-      new THREE.ShaderMaterial({ uniforms: cloudUniforms, vertexShader: CLOUD_VERTEX_SHADER, fragmentShader: CLOUD_FRAGMENT_SHADER, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
+      new THREE.ShaderMaterial({ uniforms: cloudUniforms, vertexShader: CLOUD_VERTEX_SHADER, fragmentShader: CLOUD_FRAGMENT_SHADER, transparent: true, depthWrite: false, blending: THREE.NormalBlending }),
     );
     clouds.renderOrder = 2;
     planetGroup.add(clouds);
@@ -333,11 +333,11 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
     const rings = new THREE.Group();
     rings.rotation.set(1.15, .02, -.2);
     [
-      { radius: 2.63, tube: .014, opacity: .26, color: secondaryColor },
-      { radius: 2.8, tube: .008, opacity: .18, color: glowColor },
-      { radius: 2.98, tube: .022, opacity: .42, color: accentColor },
-      { radius: 3.17, tube: .009, opacity: .22, color: secondaryColor },
-      { radius: 3.32, tube: .006, opacity: .13, color: glowColor },
+      { radius: 2.63, tube: .014, opacity: .18, color: secondaryColor },
+      { radius: 2.8, tube: .008, opacity: .12, color: glowColor },
+      { radius: 2.98, tube: .022, opacity: .28, color: accentColor },
+      { radius: 3.17, tube: .009, opacity: .15, color: secondaryColor },
+      { radius: 3.32, tube: .006, opacity: .09, color: glowColor },
     ].forEach(lane => {
       const ringLane = new THREE.Mesh(new THREE.TorusGeometry(lane.radius, lane.tube, 10, 256), new THREE.MeshBasicMaterial({ color: lane.color, transparent: true, opacity: lane.opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
       ringLane.renderOrder = 4;
@@ -366,11 +366,11 @@ export function OrbitPlanet3D({ theme, thoughts, selectedThought, onSelectThough
       marker.position.copy(normal.clone().multiplyScalar(2.225));
       marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
       if (glowTexture) {
-        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: index % 2 ? accentColor : secondaryColor, transparent: true, opacity: .62, depthWrite: false, blending: THREE.AdditiveBlending }));
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: index % 2 ? accentColor : secondaryColor, transparent: true, opacity: .4, depthWrite: false, blending: THREE.AdditiveBlending }));
         halo.scale.setScalar(.46);
         halo.position.y = .02;
         marker.add(halo);
-        const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: 0xffffff, transparent: true, opacity: .92, depthWrite: false, blending: THREE.AdditiveBlending }));
+        const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: 0xffffff, transparent: true, opacity: .68, depthWrite: false, blending: THREE.AdditiveBlending }));
         core.scale.setScalar(.14);
         core.position.y = .02;
         marker.add(core);

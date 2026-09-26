@@ -14,8 +14,8 @@
   --aero-pearl: #f8f2fa;
   --aero-lavender: #c8b8d7;
   --aero-muted: #9d90a6;
-  --capture-surface: #2a1d3194;
-  --capture-toolbar: #21162599;
+  --capture-surface: #2a1d315c;
+  --capture-toolbar: #21162552;
   --ui-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --display-font: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
   --light-ice: #d9edf4;
@@ -788,10 +788,10 @@ input:focus, textarea:focus, select:focus {
 .capture-space .capture-composer {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(145deg, #2b21375c, #14111d80 58%, #18202d66);
-  border-color: #efd9ff35;
-  box-shadow: 0 22px 65px #05030852, inset 0 1px 0 #ffffff1f, inset 0 -1px 0 #b7dfff0b;
-  backdrop-filter: blur(20px) saturate(1.15);
+  background: linear-gradient(145deg, #2b21373d, #14111d5c 58%, #18202d42);
+  border-color: #efd9ff2b;
+  box-shadow: 0 22px 65px #05030842, inset 0 1px 0 #ffffff1a, inset 0 -1px 0 #b7dfff09;
+  backdrop-filter: blur(14px) saturate(1.12);
   transition: border-color .35s ease, box-shadow .35s ease, background .35s ease;
 }
 .capture-space .capture-composer::before {
@@ -810,7 +810,7 @@ input:focus, textarea:focus, select:focus {
 }
 .capture-space .capture-composer:focus-within {
   border-color: #ecc7e979;
-  background: linear-gradient(145deg, #35264070, #16121f8c 58%, #19253570);
+  background: linear-gradient(145deg, #35264056, #16121f70 58%, #19253552);
   box-shadow: 0 24px 75px #0503085c, 0 0 0 1px #f0cfe917, 0 0 34px #d492c31c, inset 0 1px 0 #ffffff29;
 }
 .capture-space .capture-composer:focus-within::before,
@@ -1026,11 +1026,11 @@ input:focus, textarea:focus, select:focus {
   overflow: hidden;
   border: 1px solid #ffffff21;
   border-radius: 17px;
-  background: linear-gradient(105deg, #ffffff09, #e6c9ef0b 48%, #b9d9e713);
+  background: linear-gradient(105deg, #ffffff07, #e6c9ef08 48%, #b9d9e70d);
   color: #eee4f0;
   text-align: left;
-  box-shadow: inset 0 1px 0 #ffffff15, 0 8px 24px #0503081c;
-  backdrop-filter: blur(18px) saturate(1.12);
+  box-shadow: inset 0 1px 0 #ffffff12, 0 8px 24px #05030816;
+  backdrop-filter: blur(12px) saturate(1.08);
   transition: border-color .28s ease, background .28s ease, box-shadow .28s ease, transform .28s ease;
 }
 .voice-siri-dock::before {
